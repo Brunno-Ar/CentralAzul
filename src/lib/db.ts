@@ -1,0 +1,805 @@
+import { PrismaClient, Company } from "@prisma/client";
+import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+
+const parseDbUrl = (urlStr: string) => {
+  try {
+    const parsed = new URL(urlStr);
+    return {
+      host: parsed.hostname,
+      port: parsed.port ? parseInt(parsed.port, 10) : 3306,
+      user: decodeURIComponent(parsed.username),
+      password: decodeURIComponent(parsed.password),
+      database: parsed.pathname.substring(1),
+    };
+  } catch (error) {
+    console.error("Erro ao analisar DATABASE_URL:", error);
+    return null;
+  }
+};
+
+// Initialize Prisma client
+let prismaClient: PrismaClient | null = null;
+let isDbConnected = false;
+
+try {
+  if (process.env.DATABASE_URL) {
+    const dbParams = parseDbUrl(process.env.DATABASE_URL);
+    if (dbParams) {
+      const adapter = new PrismaMariaDb({
+        host: dbParams.host,
+        port: dbParams.port,
+        user: dbParams.user,
+        password: dbParams.password,
+        database: dbParams.database,
+        connectionLimit: 10,
+      });
+      prismaClient = new PrismaClient({ adapter });
+      isDbConnected = true;
+    }
+  }
+} catch (error) {
+  console.warn("Nao foi possivel conectar ao banco de dados. Usando fallback local.", error);
+}
+
+export const prisma = prismaClient;
+
+// Mock database store for fallback
+export interface MockUser {
+  id: string;
+  name: string;
+  email: string;
+  image: string;
+  role: string;
+  hierarchyLevel: number;
+  company: Company;
+  status: string;
+  createdAt: Date;
+}
+
+export interface MockSystemPanel {
+  id: string;
+  name: string;
+  description: string;
+  url: string;
+  icon: string;
+  category: Company;
+  minRole: string;
+  minHierarchy: number;
+  isActive: boolean;
+}
+
+export interface MockDocument {
+  id: string;
+  title: string;
+  description: string;
+  fileUrl: string;
+  fileSize: number;
+  fileType: string;
+  category: Company;
+  minHierarchyLevel: number;
+  uploadedById: string;
+  uploadedByName: string;
+  createdAt: Date;
+}
+
+export interface MockAuditLog {
+  id: string;
+  userId: string;
+  userName: string;
+  action: string;
+  details: string;
+  ipAddress: string;
+  userAgent: string;
+  createdAt: Date;
+}
+
+export interface MockRoleConfig {
+  id: string;
+  name: string;
+  displayName: string;
+  hierarchyLevel: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Initial mock data
+const mockRoles: MockRoleConfig[] = [
+  {
+    id: "role-admin",
+    name: "ADMIN",
+    displayName: "Direcao Geral",
+    hierarchyLevel: 1,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: "role-coordinator",
+    name: "COORDINATOR",
+    displayName: "Gerencia",
+    hierarchyLevel: 2,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: "role-viewer",
+    name: "VIEWER",
+    displayName: "Operacional",
+    hierarchyLevel: 3,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+];
+
+const mockUsers: MockUser[] = [
+  {
+    id: "user-director",
+    name: "Diretor Grupo Azul",
+    email: "diretor@grupoazul.com.br",
+    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120",
+    role: "ADMIN",
+    hierarchyLevel: 1,
+    company: Company.CENTRAL,
+    status: "ACTIVE",
+    createdAt: new Date(),
+  },
+  {
+    id: "user-borgo",
+    name: "Gerente Borgo del Vin",
+    email: "gerente.borgo@borgodelvin.com.br",
+    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=120",
+    role: "COORDINATOR",
+    hierarchyLevel: 2,
+    company: Company.BORGO,
+    status: "ACTIVE",
+    createdAt: new Date(),
+  },
+  {
+    id: "user-maple",
+    name: "Coordenador Maple Bear",
+    email: "coordenador.maple@maplebear.com.br",
+    image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=120",
+    role: "COORDINATOR",
+    hierarchyLevel: 2,
+    company: Company.MAPLE_BEAR,
+    status: "ACTIVE",
+    createdAt: new Date(),
+  },
+  {
+    id: "user-viewer",
+    name: "Operador Azul",
+    email: "operador.azul@azulinc.com.br",
+    image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=120",
+    role: "VIEWER",
+    hierarchyLevel: 3,
+    company: Company.AZUL,
+    status: "ACTIVE",
+    createdAt: new Date(),
+  },
+];
+
+const mockPanels: MockSystemPanel[] = [
+  {
+    id: "panel-1",
+    name: "Borgo del Vin - CRM & Vendas",
+    description: "Gestao de leads, lotes vendidos e contratos do empreendimento Borgo del Vin.",
+    url: "https://borgo-crm.grupoazul.internal",
+    icon: "Wine",
+    category: Company.BORGO,
+    minRole: "COORDINATOR",
+    minHierarchy: 2,
+    isActive: true,
+  },
+  {
+    id: "panel-2",
+    name: "Borgo del Vin - Reservas de Experiencias",
+    description: "Controle e agendamento de degustacoes, visitas guiadas e estadias.",
+    url: "https://borgo-reservas.grupoazul.internal",
+    icon: "CalendarRange",
+    category: Company.BORGO,
+    minRole: "VIEWER",
+    minHierarchy: 3,
+    isActive: true,
+  },
+  {
+    id: "panel-3",
+    name: "Maple Bear - Portal do Aluno",
+    description: "Visualizacao e acompanhamento academico, financeiro e matriculas.",
+    url: "https://maple-portal.grupoazul.internal",
+    icon: "GraduationCap",
+    category: Company.MAPLE_BEAR,
+    minRole: "VIEWER",
+    minHierarchy: 3,
+    isActive: true,
+  },
+  {
+    id: "panel-4",
+    name: "Maple Bear - Painel Administrativo",
+    description: "Gestao de professores, turmas, notas e faturamento escolar.",
+    url: "https://maple-admin.grupoazul.internal",
+    icon: "Notebook",
+    category: Company.MAPLE_BEAR,
+    minRole: "COORDINATOR",
+    minHierarchy: 2,
+    isActive: true,
+  },
+  {
+    id: "panel-5",
+    name: "Azul Incorporacoes - Painel Financeiro",
+    description: "Controle de fluxo de caixa, contas a pagar e receber do grupo de incorporacao.",
+    url: "https://financeiro.azulinc.com.br",
+    icon: "DollarSign",
+    category: Company.AZUL,
+    minRole: "COORDINATOR",
+    minHierarchy: 2,
+    isActive: true,
+  },
+  {
+    id: "panel-6",
+    name: "Azul Incorporacoes - Acompanhamento de Obras",
+    description: "Cronogramas, status fisico-financeiro e fotos das obras em andamento.",
+    url: "https://obras.azulinc.com.br",
+    icon: "Building2",
+    category: Company.AZUL,
+    minRole: "VIEWER",
+    minHierarchy: 3,
+    isActive: true,
+  },
+  {
+    id: "panel-7",
+    name: "Central Azul - Politicas & Logs",
+    description: "Monitoramento de seguranca de acessos e edicao de politicas da Central.",
+    url: "/dashboard/seguranca",
+    icon: "ShieldAlert",
+    category: Company.CENTRAL,
+    minRole: "ADMIN",
+    minHierarchy: 1,
+    isActive: true,
+  },
+];
+
+const mockDocuments: MockDocument[] = [
+  {
+    id: "doc-1",
+    title: "Diretrizes de Seguranca da Informacao 2026",
+    description: "Manual de politicas de acesso, senhas e conformidade digital do Grupo Azul.",
+    fileUrl: "#",
+    fileSize: 2450000,
+    fileType: "application/pdf",
+    category: Company.CENTRAL,
+    minHierarchyLevel: 3,
+    uploadedById: "user-director",
+    uploadedByName: "Diretor Grupo Azul",
+    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+  },
+  {
+    id: "doc-2",
+    title: "Relatorio de Vendas Borgo del Vin - Q1 2026",
+    description: "Acompanhamento comercial, lotes negociados e projecoes de faturamento.",
+    fileUrl: "#",
+    fileSize: 4200000,
+    fileType: "application/pdf",
+    category: Company.BORGO,
+    minHierarchyLevel: 2,
+    uploadedById: "user-borgo",
+    uploadedByName: "Gerente Borgo del Vin",
+    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+  },
+  {
+    id: "doc-3",
+    title: "Planejamento Pedagogico Maple Bear - Semestre 2",
+    description: "Calendario de atividades, grade curricular e metas de expansao.",
+    fileUrl: "#",
+    fileSize: 1800000,
+    fileType: "application/pdf",
+    category: Company.MAPLE_BEAR,
+    minHierarchyLevel: 3,
+    uploadedById: "user-maple",
+    uploadedByName: "Coordenador Maple Bear",
+    createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+  },
+];
+
+const mockLogs: MockAuditLog[] = [
+  {
+    id: "log-1",
+    userId: "user-director",
+    userName: "Diretor Grupo Azul",
+    action: "LOGIN",
+    details: "Autenticacao realizada com sucesso via Outlook (Entra ID)",
+    ipAddress: "192.168.1.10",
+    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+    createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000),
+  },
+  {
+    id: "log-2",
+    userId: "user-director",
+    userName: "Diretor Grupo Azul",
+    action: "ALTERAR_HIERARQUIA",
+    details: "Alterou o nivel de acesso de 'Coordenador Maple Bear' para Nivel 2",
+    ipAddress: "192.168.1.10",
+    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+    createdAt: new Date(Date.now() - 45 * 60 * 1000),
+  },
+  {
+    id: "log-3",
+    userId: "user-borgo",
+    userName: "Gerente Borgo del Vin",
+    action: "ACESSO_PAINEL",
+    details: "Acessou o painel 'Borgo del Vin - CRM & Vendas'",
+    ipAddress: "187.32.45.122",
+    userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15",
+    createdAt: new Date(Date.now() - 20 * 60 * 1000),
+  },
+];
+
+// Persistent state handlers in memory (simulating a database server)
+// We will expose database simulation functions so that even if MySQL is not connected,
+// roles, logs, and files are updated in real-time on the server.
+export const dbSim = {
+  getUsers: async () => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.user.findMany({
+          orderBy: { createdAt: "desc" },
+        });
+      } catch (e) {
+        console.error("Prisma error, falling back", e);
+      }
+    }
+    return mockUsers;
+  },
+
+  getUserByEmail: async (email: string) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.user.findUnique({
+          where: { email },
+        });
+      } catch (e) {
+        console.error("Prisma error, falling back", e);
+      }
+    }
+    return mockUsers.find((u) => u.email.toLowerCase() === email.toLowerCase()) || null;
+  },
+
+  getUserById: async (id: string) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.user.findUnique({
+          where: { id },
+        });
+      } catch (e) {
+        console.error("Prisma error, falling back", e);
+      }
+    }
+    return mockUsers.find((u) => u.id === id) || null;
+  },
+
+  updateUserHierarchy: async (id: string, role: string, level: number, status?: string) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.user.update({
+          where: { id },
+          data: {
+            role,
+            hierarchyLevel: level,
+            ...(status ? { status } : {}),
+          },
+        });
+      } catch (e) {
+        console.error("Prisma error, falling back", e);
+      }
+    }
+    const user = mockUsers.find((u) => u.id === id);
+    if (user) {
+      user.role = role;
+      user.hierarchyLevel = level;
+      if (status) user.status = status;
+      return user;
+    }
+    return null;
+  },
+
+  addUser: async (user: { name: string; email: string; role: string; hierarchyLevel: number; company: Company }) => {
+    const newUser: MockUser = {
+      ...user,
+      id: "user-" + Math.random().toString(36).substr(2, 9),
+      image: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120",
+      status: "ACTIVE",
+      createdAt: new Date(),
+    };
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.user.create({
+          data: {
+            id: newUser.id,
+            name: newUser.name,
+            email: newUser.email,
+            image: newUser.image,
+            role: newUser.role,
+            hierarchyLevel: newUser.hierarchyLevel,
+            company: newUser.company,
+            status: newUser.status,
+          },
+        });
+      } catch (e) {
+        console.error("Prisma error adding user, falling back", e);
+      }
+    }
+    mockUsers.push(newUser);
+    return newUser;
+  },
+
+  getPanels: async () => {
+    if (prismaClient && isDbConnected) {
+      try {
+        const dbPanels = await prismaClient.systemPanel.findMany();
+        if (dbPanels.length > 0) return dbPanels;
+        // Seed if empty
+        for (const p of mockPanels) {
+          await prismaClient.systemPanel.create({
+            data: {
+              id: p.id,
+              name: p.name,
+              description: p.description,
+              url: p.url,
+              icon: p.icon,
+              category: p.category,
+              minRole: p.minRole,
+              minHierarchy: p.minHierarchy,
+              isActive: p.isActive,
+            },
+          });
+        }
+        return await prismaClient.systemPanel.findMany();
+      } catch (e) {
+        console.error("Prisma error, falling back", e);
+      }
+    }
+    return mockPanels;
+  },
+
+  getDocuments: async () => {
+    if (prismaClient && isDbConnected) {
+      try {
+        const dbDocs = await prismaClient.document.findMany({
+          include: { uploadedBy: true },
+          orderBy: { createdAt: "desc" },
+        });
+        return dbDocs.map((d) => ({
+          id: d.id,
+          title: d.title,
+          description: d.description || "",
+          fileUrl: d.fileUrl,
+          fileSize: d.fileSize || 0,
+          fileType: d.fileType || "",
+          category: d.category,
+          minHierarchyLevel: d.minHierarchyLevel,
+          uploadedById: d.uploadedById,
+          uploadedByName: d.uploadedBy.name || "Usuario",
+          createdAt: d.createdAt,
+        }));
+      } catch (e) {
+        console.error("Prisma error, falling back", e);
+      }
+    }
+    return mockDocuments;
+  },
+
+  addDocument: async (doc: Omit<MockDocument, "id" | "createdAt" | "uploadedByName">) => {
+    const newDoc: MockDocument = {
+      ...doc,
+      id: "doc-" + Math.random().toString(36).substr(2, 9),
+      createdAt: new Date(),
+      uploadedByName: mockUsers.find((u) => u.id === doc.uploadedById)?.name || "Usuario",
+    };
+    if (prismaClient && isDbConnected) {
+      try {
+        // Ensure user exists in db first
+        let dbUser = await prismaClient.user.findUnique({ where: { id: doc.uploadedById } });
+        if (!dbUser) {
+          const user = mockUsers.find((u) => u.id === doc.uploadedById);
+          if (user) {
+            dbUser = await prismaClient.user.create({
+              data: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                image: user.image,
+                role: user.role,
+                hierarchyLevel: user.hierarchyLevel,
+                company: user.company,
+              },
+            });
+          }
+        }
+        const created = await prismaClient.document.create({
+          data: {
+            title: doc.title,
+            description: doc.description,
+            fileUrl: doc.fileUrl,
+            fileSize: doc.fileSize,
+            fileType: doc.fileType,
+            category: doc.category,
+            minHierarchyLevel: doc.minHierarchyLevel,
+            uploadedById: doc.uploadedById,
+          },
+          include: { uploadedBy: true },
+        });
+        return {
+          id: created.id,
+          title: created.title,
+          description: created.description || "",
+          fileUrl: created.fileUrl,
+          fileSize: created.fileSize || 0,
+          fileType: created.fileType || "",
+          category: created.category,
+          minHierarchyLevel: created.minHierarchyLevel,
+          uploadedById: created.uploadedById,
+          uploadedByName: created.uploadedBy.name || "Usuario",
+          createdAt: created.createdAt,
+        };
+      } catch (e) {
+        console.error("Prisma error creating document, falling back", e);
+      }
+    }
+    mockDocuments.unshift(newDoc);
+    return newDoc;
+  },
+
+  getLogs: async () => {
+    if (prismaClient && isDbConnected) {
+      try {
+        const dbLogs = await prismaClient.auditLog.findMany({
+          include: { user: true },
+          orderBy: { createdAt: "desc" },
+          take: 50,
+        });
+        return dbLogs.map((l) => ({
+          id: l.id,
+          userId: l.userId,
+          userName: l.user.name || "Usuario",
+          action: l.action,
+          details: l.details,
+          ipAddress: l.ipAddress || "",
+          userAgent: l.userAgent || "",
+          createdAt: l.createdAt,
+        }));
+      } catch (e) {
+        console.error("Prisma error, falling back", e);
+      }
+    }
+    return mockLogs;
+  },
+
+  addLog: async (userId: string, action: string, details: string, ipAddress?: string, userAgent?: string) => {
+    const userObj = mockUsers.find((u) => u.id === userId);
+    const newLog: MockAuditLog = {
+      id: "log-" + Math.random().toString(36).substr(2, 9),
+      userId,
+      userName: userObj?.name || "Usuario",
+      action,
+      details,
+      ipAddress: ipAddress || "127.0.0.1",
+      userAgent: userAgent || "Browser",
+      createdAt: new Date(),
+    };
+    if (prismaClient && isDbConnected) {
+      try {
+        // Ensure user exists in db first
+        let dbUser = await prismaClient.user.findUnique({ where: { id: userId } });
+        if (!dbUser) {
+          if (userObj) {
+            dbUser = await prismaClient.user.create({
+              data: {
+                id: userObj.id,
+                name: userObj.name,
+                email: userObj.email,
+                image: userObj.image,
+                role: userObj.role,
+                hierarchyLevel: userObj.hierarchyLevel,
+                company: userObj.company,
+              },
+            });
+          }
+        }
+        await prismaClient.auditLog.create({
+          data: {
+            userId,
+            action,
+            details,
+            ipAddress,
+            userAgent,
+          },
+        });
+      } catch (e) {
+        console.error("Prisma error adding log, falling back", e);
+      }
+    }
+    mockLogs.unshift(newLog);
+    return newLog;
+  },
+
+  // RoleConfig simulation and database methods
+  getRoles: async () => {
+    if (prismaClient && isDbConnected) {
+      try {
+        const dbRoles = await prismaClient.roleConfig.findMany({
+          orderBy: { hierarchyLevel: "asc" }
+        });
+        if (dbRoles.length > 0) {
+          return dbRoles.map((r) => ({
+            id: r.id,
+            name: r.name,
+            displayName: r.displayName,
+            hierarchyLevel: r.hierarchyLevel,
+            createdAt: r.createdAt,
+            updatedAt: r.updatedAt,
+          }));
+        }
+        
+        // Seed database if roleConfigs table is empty
+        for (const r of mockRoles) {
+          await prismaClient.roleConfig.create({
+            data: {
+              name: r.name,
+              displayName: r.displayName,
+              hierarchyLevel: r.hierarchyLevel,
+            }
+          });
+        }
+        const refetched = await prismaClient.roleConfig.findMany({
+          orderBy: { hierarchyLevel: "asc" }
+        });
+        return refetched.map((r) => ({
+          id: r.id,
+          name: r.name,
+          displayName: r.displayName,
+          hierarchyLevel: r.hierarchyLevel,
+          createdAt: r.createdAt,
+          updatedAt: r.updatedAt,
+        }));
+      } catch (e) {
+        console.error("Prisma error fetching roles, falling back", e);
+      }
+    }
+    return mockRoles;
+  },
+
+  addRole: async (role: { name: string; displayName: string; hierarchyLevel: number }) => {
+    const nameUpper = role.name.toUpperCase().replace(/\s+/g, "_");
+    const newRole: MockRoleConfig = {
+      id: "role-" + Math.random().toString(36).substr(2, 9),
+      name: nameUpper,
+      displayName: role.displayName,
+      hierarchyLevel: role.hierarchyLevel,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    if (prismaClient && isDbConnected) {
+      try {
+        const created = await prismaClient.roleConfig.create({
+          data: {
+            name: nameUpper,
+            displayName: role.displayName,
+            hierarchyLevel: role.hierarchyLevel,
+          }
+        });
+        return {
+          id: created.id,
+          name: created.name,
+          displayName: created.displayName,
+          hierarchyLevel: created.hierarchyLevel,
+          createdAt: created.createdAt,
+          updatedAt: created.updatedAt,
+        };
+      } catch (e) {
+        console.error("Prisma error creating role, falling back", e);
+      }
+    }
+    mockRoles.push(newRole);
+    return newRole;
+  },
+
+  updateRole: async (id: string, updates: { name?: string; displayName?: string; hierarchyLevel?: number }) => {
+    const nameUpper = updates.name ? updates.name.toUpperCase().replace(/\s+/g, "_") : undefined;
+    if (prismaClient && isDbConnected) {
+      try {
+        const origRole = await prismaClient.roleConfig.findUnique({ where: { id } });
+        const updated = await prismaClient.roleConfig.update({
+          where: { id },
+          data: {
+            ...(nameUpper ? { name: nameUpper } : {}),
+            ...(updates.displayName ? { displayName: updates.displayName } : {}),
+            ...(updates.hierarchyLevel !== undefined ? { hierarchyLevel: updates.hierarchyLevel } : {}),
+          }
+        });
+        
+        if (origRole && nameUpper && origRole.name !== nameUpper) {
+          // Update users
+          await prismaClient.user.updateMany({
+            where: { role: origRole.name },
+            data: { role: nameUpper }
+          });
+          // Update system panels
+          await prismaClient.systemPanel.updateMany({
+            where: { minRole: origRole.name },
+            data: { minRole: nameUpper }
+          });
+        }
+        return {
+          id: updated.id,
+          name: updated.name,
+          displayName: updated.displayName,
+          hierarchyLevel: updated.hierarchyLevel,
+          createdAt: updated.createdAt,
+          updatedAt: updated.updatedAt,
+        };
+      } catch (e) {
+        console.error("Prisma error updating role, falling back", e);
+      }
+    }
+    const role = mockRoles.find((r) => r.id === id);
+    if (role) {
+      const oldName = role.name;
+      if (nameUpper) role.name = nameUpper;
+      if (updates.displayName) role.displayName = updates.displayName;
+      if (updates.hierarchyLevel !== undefined) role.hierarchyLevel = updates.hierarchyLevel;
+      role.updatedAt = new Date();
+
+      if (nameUpper && oldName !== nameUpper) {
+        // Update mock users role
+        for (const u of mockUsers) {
+          if (u.role === oldName) u.role = nameUpper;
+        }
+        // Update mock panels minRole
+        for (const p of mockPanels) {
+          if (p.minRole === oldName) p.minRole = nameUpper;
+        }
+      }
+      return role;
+    }
+    return null;
+  },
+
+  deleteRole: async (id: string) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        const origRole = await prismaClient.roleConfig.findUnique({ where: { id } });
+        if (origRole) {
+          // Reassign users of this role to VIEWER (or another base role) before deletion
+          await prismaClient.user.updateMany({
+            where: { role: origRole.name },
+            data: { role: "VIEWER" }
+          });
+          // Reassign system panels
+          await prismaClient.systemPanel.updateMany({
+            where: { minRole: origRole.name },
+            data: { minRole: "VIEWER" }
+          });
+          
+          await prismaClient.roleConfig.delete({ where: { id } });
+          return true;
+        }
+      } catch (e) {
+        console.error("Prisma error deleting role, falling back", e);
+      }
+    }
+    const index = mockRoles.findIndex((r) => r.id === id);
+    if (index !== -1) {
+      const deletedName = mockRoles[index].name;
+      mockRoles.splice(index, 1);
+      // Reassign mock users
+      for (const u of mockUsers) {
+        if (u.role === deletedName) u.role = "VIEWER";
+      }
+      // Reassign mock panels
+      for (const p of mockPanels) {
+        if (p.minRole === deletedName) p.minRole = "VIEWER";
+      }
+      return true;
+    }
+    return false;
+  }
+};
+

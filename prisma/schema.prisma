@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model RoleConfig {
+  id             String   @id @default(cuid())
+  name           String   @unique // e.g. "ADMIN", "COORDINATOR", "VIEWER"
+  displayName    String   // e.g. "Direcao", "Gerencia", "Operacional"
+  hierarchyLevel Int      @default(3) // 1 = Direcao, 2 = Gerencia, 3 = Operacional
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+enum Company {
+  BORGO
+  MAPLE_BEAR
+  AZUL
+  CENTRAL
+}
+
+model User {
+  id             String     @id @default(cuid())
+  name           String?
+  email          String?    @unique
+  emailVerified  DateTime?
+  image          String?
+  role           String     @default("VIEWER") // References RoleConfig.name
+  hierarchyLevel Int        @default(3)
+  company        Company    @default(CENTRAL)
+  status         String     @default("ACTIVE") // ACTIVE, BLOCKED
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  logs           AuditLog[]
+  documents      Document[]
+}
+
+model SystemPanel {
+  id            String   @id @default(cuid())
+  name          String
+  description   String
+  url           String
+  icon          String
+  category      Company
+  minRole       String   @default("VIEWER")
+  minHierarchy  Int      @default(3)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String
+  details   String   @db.Text
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+}
+
+model Document {
+  id                String   @id @default(cuid())
+  title             String
+  description       String?
+  fileUrl           String   @db.Text
+  fileSize          Int?
+  fileType          String?  // e.g. "pdf", "link", "video", "sharepoint"
+  category          Company
+  minHierarchyLevel Int      @default(3)
+  uploadedById      String
+  uploadedBy        User     @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+}
