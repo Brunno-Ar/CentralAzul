@@ -34,6 +34,21 @@ export async function PUT(request: NextRequest) {
     // Perform update
     const updatedUser = await dbSim.updateUserHierarchy(userId, role as string, hierarchyLevel, status);
 
+    // Refresh role in JWT session
+    let refreshRes: Response | null = null;
+    try {
+      refreshRes = await fetch(new URL("/api/auth/refresh-role", request.url), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Cookie": request.headers.get("cookie") || "",
+        },
+        body: JSON.stringify({ userId }),
+      });
+    } catch (e) {
+      console.error("Erro ao atualizar JWT do usuario:", e);
+    }
+
     // Audit log
     const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
     const userAgent = request.headers.get("user-agent") || "Browser";
@@ -46,7 +61,11 @@ export async function PUT(request: NextRequest) {
       userAgent
     );
 
-    return NextResponse.json(updatedUser);
+    const response = NextResponse.json(updatedUser);
+    if (refreshRes && refreshRes.headers.get("set-cookie")) {
+      response.headers.set("set-cookie", refreshRes.headers.get("set-cookie")!);
+    }
+    return response;
   } catch (error) {
     console.error("Erro ao atualizar usuario:", error);
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });

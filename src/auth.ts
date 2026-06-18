@@ -76,18 +76,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.company = session.company ?? token.company;
       }
 
-      // Always fetch latest state from dbSim if user exists, to keep role switching synchronized
-      if (token.email) {
-        const dbUser = await dbSim.getUserByEmail(token.email as string);
-        if (dbUser) {
-          token.role = dbUser.role;
-          token.hierarchyLevel = dbUser.hierarchyLevel;
-          token.company = dbUser.company;
-          token.status = dbUser.status;
-          token.name = dbUser.name;
-        }
-      }
-
       return token;
     },
     async session({ session, token }) {

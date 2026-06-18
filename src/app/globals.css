@@ -28,6 +28,7 @@
 
   /* Aurora Animation setup in Tailwind v4 */
   --animate-aurora: aurora 60s linear infinite;
+  --animate-aurora-slow: aurora-slow 20s ease-in-out infinite;
 
   @keyframes aurora {
     from {
@@ -35,6 +36,18 @@
     }
     to {
       background-position: 350% 50%, 350% 50%;
+    }
+  }
+
+  @keyframes aurora-slow {
+    0% {
+      background-position: 50% 50%;
+    }
+    50% {
+      background-position: 100% 100%;
+    }
+    100% {
+      background-position: 50% 50%;
     }
   }
 }
@@ -54,4 +67,10 @@ body {
 
 .card-light-hover:hover {
   border-color: rgba(16, 93, 143, 0.3); /* brand-secundar with opacity */
+}
+
+.animate-aurora-slow {
+  animation: aurora-slow 20s ease-in-out infinite;
+  will-change: background-position;
+  transform: translateZ(0); /* hardware accel */
 }
