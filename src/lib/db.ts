@@ -21,20 +21,45 @@ const parseDbUrl = (urlStr: string) => {
 let prismaClient: PrismaClient | null = null;
 let isDbConnected = false;
 
+declare global {
+  var prismaGlobal: PrismaClient | undefined;
+}
+
 try {
   if (process.env.DATABASE_URL) {
-    const dbParams = parseDbUrl(process.env.DATABASE_URL);
-    if (dbParams) {
-      const adapter = new PrismaMariaDb({
-        host: dbParams.host,
-        port: dbParams.port,
-        user: dbParams.user,
-        password: dbParams.password,
-        database: dbParams.database,
-        connectionLimit: 10,
-      });
-      prismaClient = new PrismaClient({ adapter });
-      isDbConnected = true;
+    if (process.env.NODE_ENV === "production") {
+      const dbParams = parseDbUrl(process.env.DATABASE_URL);
+      if (dbParams) {
+        const adapter = new PrismaMariaDb({
+          host: dbParams.host,
+          port: dbParams.port,
+          user: dbParams.user,
+          password: dbParams.password,
+          database: dbParams.database,
+          connectionLimit: 2,
+        });
+        prismaClient = new PrismaClient({ adapter });
+        isDbConnected = true;
+      }
+    } else {
+      if (!global.prismaGlobal) {
+        const dbParams = parseDbUrl(process.env.DATABASE_URL);
+        if (dbParams) {
+          const adapter = new PrismaMariaDb({
+            host: dbParams.host,
+            port: dbParams.port,
+            user: dbParams.user,
+            password: dbParams.password,
+            database: dbParams.database,
+            connectionLimit: 2,
+          });
+          global.prismaGlobal = new PrismaClient({ adapter });
+        }
+      }
+      prismaClient = global.prismaGlobal || null;
+      if (prismaClient) {
+        isDbConnected = true;
+      }
     }
   }
 } catch (error) {
@@ -433,25 +458,47 @@ export const dbSim = {
   getPanels: async () => {
     if (prismaClient && isDbConnected) {
       try {
-        const dbPanels = await prismaClient.systemPanel.findMany();
-        if (dbPanels.length > 0) return dbPanels;
-        // Seed if empty
-        for (const p of mockPanels) {
-          await prismaClient.systemPanel.create({
-            data: {
-              id: p.id,
-              name: p.name,
-              description: p.description,
-              url: p.url,
-              icon: p.icon,
-              category: p.category,
-              minRole: p.minRole,
-              minHierarchy: p.minHierarchy,
-              isActive: p.isActive,
-            },
-          });
+        let dbPanels = await prismaClient.systemPanel.findMany();
+        
+        // Find panels in mockPanels that are missing from the database by ID or URL
+        const missingPanels = mockPanels.filter(
+          (mockP) => !dbPanels.some((dbP) => dbP.id === mockP.id || dbP.url === mockP.url)
+        );
+
+        if (missingPanels.length > 0) {
+          for (const p of missingPanels) {
+            await prismaClient.systemPanel.create({
+              data: {
+                id: p.id,
+                name: p.name,
+                description: p.description,
+                url: p.url,
+                icon: p.icon,
+                category: p.category,
+                minRole: p.minRole,
+                minHierarchy: p.minHierarchy,
+                isActive: p.isActive,
+              },
+            });
+          }
+          dbPanels = await prismaClient.systemPanel.findMany();
         }
-        return await prismaClient.systemPanel.findMany();
+
+        // Delete panels from the database that are no longer in mockPanels
+        const extraPanels = dbPanels.filter(
+          (dbP) => !mockPanels.some((mockP) => mockP.id === dbP.id || mockP.url === dbP.url)
+        );
+
+        if (extraPanels.length > 0) {
+          for (const p of extraPanels) {
+            await prismaClient.systemPanel.delete({
+              where: { id: p.id },
+            });
+          }
+          dbPanels = await prismaClient.systemPanel.findMany();
+        }
+
+        return dbPanels;
       } catch (e) {
         console.error("Prisma error, falling back", e);
       }

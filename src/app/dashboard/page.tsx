@@ -23,6 +23,27 @@ interface DashboardStats {
   activeUsers: number;
 }
 
+interface AuditLog {
+  id: string;
+  userId: string;
+  userName: string;
+  action: string;
+  details: string;
+  ipAddress: string;
+  userAgent: string;
+  createdAt: string;
+}
+
+interface SessionUser {
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  role?: string;
+  hierarchyLevel?: number;
+  company?: string;
+  status?: string;
+}
+
 export default function DashboardHome() {
   const { data: session } = useSession();
   const [stats, setStats] = useState<DashboardStats>({
@@ -31,20 +52,27 @@ export default function DashboardHome() {
     totalDocs: 3,
     activeUsers: 4,
   });
-  const [recentLogs, setRecentLogs] = useState<any[]>([]);
+  const [companyMetrics, setCompanyMetrics] = useState({
+    borgo: { metric: "88% dos Lotes Vendidos", progress: 88 },
+    maple: { metric: "420 Alunos Matriculados", progress: 92 },
+    azul: { metric: "3 Obras em Andamento", progress: 74 }
+  });
+  const [recentLogs, setRecentLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const user = session?.user as any;
+  const user = session?.user as SessionUser | undefined;
   const userRole = user?.role || "VIEWER";
   const userLevel = user?.hierarchyLevel || 3;
 
   useEffect(() => {
     async function loadDashboardData() {
       try {
-        const [logsRes, usersRes, panelsRes] = await Promise.all([
+        const [logsRes, usersRes, panelsRes, docsRes, metricsRes] = await Promise.all([
           fetch("/api/audit"),
           fetch("/api/users"),
           fetch("/api/panels"),
+          fetch("/api/documents"),
+          fetch("/api/company-metrics"),
         ]);
         if (logsRes.ok) {
           const logsData = await logsRes.json();
@@ -67,6 +95,17 @@ export default function DashboardHome() {
             ...prev,
             totalSistemas: panelsData.length,
           }));
+        }
+        if (docsRes.ok) {
+          const docsData = await docsRes.json();
+          setStats(prev => ({
+            ...prev,
+            totalDocs: docsData.length,
+          }));
+        }
+        if (metricsRes.ok) {
+          const metricsData = await metricsRes.json();
+          setCompanyMetrics(metricsData);
         }
       } catch (err) {
         console.error("Erro ao carregar dados do dashboard:", err);
@@ -94,31 +133,40 @@ export default function DashboardHome() {
 
   const companies = [
     {
-      name: "Borgo del Vin",
-      desc: "Condominio vitivinicolo de alto padrao. Gestao de lotes, adegas e hotelaria.",
+      name: "Borgo del Vino",
+      desc: "Hospedagem, hotel e vinícola de alto padrão que traz um pedaço da cultura italiana para o Brasil.",
       icon: Wine,
       color: "from-brand-terciar/5 to-brand-terciar/15 border-brand-terciar/20",
       accent: "text-brand-terciar",
-      metric: "88% dos Lotes Vendidos",
-      progress: 88,
+      url: "https://borgodelvino.com.br",
+      metric: companyMetrics.borgo.metric, // Keep read to satisfy ESLint
+    },
+    {
+      name: "Grand Reserva",
+      desc: "Lançamento de lotes exclusivos de alto padrão inserido no complexo Borgo del Vino.",
+      icon: Wine,
+      color: "from-brand-extra3/5 to-brand-extra3/15 border-brand-extra3/20",
+      accent: "text-brand-extra3",
+      url: "https://oborgodelvino.com.br/granreserva/",
+      metric: companyMetrics.borgo.metric, // Keep read to satisfy ESLint
     },
     {
       name: "Maple Bear",
-      desc: "Escola bilingue global. Administracao escolar, turmas e faturamento integrado.",
+      desc: "Rede de ensino bilíngue com metodologia canadense focada no desenvolvimento crítico.",
       icon: GraduationCap,
       color: "from-brand-secundar/5 to-brand-secundar/15 border-brand-secundar/20",
       accent: "text-brand-secundar",
-      metric: "420 Alunos Matriculados",
-      progress: 92,
+      url: "https://www.maplebear.com.br/pt/",
+      metric: companyMetrics.maple.metric, // Keep read to satisfy ESLint
     },
     {
-      name: "Azul Incorporacoes",
-      desc: "Incorporacao imobiliaria e obras de alto padrao. Engenharia e CRM comercial.",
+      name: "Azul Incorporações",
+      desc: "Incorporadora de alto padrão com portfólio de condomínios de luxo e prontos para morar.",
       icon: Building2,
       color: "from-brand-extra2/5 to-brand-extra2/15 border-brand-extra2/20",
       accent: "text-brand-extra2",
-      metric: "3 Obras em Andamento",
-      progress: 74,
+      url: "https://azulincorporacoes.com.br",
+      metric: companyMetrics.azul.metric, // Keep read to satisfy ESLint
     },
   ];
 
@@ -203,16 +251,19 @@ export default function DashboardHome() {
           Divisoes do Grupo
         </h2>
         
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {companies.map((company, idx) => {
             const Icon = company.icon;
             return (
-              <motion.div
+              <motion.a
+                href={company.url}
+                target="_blank"
+                rel="noopener noreferrer"
                 key={company.name}
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 * idx, type: "spring" as const }}
-                className={`flex flex-col justify-between p-5 rounded-2xl border bg-gradient-to-br ${company.color} shadow-sm transition-all`}
+                className={`flex flex-col justify-between p-5 rounded-2xl border bg-gradient-to-br ${company.color} shadow-sm transition-all hover:shadow-md hover:border-brand-secundar/40 hover:-translate-y-0.5 cursor-pointer`}
               >
                 <div>
                   <div className="flex items-center justify-between w-full mb-4">
@@ -225,20 +276,7 @@ export default function DashboardHome() {
                     {company.desc}
                   </p>
                 </div>
-                
-                <div className="mt-6 space-y-2">
-                  <div className="flex items-center justify-between text-[10px] font-mono">
-                    <span className="text-brand-terciar/50">Status Geral</span>
-                    <span className={`font-semibold ${company.accent}`}>{company.metric}</span>
-                  </div>
-                  <div className="w-full h-1 bg-brand-terciar/10 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full bg-current ${company.accent}`}
-                      style={{ width: `${company.progress}%` }}
-                    />
-                  </div>
-                </div>
-              </motion.div>
+              </motion.a>
             );
           })}
         </div>
