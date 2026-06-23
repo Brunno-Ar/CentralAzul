@@ -15,9 +15,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Senha (qualquer uma para demo)", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email) return null;
+        if (!credentials?.email || !credentials?.password) return null;
         
-        const emailStr = credentials.email as string;
+        const emailStr = (credentials.email as string).toLowerCase();
+        const passwordStr = credentials.password as string;
+
+        // If logging in as admin@grupoazul.com.br, verify the password is admin12345
+        if (emailStr === "admin@grupoazul.com.br" && passwordStr !== "admin12345") {
+          return null;
+        }
+
         let user = await dbSim.getUserByEmail(emailStr);
         
         if (!user && emailStr.includes("@")) {
@@ -34,11 +41,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           else if (domain.includes("maplebear")) company = Company.MAPLE_BEAR;
           else if (domain.includes("azulinc")) company = Company.AZUL;
 
+          const isSystemAdmin = emailStr === "admin@grupoazul.com.br";
+
           user = await dbSim.addUser({
-            name,
+            name: isSystemAdmin ? "Administrador Central" : name,
             email: emailStr,
-            role: "VIEWER",
-            hierarchyLevel: 3,
+            role: isSystemAdmin ? "ADMIN" : "VIEWER",
+            hierarchyLevel: isSystemAdmin ? 1 : 3,
             company,
           });
         }

@@ -143,6 +143,17 @@ const mockUsers: MockUser[] = [
     createdAt: new Date(),
   },
   {
+    id: "user-admin",
+    name: "Administrador Central",
+    email: "admin@grupoazul.com.br",
+    image: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120",
+    role: "ADMIN",
+    hierarchyLevel: 1,
+    company: Company.CENTRAL,
+    status: "ACTIVE",
+    createdAt: new Date(),
+  },
+  {
     id: "user-borgo",
     name: "Gerente Borgo del Vin",
     email: "gerente.borgo@borgodelvin.com.br",
