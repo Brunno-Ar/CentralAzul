@@ -96,7 +96,10 @@ export default function DashboardNav() {
           <UserCard user={user} open={open} userRole={userRole} userLevel={userLevel} />
           
           <button
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={async () => {
+              await signOut({ redirect: false });
+              window.location.href = "/";
+            }}
             className={`flex items-center text-sm text-red-650 hover:text-red-700 hover:bg-red-50/50 transition-all cursor-pointer group font-medium overflow-hidden rounded-xl transform-gpu ${
               open ? "w-full px-3 py-2.5 justify-start gap-3" : "w-10 h-10 justify-center mx-auto p-0 gap-0"
             }`}
