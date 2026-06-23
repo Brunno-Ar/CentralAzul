@@ -26,7 +26,7 @@ interface DashboardStats {
 export default function DashboardHome() {
   const { data: session } = useSession();
   const [stats, setStats] = useState<DashboardStats>({
-    totalSistemas: 7,
+    totalSistemas: 5,
     totalLogs: 3,
     totalDocs: 3,
     activeUsers: 4,
@@ -41,9 +41,10 @@ export default function DashboardHome() {
   useEffect(() => {
     async function loadDashboardData() {
       try {
-        const [logsRes, usersRes] = await Promise.all([
+        const [logsRes, usersRes, panelsRes] = await Promise.all([
           fetch("/api/audit"),
           fetch("/api/users"),
+          fetch("/api/panels"),
         ]);
         if (logsRes.ok) {
           const logsData = await logsRes.json();
@@ -58,6 +59,13 @@ export default function DashboardHome() {
           setStats(prev => ({
             ...prev,
             activeUsers: usersData.length,
+          }));
+        }
+        if (panelsRes.ok) {
+          const panelsData = await panelsRes.json();
+          setStats(prev => ({
+            ...prev,
+            totalSistemas: panelsData.length,
           }));
         }
       } catch (err) {
@@ -145,11 +153,11 @@ export default function DashboardHome() {
           className="p-4 rounded-xl border border-brand-terciar/10 bg-white shadow-sm"
         >
           <div className="flex justify-between items-center text-brand-terciar/60">
-            <span className="text-[10px] font-mono uppercase tracking-wider">Sistemas</span>
+            <span className="text-[10px] font-mono uppercase tracking-wider">Ferramentas</span>
             <Building2 className="w-3.5 h-3.5 text-brand-extra2" />
           </div>
           <p className="text-xl font-bold text-brand-extra1 mt-1 sm:text-2xl">{stats.totalSistemas}</p>
-          <p className="text-[9px] text-brand-terciar/50 mt-1">Modulos ativos</p>
+          <p className="text-[9px] text-brand-terciar/50 mt-1">Ferramentas ativas</p>
         </motion.div>
 
         <motion.div 
@@ -299,7 +307,7 @@ export default function DashboardHome() {
               <span className="text-[9px] font-mono text-brand-extra2 font-bold">IMPORTANTE</span>
               <p className="text-xs font-bold text-brand-extra1">Nova integracao de Seguranca</p>
               <p className="text-[10px] text-brand-terciar/70 leading-relaxed">
-                Todas as credenciais de sistemas agora estao integradas com o token ativo do Outlook profissional.
+                Todas as credenciais de ferramentas agora estao integradas com o token ativo do Outlook profissional.
               </p>
             </div>
             

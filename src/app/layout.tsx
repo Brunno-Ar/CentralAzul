@@ -15,7 +15,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Central Azul - Grupo Azul Incorporacoes",
-  description: "Central integrada de seguranca e sistemas do Grupo Azul Incorporacoes.",
+  description:
+    "Central integrada de seguranca e ferramentas do Grupo Azul Incorporacoes.",
 };
 
 export default function RootLayout({
@@ -26,12 +27,11 @@ export default function RootLayout({
   return (
     <html
       lang="pt-BR"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <SessionProvider>
-          {children}
-        </SessionProvider>
+        <SessionProvider>{children}</SessionProvider>
       </body>
     </html>
   );

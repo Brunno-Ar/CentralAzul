@@ -41,7 +41,7 @@ interface SystemPanel {
   isActive: boolean;
 }
 
-export default function SistemasPage() {
+export default function FerramentasPage() {
   const { data: session } = useSession();
   const [panels, setPanels] = useState<SystemPanel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,7 +71,7 @@ export default function SistemasPage() {
 
   const categories = [
     { label: "Todos", value: "ALL" },
-    { label: "Borgo del Vin", value: "BORGO" },
+    { label: "Borgo del Vino", value: "BORGO" },
     { label: "Maple Bear", value: "MAPLE_BEAR" },
     { label: "Azul Incorp", value: "AZUL" },
     { label: "Central", value: "CENTRAL" },
@@ -95,7 +95,7 @@ export default function SistemasPage() {
 
   const getCompanyLabel = (cat: string) => {
     switch (cat) {
-      case "BORGO": return "Borgo del Vin";
+      case "BORGO": return "Borgo del Vino";
       case "MAPLE_BEAR": return "Maple Bear";
       case "AZUL": return "Azul Incorporacoes";
       default: return "Grupo Azul Central";
@@ -107,10 +107,10 @@ export default function SistemasPage() {
       {/* Title block */}
       <div>
         <h1 className="text-xl font-bold tracking-tight text-brand-extra1 sm:text-2xl">
-          Central de Sistemas
+          Ferramentas
         </h1>
         <p className="text-xs text-brand-terciar/70 mt-1">
-          Acesse os paineis administrativos integrados do grupo. Os sistemas sao liberados conforme seu nivel de acesso.
+          Acesse as ferramentas administrativas integradas do grupo. As ferramentas sao liberadas conforme seu nivel de acesso.
         </p>
       </div>
 
@@ -121,7 +121,7 @@ export default function SistemasPage() {
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-brand-terciar/50" />
           <input
             type="text"
-            placeholder="Buscar painel..."
+            placeholder="Buscar ferramenta..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-4 py-2 bg-white border border-brand-terciar/10 rounded-xl text-xs text-brand-terciar placeholder-brand-terciar/40 focus:outline-none focus:border-brand-secundar transition-colors shadow-sm"
@@ -155,7 +155,7 @@ export default function SistemasPage() {
         </div>
       ) : filteredPanels.length === 0 ? (
         <div className="text-center py-12 border border-dashed border-brand-terciar/20 bg-white rounded-2xl shadow-sm">
-          <p className="text-sm text-brand-terciar/50">Nenhum sistema encontrado com os filtros aplicados.</p>
+          <p className="text-sm text-brand-terciar/50">Nenhuma ferramenta encontrada com os filtros aplicados.</p>
         </div>
       ) : (
         <motion.div 

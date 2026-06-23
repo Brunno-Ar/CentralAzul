@@ -34,8 +34,8 @@ export default function DashboardNav() {
       minLevel: 3,
     },
     {
-      name: "Central de Sistemas",
-      href: "/dashboard/sistemas",
+      name: "Ferramentas",
+      href: "/dashboard/ferramentas",
       icon: Sliders,
       allowedRoles: ["ADMIN", "COORDINATOR", "VIEWER"],
       minLevel: 3,
