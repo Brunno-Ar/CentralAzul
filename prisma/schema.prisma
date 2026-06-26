@@ -36,6 +36,8 @@ model User {
   updatedAt      DateTime   @updatedAt
   logs           AuditLog[]
   documents      Document[]
+  createdAnnouncements Announcement[] @relation("AnnouncementCreator")
+  announcementReads   AnnouncementRead[] @relation("AnnouncementReadUser")
 }
 
 model SystemPanel {
@@ -75,3 +77,128 @@ model Document {
   uploadedBy        User     @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
   createdAt         DateTime @default(now())
 }
+
+model Announcement {
+  id                  String   @id @default(cuid())
+  title               String
+  content             String   @db.Text
+  priority            String   // INFO, WARNING, URGENT
+  targetCompanies     String?  @default("") // comma-separated Company values, empty = all
+  expiresAt           DateTime?
+  isPinned            Boolean  @default(false)
+  isActive            Boolean  @default(true)
+  createdById         String
+  createdBy           User     @relation("AnnouncementCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  reads               AnnouncementRead[]
+}
+
+model AnnouncementRead {
+  id              String       @id @default(cuid())
+  announcementId  String
+  announcement    Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User         @relation("AnnouncementReadUser", fields: [userId], references: [id], onDelete: Cascade)
+  readAt          DateTime     @default(now())
+  @@unique([announcementId, userId])
+}
+
+model BusinessUnit {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  slug            String   @unique
+  company         Company
+  description     String?  @db.Text
+  logo            String?
+  coverImage      String?
+  address         String?
+  phone           String?
+  email           String?
+  website         String?
+  isActive        Boolean  @default(true)
+  order           Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  tools           BusinessUnitTool[]
+  socialLinks     BusinessUnitSocialLink[]
+  analytics       BusinessUnitAnalytics[]
+  metaData        BusinessUnitMetaData[]
+  revenueData     BusinessUnitRevenue[]
+}
+
+model BusinessUnitTool {
+  id              String       @id @default(cuid())
+  businessUnitId  String
+  businessUnit    BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  name            String
+  url             String
+  icon            String?
+  description     String?
+  category        String       // CRM, ERP, Analytics, Marketing, etc.
+  isExternal      Boolean      @default(true)
+  order           Int          @default(0)
+  isActive        Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
+
+model BusinessUnitSocialLink {
+  id              String       @id @default(cuid())
+  businessUnitId  String
+  businessUnit    BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  platform        String       // Instagram, Facebook, LinkedIn, YouTube, TikTok, etc.
+  url             String
+  handle          String?      // @username
+  followersCount  Int          @default(0)
+  isActive        Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
+
+model BusinessUnitAnalytics {
+  id              String       @id @default(cuid())
+  businessUnitId  String
+  businessUnit    BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  date            DateTime     @db.Date
+  pageViews       Int          @default(0)
+  uniqueVisitors  Int          @default(0)
+  sessions        Int          @default(0)
+  bounceRate      Float        @default(0)
+  avgSessionDuration Int       @default(0) // in seconds
+  source          String       @default("google_analytics") // google_analytics, meta, custom
+  createdAt       DateTime     @default(now())
+  @@unique([businessUnitId, date, source])
+}
+
+model BusinessUnitMetaData {
+  id              String       @id @default(cuid())
+  businessUnitId  String
+  businessUnit    BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  date            DateTime     @db.Date
+  platform        String       // facebook, instagram
+  followersCount  Int          @default(0)
+  followingCount  Int          @default(0)
+  postsCount      Int          @default(0)
+  engagementRate  Float        @default(0)
+  reach           Int          @default(0)
+  impressions     Int          @default(0)
+  createdAt       DateTime     @default(now())
+  @@unique([businessUnitId, date, platform])
+}
+
+model BusinessUnitRevenue {
+  id              String       @id @default(cuid())
+  businessUnitId  String
+  businessUnit    BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  period          String       // "2026-01", "2026-Q1", "2026"
+  amount          Float        @default(0)
+  currency        String       @default("BRL")
+  type            String       // "gross", "net", "projected"
+  source          String       @default("manual") // manual, erp, api
+  notes           String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  @@unique([businessUnitId, period, type])
+}
+
