@@ -1,18 +1,21 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { motion } from "framer-motion";
-import { 
-  Shield, 
-  LogOut, 
-  FileText, 
-  ShieldAlert, 
-  Grid, 
+import { SessionUser } from "@/types/auth";
+import {
+  Shield,
+  LogOut,
+  FileText,
+  ShieldAlert,
+  Grid,
   User,
-  Sliders
+  Sliders,
+  Bell,
+  Building2,
 } from "lucide-react";
 import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
 
@@ -20,10 +23,28 @@ export default function DashboardNav() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  const user = session?.user as any;
+  const user = session?.user as SessionUser | undefined;
   const userRole = user?.role || "VIEWER";
   const userLevel = user?.hierarchyLevel || 3;
+
+  // Fetch unread announcements count
+  useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const res = await fetch("/api/announcements");
+        if (res.ok) {
+          const data = await res.json();
+          const count = data.filter((a: { read: boolean }) => !a.read).length;
+          setUnreadCount(count);
+        }
+      } catch (err) {
+        console.error("Erro ao buscar contagem de não lidos:", err);
+      }
+    };
+    fetchUnread();
+  }, []);
 
   const navItems = [
     {
@@ -37,6 +58,21 @@ export default function DashboardNav() {
       name: "Ferramentas",
       href: "/dashboard/ferramentas",
       icon: Sliders,
+      allowedRoles: ["ADMIN", "COORDINATOR", "VIEWER"],
+      minLevel: 3,
+    },
+    {
+      name: "Comunicados",
+      href: "/dashboard/comunicados",
+      icon: Bell,
+      allowedRoles: ["ADMIN", "COORDINATOR", "VIEWER"],
+      minLevel: 3,
+      badge: unreadCount > 0 ? unreadCount : undefined,
+    },
+    {
+      name: "Unidades de Negócio",
+      href: "/dashboard/unidades",
+      icon: Building2,
       allowedRoles: ["ADMIN", "COORDINATOR", "VIEWER"],
       minLevel: 3,
     },
@@ -62,18 +98,24 @@ export default function DashboardNav() {
         <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto">
           {/* Logo Section */}
           <Logo open={open} />
-          
+
           {/* Navigation Links */}
           <div className="mt-8 flex flex-col gap-1.5">
             {navItems
-              .filter((item) => item.allowedRoles.includes(userRole) && userLevel <= item.minLevel)
+              .filter(
+                (item) =>
+                  item.allowedRoles.includes(userRole) &&
+                  userLevel <= item.minLevel,
+              )
               .map((item, idx) => {
                 const isActive = pathname === item.href;
                 const link = {
                   label: item.name,
                   href: item.href,
                   icon: (
-                    <item.icon className={`w-5 h-5 shrink-0 ${isActive ? "text-brand-secundar" : "text-brand-terciar/60"}`} />
+                    <item.icon
+                      className={`w-5 h-5 shrink-0 ${isActive ? "text-brand-secundar" : "text-brand-terciar/60"}`}
+                    />
                   ),
                 };
                 return (
@@ -93,15 +135,22 @@ export default function DashboardNav() {
 
         {/* User Card & Logout Section */}
         <div className="flex flex-col gap-4">
-          <UserCard user={user} open={open} userRole={userRole} userLevel={userLevel} />
-          
+          <UserCard
+            user={user}
+            open={open}
+            userRole={userRole}
+            userLevel={userLevel}
+          />
+
           <button
             onClick={async () => {
               await signOut({ redirect: false });
               window.location.href = "/";
             }}
             className={`flex items-center text-sm text-red-650 hover:text-red-700 hover:bg-red-50/50 transition-all cursor-pointer group font-medium overflow-hidden rounded-xl transform-gpu ${
-              open ? "w-full px-3 py-2.5 justify-start gap-3" : "w-10 h-10 justify-center mx-auto p-0 gap-0"
+              open
+                ? "w-full px-3 py-2.5 justify-start gap-3"
+                : "w-10 h-10 justify-center mx-auto p-0 gap-0"
             }`}
           >
             <LogOut className="w-4 h-4 text-red-650 shrink-0 transition-transform group-hover:-translate-x-1" />
@@ -148,8 +197,12 @@ const Logo = ({ open }: { open: boolean }) => {
         }}
         className="min-w-0 overflow-hidden whitespace-nowrap will-change-[max-width,opacity] transform-gpu"
       >
-        <span className="font-bold tracking-tight text-brand-extra1 block text-sm">Central Azul</span>
-        <span className="text-[9px] text-brand-terciar/60 uppercase tracking-widest block font-mono">Incorporacoes</span>
+        <span className="font-bold tracking-tight text-brand-extra1 block text-sm">
+          Central Azul
+        </span>
+        <span className="text-[9px] text-brand-terciar/60 uppercase tracking-widest block font-mono">
+          Incorporacoes
+        </span>
       </motion.div>
     </Link>
   );
@@ -162,21 +215,24 @@ const UserCard = ({
   userRole,
   userLevel,
 }: {
-  user: any;
+  user: SessionUser | undefined;
   open: boolean;
   userRole: string;
   userLevel: number;
 }) => {
   return (
-    <div 
+    <div
       className={`rounded-xl transition-all duration-200 flex flex-col justify-center transform-gpu ${
-        open 
-          ? "p-2.5 bg-brand-principal/20 border border-brand-terciar/10 w-full overflow-hidden" 
+        open
+          ? "p-2.5 bg-brand-principal/20 border border-brand-terciar/10 w-full overflow-hidden"
           : "p-0 bg-transparent border border-transparent w-8 h-8 mx-auto items-center"
       }`}
     >
-      <div className={`flex items-center justify-start ${open ? "w-full gap-3" : "w-auto gap-0 justify-center"}`}>
+      <div
+        className={`flex items-center justify-start ${open ? "w-full gap-3" : "w-auto gap-0 justify-center"}`}
+      >
         {user?.image ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
           <img
             src={user.image}
             alt={user.name || "User"}
@@ -199,11 +255,15 @@ const UserCard = ({
           }}
           className="min-w-0 flex-1 overflow-hidden whitespace-nowrap will-change-[max-width,opacity] transform-gpu"
         >
-          <p className="text-xs font-semibold text-brand-extra1 truncate">{user?.name || "Colaborador"}</p>
-          <p className="text-[9px] text-brand-terciar/65 truncate">{user?.email}</p>
+          <p className="text-xs font-semibold text-brand-extra1 truncate">
+            {user?.name || "Colaborador"}
+          </p>
+          <p className="text-[9px] text-brand-terciar/65 truncate">
+            {user?.email}
+          </p>
         </motion.div>
       </div>
-      
+
       <motion.div
         animate={{
           height: open ? "auto" : 0,

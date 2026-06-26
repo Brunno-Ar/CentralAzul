@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import Link, { LinkProps } from "next/link";
+import Link from "next/link";
 import React, { useState, createContext, useContext } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
@@ -12,7 +12,9 @@ interface SidebarContextProps {
   animate: boolean;
 }
 
-const SidebarContext = createContext<SidebarContextProps | undefined>(undefined);
+const SidebarContext = createContext<SidebarContextProps | undefined>(
+  undefined,
+);
 
 export const useSidebar = () => {
   const context = useContext(SidebarContext);
@@ -67,7 +69,7 @@ export const SidebarBody = (props: React.ComponentProps<typeof motion.div>) => {
   return (
     <>
       <DesktopSidebar {...props} />
-      <MobileSidebar {...(props as any)} />
+      <MobileSidebar {...(props as React.HTMLAttributes<HTMLDivElement>)} />
     </>
   );
 };
@@ -82,7 +84,7 @@ export const DesktopSidebar = ({
     <motion.div
       className={cn(
         "h-screen py-6 hidden md:flex md:flex-col bg-white w-[260px] flex-shrink-0 border-r border-brand-terciar/10 will-change-[width,padding] transform-gpu",
-        className
+        className,
       )}
       animate={{
         width: animate ? (open ? "260px" : "64px") : "260px",
@@ -97,7 +99,7 @@ export const DesktopSidebar = ({
       onMouseLeave={() => setOpen(false)}
       {...props}
     >
-      {children as any}
+      {children}
     </motion.div>
   );
 };
@@ -108,17 +110,27 @@ export const MobileSidebar = ({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => {
   const { open, setOpen } = useSidebar();
+
+  const handleMenuToggle = () => {
+    setOpen((prev) => !prev);
+  };
+
+  const handleLinkClick = () => {
+    setOpen(false);
+  };
+
   return (
     <div
       className={cn(
-        "h-14 px-4 py-4 flex flex-row md:hidden items-center justify-between bg-white w-full border-b border-brand-terciar/10 fixed top-0 left-0 z-40"
+        "h-14 px-4 py-4 flex flex-row md:hidden items-center justify-between bg-white w-full border-b border-brand-terciar/10 fixed top-0 left-0 z-40",
       )}
       {...props}
     >
       <div className="flex justify-end z-20 w-full">
         <Menu
-          className="text-brand-terciar cursor-pointer"
-          onClick={() => setOpen(!open)}
+          className="text-brand-terciar cursor-pointer touch-none"
+          onClick={handleMenuToggle}
+          onTouchEnd={handleMenuToggle}
         />
       </div>
       <AnimatePresence>
@@ -133,16 +145,19 @@ export const MobileSidebar = ({
             }}
             className={cn(
               "fixed h-full w-full inset-0 bg-white p-6 z-[50] flex flex-col justify-between",
-              className
+              className,
             )}
           >
             <div
-              className="absolute right-4 top-4 z-50 text-brand-terciar cursor-pointer"
-              onClick={() => setOpen(!open)}
+              className="absolute right-4 top-4 z-50 text-brand-terciar cursor-pointer touch-none"
+              onClick={handleLinkClick}
+              onTouchEnd={handleLinkClick}
             >
               <X className="w-6 h-6" />
             </div>
-            {children}
+            <div onClick={handleLinkClick} onTouchEnd={handleLinkClick}>
+              {children}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -155,6 +170,7 @@ interface SidebarLinkProps {
     label: string;
     href: string;
     icon: React.JSX.Element | React.ReactNode;
+    badge?: number | string;
   };
   className?: string;
   onClick?: () => void;
@@ -166,17 +182,26 @@ export const SidebarLink = ({
   onClick,
   ...props
 }: SidebarLinkProps) => {
-  const { open, animate } = useSidebar();
+  const { open, setOpen } = useSidebar();
+
+  const handleClick = () => {
+    onClick?.();
+    // Close mobile menu when link is clicked
+    if (window.innerWidth < 768) {
+      setOpen(false);
+    }
+  };
+
   return (
     <Link
       href={link.href}
-      onClick={onClick}
+      onClick={handleClick}
       className={cn(
         "flex items-center group/sidebar transition-all duration-150 transform-gpu",
-        open 
-          ? "justify-start gap-2.5 py-2.5 px-3 rounded-xl w-full" 
+        open
+          ? "justify-start gap-2.5 py-2.5 px-3 rounded-xl w-full"
           : "justify-center gap-0 py-0 px-0 rounded-xl w-10 h-10 mx-auto",
-        className
+        className,
       )}
       {...props}
     >
@@ -196,6 +221,22 @@ export const SidebarLink = ({
       >
         {link.label}
       </motion.span>
+
+      {open &&
+        link.badge !== undefined &&
+        link.badge !== null &&
+        link.badge !== "" && (
+          <motion.span
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className="ml-auto px-2 py-0.5 text-[9px] font-bold rounded-full bg-brand-secundar text-white min-w-[20px] text-center shrink-0"
+          >
+            {typeof link.badge === "number" && link.badge > 9
+              ? "9+"
+              : link.badge}
+          </motion.span>
+        )}
     </Link>
   );
 };
