@@ -71,11 +71,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async jwt({ token, user, trigger, session }) {
       if (user) {
-        token.id = user.id;
-        token.role = (user as any).role || "VIEWER";
-        token.hierarchyLevel = (user as any).hierarchyLevel || 3;
-        token.company = (user as any).company || Company.CENTRAL;
-        token.status = (user as any).status || "ACTIVE";
+        const u = user as {
+          id?: string;
+          role?: string;
+          hierarchyLevel?: number;
+          company?: Company;
+          status?: string;
+        };
+        token.id = u.id;
+        token.role = u.role || "VIEWER";
+        token.hierarchyLevel = u.hierarchyLevel || 3;
+        token.company = u.company || Company.CENTRAL;
+        token.status = u.status || "ACTIVE";
       }
 
       // Handle updating the session on role change in the UI
@@ -89,11 +96,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as any).id = token.id;
-        (session.user as any).role = token.role;
-        (session.user as any).hierarchyLevel = token.hierarchyLevel;
-        (session.user as any).company = token.company;
-        (session.user as any).status = token.status;
+        const u = session.user as {
+          id?: string;
+          role?: string;
+          hierarchyLevel?: number;
+          company?: Company;
+          status?: string;
+        };
+        u.id = token.id as string;
+        u.role = token.role as string;
+        u.hierarchyLevel = token.hierarchyLevel as number;
+        u.company = token.company as Company;
+        u.status = token.status as string;
       }
       return session;
     },
