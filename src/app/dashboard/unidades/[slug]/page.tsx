@@ -1,0 +1,847 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import NextImage from "next/image";
+import { useSession } from "next-auth/react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Building2,
+  MapPin,
+  Phone,
+  Mail,
+  Globe,
+  ExternalLink,
+  Image,
+  Users,
+  Link,
+  Video,
+  Music,
+  BarChart3,
+  TrendingUp,
+  DollarSign,
+  Settings,
+  ChevronLeft,
+  Edit2,
+  Trash2,
+  Eye,
+} from "lucide-react";
+import { SessionUser } from "@/types/auth";
+
+interface BusinessUnit {
+  id: string;
+  name: string;
+  slug: string;
+  company: string;
+  description: string;
+  logo: string;
+  coverImage: string;
+  address: string;
+  phone: string;
+  email: string;
+  website: string;
+  isActive: boolean;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+  tools: BusinessUnitTool[];
+  socialLinks: BusinessUnitSocialLink[];
+  analytics: BusinessUnitAnalytics[];
+  metaData: BusinessUnitMetaData[];
+  revenueData: BusinessUnitRevenue[];
+}
+
+interface BusinessUnitTool {
+  id: string;
+  businessUnitId: string;
+  name: string;
+  url: string;
+  icon: string;
+  description: string;
+  category: string;
+  isExternal: boolean;
+  order: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface BusinessUnitSocialLink {
+  id: string;
+  businessUnitId: string;
+  platform: string;
+  url: string;
+  handle: string;
+  followersCount: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface BusinessUnitAnalytics {
+  id: string;
+  businessUnitId: string;
+  date: string;
+  pageViews: number;
+  uniqueVisitors: number;
+  sessions: number;
+  bounceRate: number;
+  avgSessionDuration: number;
+  source: string;
+  createdAt: string;
+}
+
+interface BusinessUnitMetaData {
+  id: string;
+  businessUnitId: string;
+  date: string;
+  platform: string;
+  followersCount: number;
+  followingCount: number;
+  postsCount: number;
+  engagementRate: number;
+  reach: number;
+  impressions: number;
+  createdAt: string;
+}
+
+interface BusinessUnitRevenue {
+  id: string;
+  businessUnitId: string;
+  period: string;
+  amount: number;
+  currency: string;
+  type: string;
+  source: string;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const platformIcons: Record<
+  string,
+  React.ComponentType<{ className?: string }>
+> = {
+  instagram: Image,
+  facebook: Users,
+  linkedin: Link,
+  youtube: Video,
+  tiktok: Music,
+};
+
+const formatNumber = (num: number) => {
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
+  if (num >= 1000) return (num / 1000).toFixed(1) + "K";
+  return num.toString();
+};
+
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
+
+const formatDate = (dateStr: string) => {
+  return new Date(dateStr).toLocaleDateString("pt-BR");
+};
+
+export default function BusinessUnitDetailPage() {
+  const params = useParams();
+  const slug = params.slug as string;
+  const { data: session } = useSession();
+  const [businessUnit, setBusinessUnit] = useState<BusinessUnit | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "tools" | "social" | "analytics" | "revenue"
+  >("overview");
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+
+  const user = session?.user as SessionUser | undefined;
+  const userLevel = user?.hierarchyLevel || 3;
+  const isAdmin = userLevel === 1;
+
+  useEffect(() => {
+    const fetchBusinessUnit = async () => {
+      try {
+        const res = await fetch(`/api/business-units/${slug}`);
+        if (res.ok) {
+          const data = await res.json();
+          setBusinessUnit(data);
+        } else if (res.status === 404) {
+          setError("Unidade de negócio não encontrada");
+        } else {
+          setError("Erro ao carregar unidade de negócio");
+        }
+      } catch {
+        setError("Erro de conexão");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBusinessUnit();
+  }, [slug]);
+
+  const handleDelete = async () => {
+    if (!confirm(`Tem certeza que deseja excluir "${businessUnit?.name}"?`))
+      return;
+
+    try {
+      const res = await fetch(`/api/business-units/${slug}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setMessage({ type: "success", text: "Unidade removida com sucesso" });
+        setTimeout(() => (window.location.href = "/dashboard"), 1500);
+      } else {
+        setMessage({ type: "error", text: "Erro ao remover unidade" });
+      }
+    } catch {
+      setMessage({ type: "error", text: "Erro de conexão" });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-brand-terciar/10 rounded w-1/4" />
+          <div className="h-48 bg-brand-terciar/10 rounded-xl" />
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-24 bg-brand-terciar/10 rounded-xl" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !businessUnit) {
+    return (
+      <div className="text-center py-12">
+        <Building2 className="w-12 h-12 text-brand-terciar/20 mx-auto mb-3" />
+        <p className="text-brand-terciar/50">
+          {error || "Unidade não encontrada"}
+        </p>
+      </div>
+    );
+  }
+
+  const getLatestAnalytics = () => {
+    if (!businessUnit.analytics || !businessUnit.analytics.length) return null;
+    return businessUnit.analytics[0];
+  };
+
+  const getLatestMeta = () => {
+    if (!businessUnit.metaData || !businessUnit.metaData.length) return null;
+    return businessUnit.metaData.reduce((latest, current) =>
+      new Date(current.date) > new Date(latest.date) ? current : latest,
+    );
+  };
+
+  const getLatestRevenue = () => {
+    if (!businessUnit.revenueData || !businessUnit.revenueData.length) return null;
+    return businessUnit.revenueData[0];
+  };
+
+  const latestAnalytics = getLatestAnalytics();
+  const latestMeta = getLatestMeta();
+  const latestRevenue = getLatestRevenue();
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => (window.location.href = "/dashboard")}
+            className="p-2 rounded-lg hover:bg-brand-terciar/10 text-brand-terciar/60 transition-colors md:hidden"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-brand-extra1 sm:text-2xl">
+              {businessUnit.name}
+            </h1>
+            <p className="text-xs text-brand-terciar/60 uppercase tracking-widest font-mono">
+              {businessUnit.company}
+            </p>
+          </div>
+        </div>
+
+        {isAdmin && (
+          <div className="flex items-center gap-2">
+            <button className="p-2 rounded-lg hover:bg-brand-terciar/10 text-brand-terciar/60 transition-colors">
+              <Eye className="w-5 h-5" />
+            </button>
+            <button className="p-2 rounded-lg hover:bg-brand-terciar/10 text-brand-terciar/60 transition-colors">
+              <Edit2 className="w-5 h-5" />
+            </button>
+            <button
+              onClick={handleDelete}
+              className="p-2 rounded-lg hover:bg-red-50 text-red-600 transition-colors"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Cover / Hero */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-brand-principal/50 to-brand-secundar/10 border border-brand-terciar/10"
+      >
+        {businessUnit.coverImage ? (
+          <div className="relative w-full h-48">
+            <NextImage
+              src={businessUnit.coverImage}
+              alt={businessUnit.name}
+              fill
+              className="object-cover"
+              sizes="100vw"
+              priority
+              unoptimized
+            />
+          </div>
+        ) : (
+          <div className="w-full h-48 flex items-center justify-center">
+            <Building2 className="w-16 h-16 text-brand-terciar/20" />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 p-6">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+            <div>
+              <h2 className="text-white text-lg font-bold">
+                {businessUnit.name}
+              </h2>
+              <p className="text-white/80 text-sm mt-1">
+                {businessUnit.description}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {businessUnit.address && (
+                <a
+                  href={`https://maps.google.com/?q=${encodeURIComponent(businessUnit.address)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 backdrop-blur rounded-lg text-white/90 text-xs hover:bg-white/20 transition-colors"
+                >
+                  <MapPin className="w-3.5 h-3.5" />
+                  {businessUnit.address}
+                </a>
+              )}
+              {businessUnit.website && (
+                <a
+                  href={businessUnit.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-extra2/20 backdrop-blur rounded-lg text-white text-xs hover:bg-brand-extra2/30 transition-colors"
+                >
+                  <Globe className="w-3.5 h-3.5" />
+                  Site
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Message */}
+      {message && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`p-3 rounded-lg text-xs border ${
+            message.type === "success"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+              : "border-red-200 bg-red-50 text-red-800"
+          }`}
+        >
+          {message.text}
+        </motion.div>
+      )}
+
+      {/* Tabs */}
+      <div className="flex gap-1 bg-white rounded-xl p-1 border border-brand-terciar/10">
+        {[
+          { id: "overview", label: "Visão Geral", icon: Building2 },
+          { id: "tools", label: "Ferramentas", icon: Settings },
+          { id: "social", label: "Redes Sociais", icon: Users },
+          { id: "analytics", label: "Analytics", icon: BarChart3 },
+          { id: "revenue", label: "Faturamento", icon: DollarSign },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as typeof activeTab)}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-all ${
+              activeTab === tab.id
+                ? "bg-brand-secundar text-white shadow-sm"
+                : "text-brand-terciar/60 hover:text-brand-secundar hover:bg-brand-principal/20"
+            }`}
+          >
+            <tab.icon className="w-3.5 h-3.5" />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.2 }}
+          className="bg-white rounded-2xl border border-brand-terciar/10 overflow-hidden"
+        >
+          {/* Overview Tab */}
+          {activeTab === "overview" && (
+            <div className="p-6 space-y-6">
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <StatCard
+                  icon={Users}
+                  label="Seguidores (Meta)"
+                  value={
+                    latestMeta ? formatNumber(latestMeta.followersCount) : "—"
+                  }
+                  iconColor="text-pink-600 bg-pink-50"
+                />
+                <StatCard
+                  icon={BarChart3}
+                  label="Page Views (30d)"
+                  value={
+                    latestAnalytics
+                      ? formatNumber(latestAnalytics.pageViews)
+                      : "—"
+                  }
+                  iconColor="text-blue-600 bg-blue-50"
+                />
+                <StatCard
+                  icon={TrendingUp}
+                  label="Engajamento"
+                  value={
+                    latestMeta
+                      ? `${latestMeta.engagementRate.toFixed(1)}%`
+                      : "—"
+                  }
+                  iconColor="text-emerald-600 bg-emerald-50"
+                />
+                <StatCard
+                  icon={DollarSign}
+                  label="Faturamento"
+                  value={
+                    latestRevenue ? formatCurrency(latestRevenue.amount) : "—"
+                  }
+                  iconColor="text-amber-600 bg-amber-50"
+                />
+              </div>
+
+              {/* Contact Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-brand-terciar/10">
+                <ContactItem
+                  icon={MapPin}
+                  label="Endereço"
+                  value={businessUnit.address || "—"}
+                />
+                <ContactItem
+                  icon={Phone}
+                  label="Telefone"
+                  value={businessUnit.phone || "—"}
+                />
+                <ContactItem
+                  icon={Mail}
+                  label="E-mail"
+                  value={businessUnit.email || "—"}
+                />
+                <ContactItem
+                  icon={Globe}
+                  label="Website"
+                  value={businessUnit.website ? "Acessar site" : "—"}
+                />
+              </div>
+
+              {/* Quick Actions */}
+              <div className="pt-4 border-t border-brand-terciar/10">
+                <h3 className="text-sm font-bold text-brand-extra1 mb-3">
+                  Ações Rápidas
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {businessUnit.website && (
+                    <a
+                      href={businessUnit.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-4 py-2 bg-brand-secundar text-white rounded-lg text-xs font-medium hover:bg-brand-secundar/90 transition-colors"
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      Acessar Site
+                    </a>
+                  )}
+                  {businessUnit.email && (
+                    <a
+                      href={`mailto:${businessUnit.email}`}
+                      className="flex items-center gap-1.5 px-4 py-2 border border-brand-terciar/20 rounded-lg text-xs font-medium text-brand-terciar hover:bg-brand-principal/50 transition-colors"
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      Enviar E-mail
+                    </a>
+                  )}
+                  {businessUnit.phone && (
+                    <a
+                      href={`tel:${businessUnit.phone.replace(/\D/g, "")}`}
+                      className="flex items-center gap-1.5 px-4 py-2 border border-brand-terciar/20 rounded-lg text-xs font-medium text-brand-terciar hover:bg-brand-principal/50 transition-colors"
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                      Ligar
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tools Tab */}
+          {activeTab === "tools" && (
+            <div className="p-6">
+              {businessUnit.tools.length === 0 ? (
+                <div className="text-center py-8 text-brand-terciar/50">
+                  <Settings className="w-12 h-12 mx-auto mb-3 text-brand-terciar/20" />
+                  <p>Nenhuma ferramenta cadastrada</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {businessUnit.tools.map((tool) => (
+                    <ToolCard key={tool.id} tool={tool} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Social Tab */}
+          {activeTab === "social" && (
+            <div className="p-6">
+              {businessUnit.socialLinks.length === 0 ? (
+                <div className="text-center py-8 text-brand-terciar/50">
+                  <Users className="w-12 h-12 mx-auto mb-3 text-brand-terciar/20" />
+                  <p>Nenhuma rede social cadastrada</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {businessUnit.socialLinks.map((social) => (
+                    <SocialCard key={social.id} social={social} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Analytics Tab */}
+          {activeTab === "analytics" && (
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <StatCard
+                  icon={BarChart3}
+                  label="Page Views"
+                  value={
+                    latestAnalytics
+                      ? formatNumber(latestAnalytics.pageViews)
+                      : "—"
+                  }
+                  iconColor="text-blue-600 bg-blue-50"
+                />
+                <StatCard
+                  icon={Users}
+                  label="Visitantes Únicos"
+                  value={
+                    latestAnalytics
+                      ? formatNumber(latestAnalytics.uniqueVisitors)
+                      : "—"
+                  }
+                  iconColor="text-purple-600 bg-purple-50"
+                />
+                <StatCard
+                  icon={TrendingUp}
+                  label="Sessões"
+                  value={
+                    latestAnalytics
+                      ? formatNumber(latestAnalytics.sessions)
+                      : "—"
+                  }
+                  iconColor="text-emerald-600 bg-emerald-50"
+                />
+                <StatCard
+                  icon={ExternalLink}
+                  label="Taxa de Rejeição"
+                  value={
+                    latestAnalytics
+                      ? `${latestAnalytics.bounceRate.toFixed(1)}%`
+                      : "—"
+                  }
+                  iconColor="text-amber-600 bg-amber-50"
+                />
+              </div>
+
+              {businessUnit.analytics.length > 0 && (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-brand-terciar/60 uppercase tracking-wider border-b border-brand-terciar/10">
+                        <th className="pb-2 font-mono">Data</th>
+                        <th className="pb-2 font-mono text-right">
+                          Page Views
+                        </th>
+                        <th className="pb-2 font-mono text-right">
+                          Visitantes
+                        </th>
+                        <th className="pb-2 font-mono text-right">Sessões</th>
+                        <th className="pb-2 font-mono text-right">Rejeição</th>
+                        <th className="pb-2 font-mono text-right">
+                          Duração Média
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {businessUnit.analytics.slice(0, 10).map((a) => (
+                        <tr
+                          key={a.id}
+                          className="border-b border-brand-terciar/10 hover:bg-brand-principal/30"
+                        >
+                          <td className="py-2 text-brand-terciar">
+                            {formatDate(a.date)}
+                          </td>
+                          <td className="py-2 text-right text-brand-extra1 font-medium">
+                            {formatNumber(a.pageViews)}
+                          </td>
+                          <td className="py-2 text-right text-brand-terciar">
+                            {formatNumber(a.uniqueVisitors)}
+                          </td>
+                          <td className="py-2 text-right text-brand-terciar">
+                            {formatNumber(a.sessions)}
+                          </td>
+                          <td className="py-2 text-right text-brand-terciar">
+                            {a.bounceRate.toFixed(1)}%
+                          </td>
+                          <td className="py-2 text-right text-brand-terciar">
+                            {Math.floor(a.avgSessionDuration / 60)}m{" "}
+                            {a.avgSessionDuration % 60}s
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Revenue Tab */}
+          {activeTab === "revenue" && (
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <StatCard
+                  icon={DollarSign}
+                  label="Último Período"
+                  value={
+                    latestRevenue ? formatCurrency(latestRevenue.amount) : "—"
+                  }
+                  iconColor="text-amber-600 bg-amber-50"
+                />
+                <StatCard
+                  icon={TrendingUp}
+                  label="Tipo"
+                  value={latestRevenue ? latestRevenue.type : "—"}
+                  iconColor="text-blue-600 bg-blue-50"
+                />
+                <StatCard
+                  icon={Settings}
+                  label="Fonte"
+                  value={latestRevenue ? latestRevenue.source : "—"}
+                  iconColor="text-emerald-600 bg-emerald-50"
+                />
+              </div>
+
+              {businessUnit.revenueData.length > 0 && (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-brand-terciar/60 uppercase tracking-wider border-b border-brand-terciar/10">
+                        <th className="pb-2 font-mono">Período</th>
+                        <th className="pb-2 font-mono text-right">Valor</th>
+                        <th className="pb-2 font-mono text-right">Tipo</th>
+                        <th className="pb-2 font-mono text-right">Fonte</th>
+                        <th className="pb-2">Observações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {businessUnit.revenueData.map((r) => (
+                        <tr
+                          key={r.id}
+                          className="border-b border-brand-terciar/10 hover:bg-brand-principal/30"
+                        >
+                          <td className="py-2 text-brand-terciar font-mono">
+                            {r.period}
+                          </td>
+                          <td className="py-2 text-right text-brand-extra1 font-bold">
+                            {formatCurrency(r.amount)}
+                          </td>
+                          <td className="py-2 text-right text-brand-terciar capitalize">
+                            {r.type}
+                          </td>
+                          <td className="py-2 text-right text-brand-terciar">
+                            {r.source}
+                          </td>
+                          <td className="py-2 text-brand-terciar/70 text-xs">
+                            {r.notes || "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// Components
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  iconColor,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+  iconColor: string;
+}) {
+  return (
+    <div className="p-4 rounded-xl border border-brand-terciar/10 bg-white">
+      <div className="flex items-center justify-between">
+        <div className={`p-2 rounded-lg ${iconColor}`}>
+          <Icon className="w-5 h-5" />
+        </div>
+      </div>
+      <div className="mt-3">
+        <p className="text-2xl font-bold text-brand-extra1">{value}</p>
+        <p className="text-[10px] text-brand-terciar/60 uppercase tracking-wider font-mono">
+          {label}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ContactItem({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-start gap-3 p-3 rounded-lg bg-brand-principal/30 border border-brand-terciar/10">
+      <div className="p-2 rounded-lg bg-white border border-brand-terciar/10 text-brand-secundar">
+        <Icon className="w-4 h-4" />
+      </div>
+      <div>
+        <p className="text-[10px] text-brand-terciar/60 uppercase tracking-wider font-mono">
+          {label}
+        </p>
+        <p className="text-sm text-brand-extra1 font-medium">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function ToolCard({ tool }: { tool: BusinessUnitTool }) {
+  return (
+    <a
+      href={tool.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-3 p-3 rounded-lg border border-brand-terciar/10 bg-white hover:bg-brand-principal/30 transition-colors"
+    >
+      <div className="p-2 rounded-lg bg-brand-principal/30 border border-brand-terciar/10 text-brand-secundar">
+        <ExternalLink className="w-4 h-4" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-brand-extra1 truncate">
+          {tool.name}
+        </p>
+        <p className="text-xs text-brand-terciar/60 truncate">
+          {tool.description || tool.category}
+        </p>
+      </div>
+      <span className="text-[10px] px-2 py-0.5 rounded bg-brand-terciar/10 text-brand-terciar/70 font-mono uppercase">
+        {tool.category}
+      </span>
+      <ExternalLink className="w-4 h-4 text-brand-terciar/40" />
+    </a>
+  );
+}
+
+function SocialCard({ social }: { social: BusinessUnitSocialLink }) {
+  const Icon = platformIcons[social.platform.toLowerCase()] || Globe;
+  const platformColors: Record<string, string> = {
+    instagram: "text-pink-600 bg-pink-50",
+    facebook: "text-blue-600 bg-blue-50",
+    linkedin: "text-blue-700 bg-blue-50",
+    youtube: "text-red-600 bg-red-50",
+    tiktok: "text-gray-900 bg-gray-100",
+  };
+
+  return (
+    <a
+      href={social.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-3 p-3 rounded-lg border border-brand-terciar/10 bg-white hover:bg-brand-principal/30 transition-colors"
+    >
+      <div
+        className={`p-2 rounded-lg ${platformColors[social.platform.toLowerCase()] || "text-brand-terciar bg-brand-principal/30"}`}
+      >
+        <Icon className="w-5 h-5" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium text-brand-extra1 capitalize">
+            {social.platform}
+          </p>
+          {social.handle && (
+            <span className="text-xs text-brand-terciar/60">
+              @{social.handle}
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-brand-terciar/60 truncate">{social.url}</p>
+      </div>
+      <div className="text-right">
+        <p className="text-sm font-bold text-brand-extra1">
+          {formatNumber(social.followersCount)}
+        </p>
+        <p className="text-[10px] text-brand-terciar/60">seguidores</p>
+      </div>
+      <ExternalLink className="w-4 h-4 text-brand-terciar/40" />
+    </a>
+  );
+}
