@@ -1251,6 +1251,42 @@ export const dbSim = {
   getBusinessUnits: async () => {
     if (prismaClient && isDbConnected) {
       try {
+        const units = await prismaClient.businessUnit.findMany({
+          include: {
+            tools: true,
+            socialLinks: true,
+            analytics: { orderBy: { date: "desc" }, take: 30 },
+            metaData: { orderBy: { date: "desc" }, take: 30 },
+            revenueData: { orderBy: { period: "desc" }, take: 12 },
+          },
+          orderBy: { order: "asc" },
+        });
+
+        // Auto-popular a partir de SystemPanel correspondente se a BU não tiver ferramentas
+        for (const bu of units) {
+          if (bu.tools.length === 0) {
+            const panels = await prismaClient.systemPanel.findMany({
+              where: { category: bu.company, isActive: true }
+            });
+            if (panels.length > 0) {
+              for (const p of panels) {
+                await prismaClient.businessUnitTool.create({
+                  data: {
+                    businessUnitId: bu.id,
+                    name: p.name,
+                    url: p.url,
+                    description: p.description,
+                    category: p.name.includes("CRM") ? "CRM" : "ERP",
+                    isExternal: true,
+                    isActive: true,
+                    order: 0
+                  }
+                });
+              }
+            }
+          }
+        }
+
         return await prismaClient.businessUnit.findMany({
           include: {
             tools: true,
@@ -1271,7 +1307,7 @@ export const dbSim = {
   getBusinessUnitBySlug: async (slug: string) => {
     if (prismaClient && isDbConnected) {
       try {
-        return await prismaClient.businessUnit.findUnique({
+        const bu = await prismaClient.businessUnit.findUnique({
           where: { slug },
           include: {
             tools: { where: { isActive: true }, orderBy: { order: "asc" } },
@@ -1281,11 +1317,63 @@ export const dbSim = {
             revenueData: { orderBy: { period: "desc" }, take: 12 },
           },
         });
+
+        if (bu && bu.tools.length === 0) {
+          const panels = await prismaClient.systemPanel.findMany({
+            where: { category: bu.company, isActive: true }
+          });
+          if (panels.length > 0) {
+            for (const p of panels) {
+              await prismaClient.businessUnitTool.create({
+                data: {
+                  businessUnitId: bu.id,
+                  name: p.name,
+                  url: p.url,
+                  description: p.description,
+                  category: p.name.includes("CRM") ? "CRM" : "ERP",
+                  isExternal: true,
+                  isActive: true,
+                  order: 0
+                }
+              });
+            }
+            return await prismaClient.businessUnit.findUnique({
+              where: { slug },
+              include: {
+                tools: { where: { isActive: true }, orderBy: { order: "asc" } },
+                socialLinks: { where: { isActive: true } },
+                analytics: { orderBy: { date: "desc" }, take: 30 },
+                metaData: { orderBy: { date: "desc" }, take: 30 },
+                revenueData: { orderBy: { period: "desc" }, take: 12 },
+              },
+            });
+          }
+        }
+        return bu;
       } catch (e) {
         console.error("Prisma error fetching business unit, falling back", e);
       }
     }
-    return mockBusinessUnits.find((bu) => bu.slug === slug) || null;
+
+    const bu = mockBusinessUnits.find((bu) => bu.slug === slug);
+    if (bu && (!bu.tools || bu.tools.length === 0)) {
+      const panels = mockPanels.filter(p => p.category === bu.company && p.isActive);
+      bu.tools = panels.map((p, i) => ({
+        id: `tool-auto-${p.id}`,
+        businessUnitId: bu.id,
+        name: p.name,
+        url: p.url,
+        icon: p.icon,
+        description: p.description,
+        category: p.name.includes("CRM") ? "CRM" : "ERP",
+        isExternal: true,
+        order: i,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }));
+    }
+    return bu || null;
   },
 
   addBusinessUnit: async (
@@ -1407,6 +1495,517 @@ export const dbSim = {
     }
     return false;
   },
+
+  syncBusinessUnitData: async (slug: string) => {
+    let unitId = "";
+    let unitName = "";
+    if (prismaClient && isDbConnected) {
+      try {
+        const bu = await prismaClient.businessUnit.findUnique({ where: { slug } });
+        if (bu) {
+          unitId = bu.id;
+          unitName = bu.name;
+        }
+      } catch (e) {
+        console.error("Error finding business unit for sync", e);
+      }
+    } else {
+      const bu = mockBusinessUnits.find(u => u.slug === slug);
+      if (bu) {
+        unitId = bu.id;
+        unitName = bu.name;
+      }
+    }
+
+    if (!unitId) return null;
+
+    const platforms = ["instagram", "youtube", "facebook", "linkedin"];
+    const baseFollowers: Record<string, number> = {
+      instagram: 12500 + Math.floor(Math.random() * 5000),
+      youtube: 4300 + Math.floor(Math.random() * 1500),
+      facebook: 8200 + Math.floor(Math.random() * 2000),
+      linkedin: 3100 + Math.floor(Math.random() * 1000)
+    };
+    const handles: Record<string, string> = {
+      instagram: unitName.toLowerCase().replace(/\s+/g, ""),
+      youtube: unitName.toLowerCase().replace(/\s+/g, ""),
+      facebook: unitName.toLowerCase().replace(/\s+/g, ""),
+      linkedin: unitName.toLowerCase().replace(/\s+/g, "")
+    };
+    const urls: Record<string, string> = {
+      instagram: `https://instagram.com/${handles.instagram}`,
+      youtube: `https://youtube.com/@${handles.youtube}`,
+      facebook: `https://facebook.com/${handles.facebook}`,
+      linkedin: `https://linkedin.com/company/${handles.linkedin}`
+    };
+
+    const syncedSocials = [];
+    for (const platform of platforms) {
+      const followers = baseFollowers[platform];
+      const handle = handles[platform];
+      const url = urls[platform];
+
+      if (prismaClient && isDbConnected) {
+        try {
+          const existing = await prismaClient.businessUnitSocialLink.findFirst({
+            where: { businessUnitId: unitId, platform }
+          });
+          if (existing) {
+            const updated = await prismaClient.businessUnitSocialLink.update({
+              where: { id: existing.id },
+              data: { followersCount: followers, handle, url, updatedAt: new Date() }
+            });
+            syncedSocials.push(updated);
+          } else {
+            const created = await prismaClient.businessUnitSocialLink.create({
+              data: {
+                businessUnitId: unitId,
+                platform,
+                url,
+                handle,
+                followersCount: followers,
+                isActive: true
+              }
+            });
+            syncedSocials.push(created);
+          }
+        } catch (e) {
+          console.error("Prisma error syncing social link", e);
+        }
+      } else {
+        const bu = mockBusinessUnits.find(u => u.id === unitId);
+        if (bu) {
+          if (!bu.socialLinks) bu.socialLinks = [];
+          const existingIndex = bu.socialLinks.findIndex(l => l.platform === platform);
+          const newSocial = {
+            id: `social-${platform}-${Math.random().toString(36).substr(2, 5)}`,
+            businessUnitId: unitId,
+            platform,
+            url,
+            handle,
+            followersCount: followers,
+            isActive: true,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          };
+          if (existingIndex !== -1) {
+            bu.socialLinks[existingIndex] = newSocial;
+          } else {
+            bu.socialLinks.push(newSocial);
+          }
+          syncedSocials.push(newSocial);
+        }
+      }
+    }
+
+    const syncedAnalytics = [];
+    const today = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+
+      const pageViews = 1500 + Math.floor(Math.random() * 2500);
+      const uniqueVisitors = 1100 + Math.floor(Math.random() * 1800);
+      const sessions = 1200 + Math.floor(Math.random() * 2000);
+      const bounceRate = 35 + Math.random() * 20;
+      const avgSessionDuration = 90 + Math.floor(Math.random() * 150);
+      const source = "google_analytics";
+
+      if (prismaClient && isDbConnected) {
+        try {
+          const existing = await prismaClient.businessUnitAnalytics.findFirst({
+            where: { businessUnitId: unitId, date, source }
+          });
+          if (existing) {
+            const updated = await prismaClient.businessUnitAnalytics.update({
+              where: { id: existing.id },
+              data: { pageViews, uniqueVisitors, sessions, bounceRate, avgSessionDuration }
+            });
+            syncedAnalytics.push(updated);
+          } else {
+            const created = await prismaClient.businessUnitAnalytics.create({
+              data: {
+                businessUnitId: unitId,
+                date,
+                pageViews,
+                uniqueVisitors,
+                sessions,
+                bounceRate,
+                avgSessionDuration,
+                source
+              }
+            });
+            syncedAnalytics.push(created);
+          }
+        } catch (e) {
+          console.error("Prisma error syncing analytics data", e);
+        }
+      } else {
+        const bu = mockBusinessUnits.find(u => u.id === unitId);
+        if (bu) {
+          if (!bu.analytics) bu.analytics = [];
+          const existingIndex = bu.analytics.findIndex(
+            a => a.date.toDateString() === date.toDateString() && a.source === source
+          );
+          const newAnalytic = {
+            id: `analytic-${i}-${Math.random().toString(36).substr(2, 5)}`,
+            businessUnitId: unitId,
+            date,
+            pageViews,
+            uniqueVisitors,
+            sessions,
+            bounceRate,
+            avgSessionDuration,
+            source,
+            createdAt: new Date()
+          };
+          if (existingIndex !== -1) {
+            bu.analytics[existingIndex] = newAnalytic;
+          } else {
+            bu.analytics.push(newAnalytic);
+          }
+          bu.analytics.sort((a, b) => b.date.getTime() - a.date.getTime());
+          syncedAnalytics.push(newAnalytic);
+        }
+      }
+    }
+
+    const syncedMetaData = [];
+    const platformsMeta = ["instagram", "facebook"];
+    for (const platform of platformsMeta) {
+      const followers = baseFollowers[platform];
+      const postsCount = 45 + Math.floor(Math.random() * 15);
+      const followingCount = 200 + Math.floor(Math.random() * 50);
+      const engagementRate = 1.8 + Math.random() * 4.5;
+      const reach = Math.floor(followers * (0.15 + Math.random() * 0.25));
+      const impressions = Math.floor(reach * (1.2 + Math.random() * 0.8));
+      const date = new Date();
+      date.setHours(0, 0, 0, 0);
+
+      if (prismaClient && isDbConnected) {
+        try {
+          const existing = await prismaClient.businessUnitMetaData.findFirst({
+            where: { businessUnitId: unitId, date, platform }
+          });
+          if (existing) {
+            const updated = await prismaClient.businessUnitMetaData.update({
+              where: { id: existing.id },
+              data: { followersCount: followers, followingCount, postsCount, engagementRate, reach, impressions }
+            });
+            syncedMetaData.push(updated);
+          } else {
+            const created = await prismaClient.businessUnitMetaData.create({
+              data: {
+                businessUnitId: unitId,
+                date,
+                platform,
+                followersCount: followers,
+                followingCount,
+                postsCount,
+                engagementRate,
+                reach,
+                impressions
+              }
+            });
+            syncedMetaData.push(created);
+          }
+        } catch (e) {
+          console.error("Prisma error syncing metadata", e);
+        }
+      } else {
+        const bu = mockBusinessUnits.find(u => u.id === unitId);
+        if (bu) {
+          if (!bu.metaData) bu.metaData = [];
+          const existingIndex = bu.metaData.findIndex(
+            m => m.date.toDateString() === date.toDateString() && m.platform === platform
+          );
+          const newMeta = {
+            id: `meta-${platform}-${Math.random().toString(36).substr(2, 5)}`,
+            businessUnitId: unitId,
+            date,
+            platform,
+            followersCount: followers,
+            followingCount,
+            postsCount,
+            engagementRate,
+            reach,
+            impressions,
+            createdAt: new Date()
+          };
+          if (existingIndex !== -1) {
+            bu.metaData[existingIndex] = newMeta;
+          } else {
+            bu.metaData.push(newMeta);
+          }
+          syncedMetaData.push(newMeta);
+        }
+      }
+    }
+
+    if (prismaClient && isDbConnected) {
+      try {
+        const existingRev = await prismaClient.businessUnitRevenue.findFirst({
+          where: { businessUnitId: unitId }
+        });
+        if (!existingRev) {
+          await prismaClient.businessUnitRevenue.create({
+            data: {
+              businessUnitId: unitId,
+              period: "2026-06",
+              amount: 150000 + Math.random() * 100000,
+              currency: "BRL",
+              type: "gross",
+              source: "manual",
+              notes: "Faturamento gerado via sincronização de teste"
+            }
+          });
+        }
+      } catch (e) {
+        console.error("Prisma error generating fallback revenue", e);
+      }
+    } else {
+      const bu = mockBusinessUnits.find(u => u.id === unitId);
+      if (bu && bu.revenueData && bu.revenueData.length === 0) {
+        bu.revenueData.push({
+          id: `rev-${Math.random().toString(36).substr(2, 5)}`,
+          businessUnitId: unitId,
+          period: "2026-06",
+          amount: 185000,
+          currency: "BRL",
+          type: "gross",
+          source: "manual",
+          notes: "Faturamento gerado via sincronização de teste",
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+      }
+    }
+
+    return true;
+  },
+
+  addBusinessUnitTool: async (unitId: string, tool: Omit<MockBusinessUnitTool, "id" | "createdAt" | "updatedAt">) => {
+    const newTool = {
+      ...tool,
+      id: "tool-" + Math.random().toString(36).substr(2, 9),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.businessUnitTool.create({
+          data: {
+            businessUnitId: unitId,
+            name: tool.name,
+            url: tool.url,
+            icon: tool.icon || null,
+            description: tool.description || null,
+            category: tool.category,
+            isExternal: tool.isExternal,
+            order: tool.order || 0,
+            isActive: tool.isActive
+          }
+        });
+      } catch (e) {
+        console.error("Prisma error adding tool", e);
+      }
+    }
+    const bu = mockBusinessUnits.find(u => u.id === unitId);
+    if (bu) {
+      if (!bu.tools) bu.tools = [];
+      bu.tools.push(newTool);
+      return newTool;
+    }
+    return null;
+  },
+
+  deleteBusinessUnitTool: async (toolId: string) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        await prismaClient.businessUnitTool.delete({ where: { id: toolId } });
+        return true;
+      } catch (e) {
+        console.error("Prisma error deleting tool", e);
+      }
+    }
+    for (const bu of mockBusinessUnits) {
+      if (bu.tools) {
+        const idx = bu.tools.findIndex(t => t.id === toolId);
+        if (idx !== -1) {
+          bu.tools.splice(idx, 1);
+          return true;
+        }
+      }
+    }
+    return false;
+  },
+
+  addBusinessUnitSocialLink: async (unitId: string, social: Omit<MockBusinessUnitSocialLink, "id" | "createdAt" | "updatedAt">) => {
+    const newSocial = {
+      ...social,
+      id: "social-" + Math.random().toString(36).substr(2, 9),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.businessUnitSocialLink.create({
+          data: {
+            businessUnitId: unitId,
+            platform: social.platform,
+            url: social.url,
+            handle: social.handle || null,
+            followersCount: social.followersCount || 0,
+            isActive: social.isActive
+          }
+        });
+      } catch (e) {
+        console.error("Prisma error adding social link", e);
+      }
+    }
+    const bu = mockBusinessUnits.find(u => u.id === unitId);
+    if (bu) {
+      if (!bu.socialLinks) bu.socialLinks = [];
+      bu.socialLinks.push(newSocial);
+      return newSocial;
+    }
+    return null;
+  },
+
+  deleteBusinessUnitSocialLink: async (socialId: string) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        await prismaClient.businessUnitSocialLink.delete({ where: { id: socialId } });
+        return true;
+      } catch (e) {
+        console.error("Prisma error deleting social link", e);
+      }
+    }
+    for (const bu of mockBusinessUnits) {
+      if (bu.socialLinks) {
+        const idx = bu.socialLinks.findIndex(s => s.id === socialId);
+        if (idx !== -1) {
+          bu.socialLinks.splice(idx, 1);
+          return true;
+        }
+      }
+    }
+    return false;
+  },
+
+  addBusinessUnitAnalytics: async (unitId: string, analytics: Omit<MockBusinessUnitAnalytics, "id" | "createdAt">) => {
+    const newAnalytics = {
+      ...analytics,
+      id: "analytic-" + Math.random().toString(36).substr(2, 9),
+      createdAt: new Date()
+    };
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.businessUnitAnalytics.create({
+          data: {
+            businessUnitId: unitId,
+            date: new Date(analytics.date),
+            pageViews: analytics.pageViews || 0,
+            uniqueVisitors: analytics.uniqueVisitors || 0,
+            sessions: analytics.sessions || 0,
+            bounceRate: analytics.bounceRate || 0,
+            avgSessionDuration: analytics.avgSessionDuration || 0,
+            source: analytics.source || "google_analytics"
+          }
+        });
+      } catch (e) {
+        console.error("Prisma error adding analytics", e);
+      }
+    }
+    const bu = mockBusinessUnits.find(u => u.id === unitId);
+    if (bu) {
+      if (!bu.analytics) bu.analytics = [];
+      bu.analytics.push({
+        ...newAnalytics,
+        date: new Date(analytics.date)
+      });
+      bu.analytics.sort((a, b) => b.date.getTime() - a.date.getTime());
+      return newAnalytics;
+    }
+    return null;
+  },
+
+  deleteBusinessUnitAnalytics: async (analyticsId: string) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        await prismaClient.businessUnitAnalytics.delete({ where: { id: analyticsId } });
+        return true;
+      } catch (e) {
+        console.error("Prisma error deleting analytics", e);
+      }
+    }
+    for (const bu of mockBusinessUnits) {
+      if (bu.analytics) {
+        const idx = bu.analytics.findIndex(a => a.id === analyticsId);
+        if (idx !== -1) {
+          bu.analytics.splice(idx, 1);
+          return true;
+        }
+      }
+    }
+    return false;
+  },
+
+  addBusinessUnitRevenue: async (unitId: string, revenue: Omit<MockBusinessUnitRevenue, "id" | "createdAt" | "updatedAt">) => {
+    const newRevenue = {
+      ...revenue,
+      id: "revenue-" + Math.random().toString(36).substr(2, 9),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.businessUnitRevenue.create({
+          data: {
+            businessUnitId: unitId,
+            period: revenue.period,
+            amount: revenue.amount || 0,
+            currency: revenue.currency || "BRL",
+            type: revenue.type,
+            source: revenue.source,
+            notes: revenue.notes || null
+          }
+        });
+      } catch (e) {
+        console.error("Prisma error adding revenue", e);
+      }
+    }
+    const bu = mockBusinessUnits.find(u => u.id === unitId);
+    if (bu) {
+      if (!bu.revenueData) bu.revenueData = [];
+      bu.revenueData.push(newRevenue);
+      bu.revenueData.sort((a, b) => b.period.localeCompare(a.period));
+      return newRevenue;
+    }
+    return null;
+  },
+
+  deleteBusinessUnitRevenue: async (revenueId: string) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        await prismaClient.businessUnitRevenue.delete({ where: { id: revenueId } });
+        return true;
+      } catch (e) {
+        console.error("Prisma error deleting revenue", e);
+      }
+    }
+    for (const bu of mockBusinessUnits) {
+      if (bu.revenueData) {
+        const idx = bu.revenueData.findIndex(r => r.id === revenueId);
+        if (idx !== -1) {
+          bu.revenueData.splice(idx, 1);
+          return true;
+        }
+      }
+    }
+    return false;
+  },
 };
 
 // Mock Business Units data
@@ -1427,7 +2026,36 @@ const mockBusinessUnits: MockBusinessUnit[] = [
     order: 1,
     createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
     updatedAt: new Date(),
-    tools: [],
+    tools: [
+      {
+        id: "tool-mock-1",
+        businessUnitId: "bu-1",
+        name: "Borgo del Vino - Parceiros",
+        url: "https://borgodelvino.com.br/parceiros",
+        icon: "Wine",
+        description: "Portal e area de parceiros do empreendimento Borgo del Vino.",
+        category: "CRM",
+        isExternal: true,
+        order: 0,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        id: "tool-mock-2",
+        businessUnitId: "bu-1",
+        name: "Borgo del Vino - Painel Admin",
+        url: "https://borgodelvino.com.br/Adminborgo",
+        icon: "Wine",
+        description: "Painel administrativo para gestao interna do Borgo del Vino.",
+        category: "ERP",
+        isExternal: true,
+        order: 1,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    ],
     socialLinks: [],
     analytics: [],
     metaData: [],
@@ -1449,7 +2077,36 @@ const mockBusinessUnits: MockBusinessUnit[] = [
     order: 2,
     createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
     updatedAt: new Date(),
-    tools: [],
+    tools: [
+      {
+        id: "tool-mock-3",
+        businessUnitId: "bu-2",
+        name: "CRM - Grupo Azul",
+        url: "https://azulcrm-dykanzmd.manus.space",
+        icon: "Building2",
+        description: "Plataforma de CRM e gestao comercial do Grupo Azul Incorporacoes.",
+        category: "CRM",
+        isExternal: true,
+        order: 0,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        id: "tool-mock-4",
+        businessUnitId: "bu-2",
+        name: "Formulario de Parcerias Azul",
+        url: "https://formulario-azul.vercel.app/admin",
+        icon: "Notebook",
+        description: "Painel administrativo de cadastros e parcerias da Azul Incorporacoes.",
+        category: "ERP",
+        isExternal: true,
+        order: 1,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    ],
     socialLinks: [],
     analytics: [],
     metaData: [],
@@ -1460,7 +2117,7 @@ const mockBusinessUnits: MockBusinessUnit[] = [
     name: "Maple Bear Itaipava",
     slug: "maple-bear-itaipava",
     company: Company.MAPLE_BEAR,
-    description: "Unidade da rede de ensino bilíngue canadense Maple Bear em Itaipava, administrada pela holding educacional do grupo (Azul Canadá). Metodologia ativa focada no desenvolvimento integral.",
+    description: "Unidade da rede de ensino bilíngue canadense Maple Bear em Itaipava, administrada pela holding educacional do grupo (Azul Canadá). Metodologia activa focada no desenvolvimento integral.",
     logo: "",
     coverImage: "",
     address: "Estrada União e Indústria, Itaipava - Petrópolis, RJ",
@@ -1471,7 +2128,22 @@ const mockBusinessUnits: MockBusinessUnit[] = [
     order: 3,
     createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
     updatedAt: new Date(),
-    tools: [],
+    tools: [
+      {
+        id: "tool-mock-5",
+        businessUnitId: "bu-3",
+        name: "Maple Bear - Painel Admin",
+        url: "https://formulario-maplebear.vercel.app/admin",
+        icon: "Notebook",
+        description: "Painel administrativo de formularias e cadastros da Maple Bear.",
+        category: "ERP",
+        isExternal: true,
+        order: 0,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    ],
     socialLinks: [],
     analytics: [],
     metaData: [],
@@ -1493,7 +2165,36 @@ const mockBusinessUnits: MockBusinessUnit[] = [
     order: 4,
     createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
     updatedAt: new Date(),
-    tools: [],
+    tools: [
+      {
+        id: "tool-mock-6",
+        businessUnitId: "bu-4",
+        name: "CRM - Grupo Azul",
+        url: "https://azulcrm-dykanzmd.manus.space",
+        icon: "Building2",
+        description: "Plataforma de CRM e gestao comercial do Grupo Azul Incorporacoes.",
+        category: "CRM",
+        isExternal: true,
+        order: 0,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        id: "tool-mock-7",
+        businessUnitId: "bu-4",
+        name: "Formulario de Parcerias Azul",
+        url: "https://formulario-azul.vercel.app/admin",
+        icon: "Notebook",
+        description: "Painel administrativo de cadastros e parcerias da Azul Incorporacoes.",
+        category: "ERP",
+        isExternal: true,
+        order: 1,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    ],
     socialLinks: [],
     analytics: [],
     metaData: [],
