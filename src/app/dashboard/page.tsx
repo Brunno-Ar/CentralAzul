@@ -34,6 +34,14 @@ interface AuditLog {
   createdAt: string;
 }
 
+interface CompanyMetric {
+  company: string;
+  isActive: boolean;
+  label?: string;
+  value: string | number;
+  period?: string;
+}
+
 interface SessionUser {
   name?: string | null;
   email?: string | null;
@@ -105,7 +113,38 @@ export default function DashboardHome() {
         }
         if (metricsRes.ok) {
           const metricsData = await metricsRes.json();
-          setCompanyMetrics(metricsData);
+          if (Array.isArray(metricsData)) {
+            const newMetrics = {
+              borgo: { metric: "88% dos Lotes Vendidos", progress: 88 },
+              maple: { metric: "420 Alunos Matriculados", progress: 92 },
+              azul: { metric: "3 Obras em Andamento", progress: 74 }
+            };
+
+            const borgoMetric = metricsData.find((m: CompanyMetric) => m.company === "BORGO" && m.isActive);
+            if (borgoMetric) {
+              newMetrics.borgo = {
+                metric: borgoMetric.label || `${borgoMetric.value} (${borgoMetric.period})`,
+                progress: typeof borgoMetric.value === "number" ? borgoMetric.value : parseFloat(borgoMetric.value) || 0
+              };
+            }
+
+            const mapleMetric = metricsData.find((m: CompanyMetric) => m.company === "MAPLE_BEAR" && m.isActive);
+            if (mapleMetric) {
+              newMetrics.maple = {
+                metric: mapleMetric.label || `${mapleMetric.value} (${mapleMetric.period})`,
+                progress: typeof mapleMetric.value === "number" ? mapleMetric.value : parseFloat(mapleMetric.value) || 0
+              };
+            }
+
+            const azulMetric = metricsData.find((m: CompanyMetric) => m.company === "AZUL" && m.isActive);
+            if (azulMetric) {
+              newMetrics.azul = {
+                metric: azulMetric.label || `${azulMetric.value} (${azulMetric.period})`,
+                progress: typeof azulMetric.value === "number" ? azulMetric.value : parseFloat(azulMetric.value) || 0
+              };
+            }
+            setCompanyMetrics(newMetrics);
+          }
         }
       } catch (err) {
         console.error("Erro ao carregar dados do dashboard:", err);
@@ -138,8 +177,9 @@ export default function DashboardHome() {
       icon: Wine,
       color: "from-brand-terciar/5 to-brand-terciar/15 border-brand-terciar/20",
       accent: "text-brand-terciar",
-      url: "https://borgodelvino.com.br",
-      metric: companyMetrics.borgo.metric, // Keep read to satisfy ESLint
+      url: "/dashboard/ferramentas?company=BORGO",
+      metric: companyMetrics.borgo.metric,
+      progress: companyMetrics.borgo.progress,
     },
     {
       name: "Grand Reserva",
@@ -147,8 +187,9 @@ export default function DashboardHome() {
       icon: Wine,
       color: "from-brand-extra3/5 to-brand-extra3/15 border-brand-extra3/20",
       accent: "text-brand-extra3",
-      url: "https://oborgodelvino.com.br/granreserva/",
-      metric: companyMetrics.borgo.metric, // Keep read to satisfy ESLint
+      url: "/dashboard/ferramentas?company=BORGO",
+      metric: companyMetrics.borgo.metric,
+      progress: companyMetrics.borgo.progress,
     },
     {
       name: "Maple Bear",
@@ -156,8 +197,9 @@ export default function DashboardHome() {
       icon: GraduationCap,
       color: "from-brand-secundar/5 to-brand-secundar/15 border-brand-secundar/20",
       accent: "text-brand-secundar",
-      url: "https://www.maplebear.com.br/pt/",
-      metric: companyMetrics.maple.metric, // Keep read to satisfy ESLint
+      url: "/dashboard/ferramentas?company=MAPLE_BEAR",
+      metric: companyMetrics.maple.metric,
+      progress: companyMetrics.maple.progress,
     },
     {
       name: "Azul Incorporações",
@@ -165,8 +207,9 @@ export default function DashboardHome() {
       icon: Building2,
       color: "from-brand-extra2/5 to-brand-extra2/15 border-brand-extra2/20",
       accent: "text-brand-extra2",
-      url: "https://azulincorporacoes.com.br",
-      metric: companyMetrics.azul.metric, // Keep read to satisfy ESLint
+      url: "/dashboard/ferramentas?company=AZUL",
+      metric: companyMetrics.azul.metric,
+      progress: companyMetrics.azul.progress,
     },
   ];
 
@@ -255,28 +298,26 @@ export default function DashboardHome() {
           {companies.map((company, idx) => {
             const Icon = company.icon;
             return (
-              <motion.a
-                href={company.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                key={company.name}
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 * idx, type: "spring" as const }}
-                className={`flex flex-col justify-between p-5 rounded-2xl border bg-gradient-to-br ${company.color} shadow-sm transition-all hover:shadow-md hover:border-brand-secundar/40 hover:-translate-y-0.5 cursor-pointer`}
-              >
-                <div>
-                  <div className="flex items-center justify-between w-full mb-4">
-                    <span className="text-sm font-bold text-brand-extra1">{company.name}</span>
-                    <div className={`p-2 rounded-lg bg-white/80 shadow-sm ${company.accent}`}>
-                      <Icon className="w-4 h-4" />
+              <Link href={company.url} key={company.name} className="block">
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 * idx, type: "spring" as const }}
+                  className={`flex flex-col justify-between p-5 rounded-2xl border bg-gradient-to-br ${company.color} shadow-sm transition-all hover:shadow-md hover:border-brand-secundar/40 hover:-translate-y-0.5 cursor-pointer h-full`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between w-full mb-4">
+                      <span className="text-sm font-bold text-brand-extra1">{company.name}</span>
+                      <div className={`p-2 rounded-lg bg-white/80 shadow-sm ${company.accent}`}>
+                        <Icon className="w-4 h-4" />
+                      </div>
                     </div>
+                    <p className="text-xs text-brand-terciar/80 leading-relaxed">
+                      {company.desc}
+                    </p>
                   </div>
-                  <p className="text-xs text-brand-terciar/80 leading-relaxed min-h-[50px]">
-                    {company.desc}
-                  </p>
-                </div>
-              </motion.a>
+                </motion.div>
+              </Link>
             );
           })}
         </div>

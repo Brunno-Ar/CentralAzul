@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  ShieldAlert, 
   Activity, 
   Users, 
   Lock, 
@@ -21,6 +20,7 @@ import {
   X,
   Sliders
 } from "lucide-react";
+import { SessionUser } from "@/types/auth";
 
 interface UserItem {
   id: string;
@@ -82,10 +82,10 @@ export default function SegurancaPage() {
   const [mfaRequired, setMfaRequired] = useState(true);
   const [sessionTimeout, setSessionTimeout] = useState(false);
 
-  const currentUser = session?.user as any;
+  const currentUser = session?.user as SessionUser | undefined;
   const isUserAdmin = currentUser?.role === "ADMIN" || currentUser?.hierarchyLevel === 1;
 
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     if (!isUserAdmin) return;
     try {
       const res = await fetch("/api/users");
@@ -98,9 +98,9 @@ export default function SegurancaPage() {
     } finally {
       setLoadingUsers(false);
     }
-  };
+  }, [isUserAdmin]);
 
-  const loadRoles = async () => {
+  const loadRoles = useCallback(async () => {
     try {
       const res = await fetch("/api/roles");
       if (res.ok) {
@@ -112,9 +112,9 @@ export default function SegurancaPage() {
     } finally {
       setLoadingRoles(false);
     }
-  };
+  }, []);
 
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     try {
       const res = await fetch("/api/audit");
       if (res.ok) {
@@ -126,15 +126,18 @@ export default function SegurancaPage() {
     } finally {
       setLoadingLogs(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (isUserAdmin) {
-      loadUsers();
-      loadRoles();
-      loadLogs();
+      const timer = setTimeout(() => {
+        loadUsers();
+        loadRoles();
+        loadLogs();
+      }, 0);
+      return () => clearTimeout(timer);
     }
-  }, [isUserAdmin]);
+  }, [isUserAdmin, loadUsers, loadRoles, loadLogs]);
 
   const handleUpdateUser = async (userId: string, updates: Partial<UserItem>) => {
     setUpdatingUserId(userId);
@@ -198,7 +201,7 @@ export default function SegurancaPage() {
         const errData = await res.json();
         setRoleMessage({ type: "error", text: errData.error || "Erro ao criar cargo" });
       }
-    } catch (err) {
+    } catch {
       setRoleMessage({ type: "error", text: "Erro na conexao com o servidor" });
     }
   };
@@ -238,7 +241,7 @@ export default function SegurancaPage() {
         const errData = await res.json();
         setRoleMessage({ type: "error", text: errData.error || "Erro ao atualizar cargo" });
       }
-    } catch (err) {
+    } catch {
       setRoleMessage({ type: "error", text: "Erro na conexao com o servidor" });
     }
   };
@@ -265,7 +268,7 @@ export default function SegurancaPage() {
         const errData = await res.json();
         setRoleMessage({ type: "error", text: errData.error || "Erro ao remover cargo" });
       }
-    } catch (err) {
+    } catch {
       setRoleMessage({ type: "error", text: "Erro na conexao com o servidor" });
     }
   };
@@ -401,6 +404,7 @@ export default function SegurancaPage() {
                     <tr key={u.id} className="hover:bg-brand-principal/20">
                       <td className="py-3 px-2">
                         <div className="flex items-center gap-2.5">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={u.image} alt={u.name} className="w-6 h-6 rounded-full object-cover border border-brand-terciar/10" />
                           <div className="min-w-0">
                             <p className="font-bold text-brand-extra1 truncate max-w-[120px] sm:max-w-none">{u.name}</p>

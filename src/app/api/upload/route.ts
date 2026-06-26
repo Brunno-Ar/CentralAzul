@@ -3,16 +3,17 @@ import { auth } from "@/auth";
 import { uploadToB2 } from "@/lib/b2";
 import { dbSim } from "@/lib/db";
 import { Company } from "@prisma/client";
+import { SessionUser } from "@/types/auth";
 
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    if (!session || !session.user || !(session.user as any).id) {
+    if (!session || !session.user || !(session.user as SessionUser).id) {
       return NextResponse.json({ error: "Nao autorizado" }, { status: 401 });
     }
 
-    const userId = (session.user as any).id;
-    const userRole = (session.user as any).role;
+    const userId = (session.user as SessionUser).id;
+    const userRole = (session.user as SessionUser).role;
     
     // Coordinators or Admins can upload files
     if (userRole !== "ADMIN" && userRole !== "COORDINATOR") {

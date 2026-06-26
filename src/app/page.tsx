@@ -8,7 +8,7 @@ import { Shield, Lock, Mail, ArrowRight, Info } from "lucide-react";
 import { AuroraBackground } from "@/components/ui/aurora-background";
 
 export default function LoginPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   
   const [email, setEmail] = useState("");
@@ -38,7 +38,7 @@ export default function LoginPage() {
         email,
         password,
         redirect: false,
-      })) as any;
+      })) as { error?: string | null } | undefined;
 
       if (result && result.error) {
         setError("Credenciais invalidas ou usuario nao cadastrado.");
@@ -46,7 +46,7 @@ export default function LoginPage() {
       } else {
         router.push("/dashboard");
       }
-    } catch (err) {
+    } catch {
       setError("Erro inesperado no servidor. Tente novamente.");
       setLoading(false);
     }

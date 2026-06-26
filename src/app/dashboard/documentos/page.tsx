@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -13,17 +13,14 @@ import {
   Download, 
   User, 
   Info,
-  Calendar,
-  Lock,
-  ChevronDown,
   Video,
   Link as LinkIcon,
   FileSpreadsheet,
   ExternalLink,
   Image as ImageIcon,
-  Folder,
-  HardDrive
+  Folder
 } from "lucide-react";
+import { SessionUser } from "@/types/auth";
 
 interface DocumentItem {
   id: string;
@@ -59,12 +56,12 @@ export default function DocumentosPage() {
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  const user = session?.user as any;
+  const user = session?.user as SessionUser | undefined;
   const userRole = user?.role || "VIEWER";
   const userLevel = user?.hierarchyLevel || 3;
   const isUploadAllowed = userRole === "ADMIN" || userRole === "COORDINATOR";
 
-  const loadDocuments = async () => {
+  const loadDocuments = useCallback(async () => {
     try {
       const res = await fetch("/api/documents");
       if (res.ok) {
@@ -76,11 +73,14 @@ export default function DocumentosPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    loadDocuments();
-  }, []);
+    const timer = setTimeout(() => {
+      loadDocuments();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [loadDocuments]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -145,7 +145,7 @@ export default function DocumentosPage() {
         const errData = await res.json();
         setMessage({ type: "error", text: errData.error || "Erro no envio do documento" });
       }
-    } catch (err) {
+    } catch {
       setMessage({ type: "error", text: "Erro na conexao com o servidor" });
     } finally {
       setUploading(false);

@@ -5,7 +5,7 @@ const b2Key = process.env.B2_APPLICATION_KEY;
 const b2BucketId = process.env.B2_BUCKET_ID;
 const b2DownloadUrl = process.env.B2_DOWNLOAD_URL || "https://f000.backblazeb2.com/file"; // Custom or standard B2 url
 
-let b2Instance: any = null;
+let b2Instance: InstanceType<typeof B2> | null = null;
 let isB2Configured = false;
 
 if (b2KeyId && b2Key && b2BucketId) {

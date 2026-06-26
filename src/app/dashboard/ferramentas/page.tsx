@@ -14,11 +14,11 @@ import {
   Lock, 
   ExternalLink,
   Search,
-  Sliders,
   ShieldAlert as ShieldIcon
 } from "lucide-react";
+import { SessionUser } from "@/types/auth";
 
-const iconMap: { [key: string]: any } = {
+const iconMap: { [key: string]: React.ComponentType<{ className?: string }> } = {
   Wine,
   GraduationCap,
   Building2,
@@ -48,9 +48,20 @@ export default function FerramentasPage() {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<string>("ALL");
 
-  const user = session?.user as any;
-  const userRole = user?.role || "VIEWER";
+  const user = session?.user as SessionUser | undefined;
   const userLevel = user?.hierarchyLevel || 3;
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const companyParam = params.get("company");
+      if (companyParam) {
+        setTimeout(() => {
+          setActiveFilter(companyParam.toUpperCase());
+        }, 0);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     async function loadPanels() {

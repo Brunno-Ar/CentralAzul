@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { dbSim } from "@/lib/db";
+import { SessionUser } from "@/types/auth";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const session = await auth();
     if (!session || !session.user) {
@@ -25,8 +26,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Nao autorizado" }, { status: 401 });
     }
 
-    const userLevel = (session.user as any).hierarchyLevel || 3;
-    const userRole = (session.user as any).role || "VIEWER";
+    const userLevel = (session.user as SessionUser).hierarchyLevel || 3;
+    const userRole = (session.user as SessionUser).role || "VIEWER";
 
     // Only Level 1 accounts can configure roles
     if (userLevel !== 1 && userRole !== "ADMIN") {
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest) {
     const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
     const userAgent = request.headers.get("user-agent") || "Browser";
     await dbSim.addLog(
-      (session.user as any).id,
+      (session.user as SessionUser).id,
       "CONFIGURAR_CARGO",
       `Criou o cargo '${name}' (${displayName}) com Nivel ${hierarchyLevel}.`,
       ip,
@@ -67,8 +68,8 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Nao autorizado" }, { status: 401 });
     }
 
-    const userLevel = (session.user as any).hierarchyLevel || 3;
-    const userRole = (session.user as any).role || "VIEWER";
+    const userLevel = (session.user as SessionUser).hierarchyLevel || 3;
+    const userRole = (session.user as SessionUser).role || "VIEWER";
 
     // Only Level 1 accounts can configure roles
     if (userLevel !== 1 && userRole !== "ADMIN") {
@@ -88,7 +89,7 @@ export async function PUT(request: NextRequest) {
     const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
     const userAgent = request.headers.get("user-agent") || "Browser";
     await dbSim.addLog(
-      (session.user as any).id,
+      (session.user as SessionUser).id,
       "CONFIGURAR_CARGO",
       `Atualizou o cargo ID '${id}' para Nome: ${name || "sem alteracao"}, Display: ${displayName || "sem alteracao"}, Nivel: ${hierarchyLevel !== undefined ? hierarchyLevel : "sem alteracao"}.`,
       ip,
@@ -109,8 +110,8 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Nao autorizado" }, { status: 401 });
     }
 
-    const userLevel = (session.user as any).hierarchyLevel || 3;
-    const userRole = (session.user as any).role || "VIEWER";
+    const userLevel = (session.user as SessionUser).hierarchyLevel || 3;
+    const userRole = (session.user as SessionUser).role || "VIEWER";
 
     // Only Level 1 accounts can configure roles
     if (userLevel !== 1 && userRole !== "ADMIN") {
@@ -136,7 +137,7 @@ export async function DELETE(request: NextRequest) {
     const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
     const userAgent = request.headers.get("user-agent") || "Browser";
     await dbSim.addLog(
-      (session.user as any).id,
+      (session.user as SessionUser).id,
       "CONFIGURAR_CARGO",
       `Apagou o cargo ID '${id}'.`,
       ip,
