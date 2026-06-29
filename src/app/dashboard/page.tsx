@@ -15,6 +15,7 @@ import {
   TrendingUp
 } from "lucide-react";
 import Link from "next/link";
+import { PageWrapper } from "@/components/PageWrapper";
 
 interface DashboardStats {
   totalSistemas: number;
@@ -34,13 +35,6 @@ interface AuditLog {
   createdAt: string;
 }
 
-interface CompanyMetric {
-  company: string;
-  isActive: boolean;
-  label?: string;
-  value: string | number;
-  period?: string;
-}
 
 interface SessionUser {
   name?: string | null;
@@ -52,6 +46,56 @@ interface SessionUser {
   status?: string;
 }
 
+interface DashboardCompany {
+  id?: string;
+  name: string;
+  slug?: string;
+  color?: string;
+  desc?: string;
+  iconName?: string;
+  colorClass?: string;
+  accentClass?: string;
+  url?: string;
+  isActive?: boolean;
+  showOnHome?: boolean;
+  order?: number;
+}
+
+const fallbackCompanies: DashboardCompany[] = [
+  {
+    name: "Borgo del Vino",
+    desc: "Hospedagem, hotel e vinícola de alto padrão que traz um pedaço da cultura italiana para o Brasil.",
+    iconName: "Wine",
+    colorClass: "from-brand-terciar/5 to-brand-terciar/15 border-brand-terciar/20",
+    accentClass: "text-brand-terciar",
+    url: "/dashboard/ferramentas?company=BORGO",
+  },
+  {
+    name: "Grand Reserva",
+    desc: "Lançamento de lotes exclusivos de alto padrão inserido no complexo Borgo del Vino.",
+    iconName: "Wine",
+    colorClass: "from-brand-extra3/5 to-brand-extra3/15 border-brand-extra3/20",
+    accentClass: "text-brand-extra3",
+    url: "/dashboard/ferramentas?company=BORGO",
+  },
+  {
+    name: "Maple Bear",
+    desc: "Rede de ensino bilíngue com metodologia canadense focada no desenvolvimento crítico.",
+    iconName: "GraduationCap",
+    colorClass: "from-brand-secundar/5 to-brand-secundar/15 border-brand-secundar/20",
+    accentClass: "text-brand-secundar",
+    url: "/dashboard/ferramentas?company=MAPLE_BEAR",
+  },
+  {
+    name: "Azul Incorporações",
+    desc: "Incorporadora de alto padrão com portfólio de condomínios de luxo e prontos para morar.",
+    iconName: "Building2",
+    colorClass: "from-brand-extra2/5 to-brand-extra2/15 border-brand-extra2/20",
+    accentClass: "text-brand-extra2",
+    url: "/dashboard/ferramentas?company=AZUL",
+  },
+];
+
 export default function DashboardHome() {
   const { data: session } = useSession();
   const [stats, setStats] = useState<DashboardStats>({
@@ -60,12 +104,8 @@ export default function DashboardHome() {
     totalDocs: 3,
     activeUsers: 4,
   });
-  const [companyMetrics, setCompanyMetrics] = useState({
-    borgo: { metric: "88% dos Lotes Vendidos", progress: 88 },
-    maple: { metric: "420 Alunos Matriculados", progress: 92 },
-    azul: { metric: "3 Obras em Andamento", progress: 74 }
-  });
   const [recentLogs, setRecentLogs] = useState<AuditLog[]>([]);
+  const [companies, setCompanies] = useState<DashboardCompany[]>([]);
   const [loading, setLoading] = useState(true);
 
   const user = session?.user as SessionUser | undefined;
@@ -75,12 +115,12 @@ export default function DashboardHome() {
   useEffect(() => {
     async function loadDashboardData() {
       try {
-        const [logsRes, usersRes, panelsRes, docsRes, metricsRes] = await Promise.all([
+        const [logsRes, usersRes, panelsRes, docsRes, companiesRes] = await Promise.all([
           fetch("/api/audit"),
           fetch("/api/users"),
           fetch("/api/panels"),
           fetch("/api/documents"),
-          fetch("/api/company-metrics"),
+          fetch("/api/companies"),
         ]);
         if (logsRes.ok) {
           const logsData = await logsRes.json();
@@ -111,40 +151,18 @@ export default function DashboardHome() {
             totalDocs: docsData.length,
           }));
         }
-        if (metricsRes.ok) {
-          const metricsData = await metricsRes.json();
-          if (Array.isArray(metricsData)) {
-            const newMetrics = {
-              borgo: { metric: "88% dos Lotes Vendidos", progress: 88 },
-              maple: { metric: "420 Alunos Matriculados", progress: 92 },
-              azul: { metric: "3 Obras em Andamento", progress: 74 }
-            };
-
-            const borgoMetric = metricsData.find((m: CompanyMetric) => m.company === "BORGO" && m.isActive);
-            if (borgoMetric) {
-              newMetrics.borgo = {
-                metric: borgoMetric.label || `${borgoMetric.value} (${borgoMetric.period})`,
-                progress: typeof borgoMetric.value === "number" ? borgoMetric.value : parseFloat(borgoMetric.value) || 0
-              };
-            }
-
-            const mapleMetric = metricsData.find((m: CompanyMetric) => m.company === "MAPLE_BEAR" && m.isActive);
-            if (mapleMetric) {
-              newMetrics.maple = {
-                metric: mapleMetric.label || `${mapleMetric.value} (${mapleMetric.period})`,
-                progress: typeof mapleMetric.value === "number" ? mapleMetric.value : parseFloat(mapleMetric.value) || 0
-              };
-            }
-
-            const azulMetric = metricsData.find((m: CompanyMetric) => m.company === "AZUL" && m.isActive);
-            if (azulMetric) {
-              newMetrics.azul = {
-                metric: azulMetric.label || `${azulMetric.value} (${azulMetric.period})`,
-                progress: typeof azulMetric.value === "number" ? azulMetric.value : parseFloat(azulMetric.value) || 0
-              };
-            }
-            setCompanyMetrics(newMetrics);
+        if (companiesRes.ok) {
+          const companiesData = await companiesRes.json();
+          if (Array.isArray(companiesData) && companiesData.length > 0) {
+            const activeComps = (companiesData as DashboardCompany[])
+              .filter((c) => c.isActive && c.showOnHome)
+              .sort((a, b) => (a.order || 0) - (b.order || 0));
+            setCompanies(activeComps);
+          } else {
+            setCompanies(fallbackCompanies);
           }
+        } else {
+          setCompanies(fallbackCompanies);
         }
       } catch (err) {
         console.error("Erro ao carregar dados do dashboard:", err);
@@ -154,6 +172,57 @@ export default function DashboardHome() {
     }
     loadDashboardData();
   }, []);
+
+  const getCompanyStyle = (c: DashboardCompany) => {
+    if (c.colorClass) {
+      return {
+        icon: c.iconName === "Wine" ? Wine : c.iconName === "GraduationCap" ? GraduationCap : Building2,
+        color: c.colorClass,
+        accent: c.accentClass || "text-brand-secundar",
+        url: c.url || "/dashboard/ferramentas",
+        desc: c.desc || "",
+      };
+    }
+
+    const type = (c.color || "AZUL").toUpperCase();
+    const url = `/dashboard/ferramentas?company=${c.slug}`;
+    const desc = `Painel corporativo e ferramentas integradas da divisão ${c.name}.`;
+
+    switch (type) {
+      case "BORGO":
+        return {
+          icon: Wine,
+          color: "from-brand-terciar/5 to-brand-terciar/15 border-brand-terciar/20",
+          accent: "text-brand-terciar",
+          url,
+          desc,
+        };
+      case "MAPLE_BEAR":
+        return {
+          icon: GraduationCap,
+          color: "from-brand-secundar/5 to-brand-secundar/15 border-brand-secundar/20",
+          accent: "text-brand-secundar",
+          url,
+          desc,
+        };
+      case "AZUL":
+        return {
+          icon: Building2,
+          color: "from-brand-extra2/5 to-brand-extra2/15 border-brand-extra2/20",
+          accent: "text-brand-extra2",
+          url,
+          desc,
+        };
+      default:
+        return {
+          icon: Building2,
+          color: "from-brand-principal/20 to-brand-principal/40 border-brand-secundar/20",
+          accent: "text-brand-secundar",
+          url,
+          desc,
+        };
+    }
+  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -170,51 +239,9 @@ export default function DashboardHome() {
     show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 100 } },
   };
 
-  const companies = [
-    {
-      name: "Borgo del Vino",
-      desc: "Hospedagem, hotel e vinícola de alto padrão que traz um pedaço da cultura italiana para o Brasil.",
-      icon: Wine,
-      color: "from-brand-terciar/5 to-brand-terciar/15 border-brand-terciar/20",
-      accent: "text-brand-terciar",
-      url: "/dashboard/ferramentas?company=BORGO",
-      metric: companyMetrics.borgo.metric,
-      progress: companyMetrics.borgo.progress,
-    },
-    {
-      name: "Grand Reserva",
-      desc: "Lançamento de lotes exclusivos de alto padrão inserido no complexo Borgo del Vino.",
-      icon: Wine,
-      color: "from-brand-extra3/5 to-brand-extra3/15 border-brand-extra3/20",
-      accent: "text-brand-extra3",
-      url: "/dashboard/ferramentas?company=BORGO",
-      metric: companyMetrics.borgo.metric,
-      progress: companyMetrics.borgo.progress,
-    },
-    {
-      name: "Maple Bear",
-      desc: "Rede de ensino bilíngue com metodologia canadense focada no desenvolvimento crítico.",
-      icon: GraduationCap,
-      color: "from-brand-secundar/5 to-brand-secundar/15 border-brand-secundar/20",
-      accent: "text-brand-secundar",
-      url: "/dashboard/ferramentas?company=MAPLE_BEAR",
-      metric: companyMetrics.maple.metric,
-      progress: companyMetrics.maple.progress,
-    },
-    {
-      name: "Azul Incorporações",
-      desc: "Incorporadora de alto padrão com portfólio de condomínios de luxo e prontos para morar.",
-      icon: Building2,
-      color: "from-brand-extra2/5 to-brand-extra2/15 border-brand-extra2/20",
-      accent: "text-brand-extra2",
-      url: "/dashboard/ferramentas?company=AZUL",
-      metric: companyMetrics.azul.metric,
-      progress: companyMetrics.azul.progress,
-    },
-  ];
-
   return (
-    <div className="space-y-8 text-brand-terciar">
+    <PageWrapper title="Dashboard">
+      <div className="space-y-8 text-brand-terciar">
       {/* Welcome Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-brand-terciar/10">
         <div>
@@ -296,24 +323,25 @@ export default function DashboardHome() {
         
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {companies.map((company, idx) => {
-            const Icon = company.icon;
+            const style = getCompanyStyle(company);
+            const Icon = style.icon;
             return (
-              <Link href={company.url} key={company.name} className="block">
+              <Link href={style.url} key={company.name} className="block">
                 <motion.div
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 * idx, type: "spring" as const }}
-                  className={`flex flex-col justify-between p-5 rounded-2xl border bg-gradient-to-br ${company.color} shadow-sm transition-all hover:shadow-md hover:border-brand-secundar/40 hover:-translate-y-0.5 cursor-pointer h-full`}
+                  className={`flex flex-col justify-between p-5 rounded-2xl border bg-gradient-to-br ${style.color} shadow-sm transition-all hover:shadow-md hover:border-brand-secundar/40 hover:-translate-y-0.5 cursor-pointer h-full`}
                 >
                   <div>
                     <div className="flex items-center justify-between w-full mb-4">
                       <span className="text-sm font-bold text-brand-extra1">{company.name}</span>
-                      <div className={`p-2 rounded-lg bg-white/80 shadow-sm ${company.accent}`}>
+                      <div className={`p-2 rounded-lg bg-white/80 shadow-sm ${style.accent}`}>
                         <Icon className="w-4 h-4" />
                       </div>
                     </div>
                     <p className="text-xs text-brand-terciar/80 leading-relaxed">
-                      {company.desc}
+                      {style.desc}
                     </p>
                   </div>
                 </motion.div>
@@ -400,6 +428,7 @@ export default function DashboardHome() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </PageWrapper>
   );
 }

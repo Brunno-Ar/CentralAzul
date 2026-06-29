@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { dbSim, MockDocument, MockSystemPanel, MockUser } from "@/lib/db";
+import { db, MockDocument, MockSystemPanel, MockUser } from "@/lib/db";
 import { SessionUser } from "@/types/auth";
 
 interface SearchResult {
@@ -36,9 +36,9 @@ export async function GET(request: NextRequest) {
 
     // Buscar em paralelo (sem quicklinks)
     const [documents, panels, users] = await Promise.all([
-      dbSim.getDocuments?.() || [],
-      dbSim.getPanels?.() || [],
-      dbSim.getUsers?.() || [],
+      db.getDocuments?.() || [],
+      db.getPanels?.() || [],
+      db.getUsers?.() || [],
     ]);
 
     const results: SearchResult[] = [];

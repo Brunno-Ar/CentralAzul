@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { dbSim } from "@/lib/db";
+import { db } from "@/lib/db";
 import { SessionUser } from "@/types/auth";
 
 export async function GET() {
@@ -10,7 +10,10 @@ export async function GET() {
       return NextResponse.json({ error: "Nao autenticado." }, { status: 401 });
     }
 
-    const userLevel = (session.user as SessionUser).hierarchyLevel ?? 99;
+    const caller = session.user as SessionUser;
+    const userLevel = caller.hierarchyLevel ?? 99;
+
+
     if (userLevel > 2) {
       return NextResponse.json(
         { error: "Acesso negado. Apenas administradores e gerentes." },
@@ -18,7 +21,8 @@ export async function GET() {
       );
     }
 
-    const logs = await dbSim.getLogs();
+    const logs = await db.getAuditLogs();
+
     return NextResponse.json(logs);
   } catch (error) {
     console.error("Erro ao carregar logs de auditoria:", error);

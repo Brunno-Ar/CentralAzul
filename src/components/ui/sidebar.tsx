@@ -80,26 +80,44 @@ export const DesktopSidebar = ({
   ...props
 }: React.ComponentProps<typeof motion.div>) => {
   const { open, setOpen, animate } = useSidebar();
+  const [isHovering, setIsHovering] = useState(false);
+
+  const handleMouseEnter = () => {
+    setIsHovering(true);
+    if (animate) setOpen(true);
+  };
+  const handleMouseLeave = () => {
+    setIsHovering(false);
+    if (animate) setOpen(false);
+  };
+
   return (
     <motion.div
       className={cn(
-        "h-screen py-6 hidden md:flex md:flex-col bg-white w-[260px] flex-shrink-0 border-r border-brand-terciar/10 will-change-[width,padding] transform-gpu",
+        "h-screen py-6 hidden md:flex md:flex-col bg-white flex-shrink-0 border-r border-brand-terciar/10 will-change-[width,padding] transform-gpu",
         className,
       )}
+      style={{
+        width: animate ? (open || isHovering ? "260px" : "64px") : "260px",
+        paddingLeft: open || isHovering ? "16px" : "12px",
+        paddingRight: open || isHovering ? "16px" : "12px",
+      }}
       animate={{
-        width: animate ? (open ? "260px" : "64px") : "260px",
-        paddingLeft: open ? "16px" : "12px",
-        paddingRight: open ? "16px" : "12px",
+        width: animate ? (open || isHovering ? "260px" : "64px") : "260px",
+        paddingLeft: open || isHovering ? "16px" : "12px",
+        paddingRight: open || isHovering ? "16px" : "12px",
       }}
       transition={{
         duration: 0.2,
         ease: "easeInOut",
       }}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       {...props}
     >
-      {children}
+      <div className="flex flex-col h-full">
+        {children as React.ReactNode}
+      </div>
     </motion.div>
   );
 };
