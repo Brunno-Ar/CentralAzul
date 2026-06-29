@@ -21,6 +21,7 @@ import {
   Sliders
 } from "lucide-react";
 import { SessionUser } from "@/types/auth";
+import { PageWrapper } from "@/components/PageWrapper";
 
 interface UserItem {
   id: string;
@@ -76,6 +77,15 @@ export default function SegurancaPage() {
   
   // Messages
   const [roleMessage, setRoleMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  
+  // Custom Users state
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserPassword, setNewUserPassword] = useState("");
+  const [newUserRole, setNewUserRole] = useState("VIEWER");
+  const [newUserLevel, setNewUserLevel] = useState(3);
+  const [userMessage, setUserMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   
   // Policy Toggles
   const [restrictDomain, setRestrictDomain] = useState(true);
@@ -206,6 +216,44 @@ export default function SegurancaPage() {
     }
   };
 
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUserName || !newUserEmail || !newUserPassword || !newUserRole || !newUserLevel) {
+      setUserMessage({ type: "error", text: "Preencha todos os campos obrigatorios" });
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newUserName,
+          email: newUserEmail,
+          password: newUserPassword,
+          role: newUserRole,
+          hierarchyLevel: newUserLevel,
+        }),
+      });
+
+      if (res.ok) {
+        setUserMessage({ type: "success", text: "Colaborador cadastrado com sucesso" });
+        setNewUserName("");
+        setNewUserEmail("");
+        setNewUserPassword("");
+        setNewUserRole("VIEWER");
+        setNewUserLevel(3);
+        setIsCreatingUser(false);
+        await Promise.all([loadUsers(), loadLogs()]);
+      } else {
+        const errData = await res.json();
+        setUserMessage({ type: "error", text: errData.error || "Erro ao criar colaborador" });
+      }
+    } catch {
+      setUserMessage({ type: "error", text: "Erro na conexao com o servidor" });
+    }
+  };
+
   const handleStartEditRole = (role: RoleConfig) => {
     setEditingRoleId(role.id);
     setEditRoleName(role.name);
@@ -289,18 +337,21 @@ export default function SegurancaPage() {
 
   if (!isUserAdmin) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center border border-brand-secundar/15 rounded-2xl bg-white p-6 shadow-sm">
-        <Lock className="w-10 h-10 text-brand-secundar/40 mb-4" />
-        <h2 className="text-base font-bold text-brand-extra1">Acesso Restrito</h2>
-        <p className="text-xs text-brand-secundar/70 mt-2 max-w-sm leading-relaxed">
-          Esta secao contem configuracoes globais de seguranca e logs de auditoria confidenciais. Apenas administradores (Nivel 1) possuem autorizacao para visualizar.
-        </p>
-      </div>
+      <PageWrapper title="Segurança & Níveis de Acesso">
+        <div className="flex flex-col items-center justify-center py-16 text-center border border-brand-secundar/15 rounded-2xl bg-white p-6 shadow-sm">
+          <Lock className="w-10 h-10 text-brand-secundar/40 mb-4" />
+          <h2 className="text-base font-bold text-brand-extra1">Acesso Restrito</h2>
+          <p className="text-xs text-brand-secundar/70 mt-2 max-w-sm leading-relaxed">
+            Esta secao contem configuracoes globais de seguranca e logs de auditoria confidenciais. Apenas administradores (Nivel 1) possuem autorizacao para visualizar.
+          </p>
+        </div>
+      </PageWrapper>
     );
   }
 
   return (
-    <div className="space-y-8 text-brand-terciar">
+    <PageWrapper title="Segurança & Níveis de Acesso">
+      <div className="space-y-8 text-brand-terciar">
       {/* Title */}
       <div>
         <h1 className="text-xl font-bold tracking-tight text-brand-extra1 sm:text-2xl">
@@ -376,12 +427,134 @@ export default function SegurancaPage() {
           </div>
         </div>
 
-        {/* User Hierarchy Panel - Tabular on Desktop, Stack on Mobile */}
         <div className="p-5 rounded-2xl border border-brand-terciar/10 bg-white shadow-sm space-y-4 lg:col-span-2">
-          <h2 className="text-xs font-mono uppercase text-brand-terciar/60 tracking-wider flex items-center gap-2">
-            <Users className="w-3.5 h-3.5 text-brand-terciar" />
-            Controle de Hierarquia & Contas
-          </h2>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <h2 className="text-xs font-mono uppercase text-brand-terciar/60 tracking-wider flex items-center gap-2">
+              <Users className="w-3.5 h-3.5 text-brand-terciar" />
+              Controle de Hierarquia & Contas
+            </h2>
+            <button
+              onClick={() => {
+                setUserMessage(null);
+                setIsCreatingUser(!isCreatingUser);
+              }}
+              className="flex items-center justify-center gap-1.5 self-start sm:self-center px-3 py-1.5 bg-brand-secundar text-white font-bold rounded-lg text-xs hover:bg-brand-secundar/90 transition-colors cursor-pointer transform-gpu"
+            >
+              {isCreatingUser ? (
+                <>
+                  <X className="w-3.5 h-3.5" />
+                  Fechar
+                </>
+              ) : (
+                <>
+                  <Plus className="w-3.5 h-3.5" />
+                  Novo Colaborador
+                </>
+              )}
+            </button>
+          </div>
+
+          {userMessage && (
+            <div className={`p-3 rounded-lg text-xs border ${
+              userMessage.type === "success" 
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800 font-semibold" 
+                : "border-red-200 bg-red-50 text-red-800"
+            }`}>
+              {userMessage.text}
+            </div>
+          )}
+
+          <AnimatePresence>
+            {isCreatingUser && (
+              <motion.form
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2, ease: "linear" }}
+                onSubmit={handleCreateUser}
+                className="overflow-hidden space-y-3 bg-brand-principal/20 p-4 rounded-xl border border-brand-terciar/10 transform-gpu"
+              >
+                <h3 className="text-xs font-bold text-brand-extra1 uppercase tracking-wider">Novo Colaborador</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-brand-terciar/70 font-mono uppercase">Nome Completo</label>
+                    <input
+                      type="text"
+                      required
+                      value={newUserName}
+                      onChange={(e) => setNewUserName(e.target.value)}
+                      placeholder="Ex: Joao da Silva"
+                      className="w-full px-3 py-1.5 bg-white border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar focus:outline-none focus:border-brand-secundar"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-brand-terciar/70 font-mono uppercase">E-mail</label>
+                    <input
+                      type="email"
+                      required
+                      value={newUserEmail}
+                      onChange={(e) => setNewUserEmail(e.target.value)}
+                      placeholder="Ex: joao@grupoazul.com.br"
+                      className="w-full px-3 py-1.5 bg-white border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar focus:outline-none focus:border-brand-secundar"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-brand-terciar/70 font-mono uppercase">Senha de Acesso</label>
+                    <input
+                      type="password"
+                      required
+                      value={newUserPassword}
+                      onChange={(e) => setNewUserPassword(e.target.value)}
+                      placeholder="Senha forte"
+                      className="w-full px-3 py-1.5 bg-white border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar focus:outline-none focus:border-brand-secundar"
+                    />
+                  </div>
+                  <div className="space-y-1 grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-brand-terciar/70 font-mono uppercase">Cargo</label>
+                      <select
+                        value={newUserRole}
+                        onChange={(e) => {
+                          setNewUserRole(e.target.value);
+                          const selectedRole = roles.find(r => r.name === e.target.value);
+                          if (selectedRole) {
+                            setNewUserLevel(selectedRole.hierarchyLevel);
+                          }
+                        }}
+                        className="w-full px-2 py-1.5 bg-white border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar focus:outline-none focus:border-brand-secundar"
+                      >
+                        {roles.map((r) => (
+                          <option key={r.id} value={r.name}>
+                            {r.displayName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-brand-terciar/70 font-mono uppercase">Nivel</label>
+                      <select
+                        value={newUserLevel}
+                        onChange={(e) => setNewUserLevel(parseInt(e.target.value, 10))}
+                        className="w-full px-2 py-1.5 bg-white border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar focus:outline-none focus:border-brand-secundar"
+                      >
+                        <option value="1">Lvl 1 (Direcao)</option>
+                        <option value="2">Lvl 2 (Gerencia)</option>
+                        <option value="3">Lvl 3 (Operacao)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="submit"
+                    className="px-4 py-1.5 bg-brand-secundar text-white font-bold rounded-lg text-xs hover:bg-brand-secundar/90 transition-colors cursor-pointer"
+                  >
+                    Salvar Colaborador
+                  </button>
+                </div>
+              </motion.form>
+            )}
+          </AnimatePresence>
 
           <div className="overflow-x-auto">
             {loadingUsers || loadingRoles ? (
@@ -765,5 +938,6 @@ export default function SegurancaPage() {
         </div>
       </div>
     </div>
+      </PageWrapper>
   );
 }
