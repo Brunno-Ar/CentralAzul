@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "./auth.config";
-import { dbSim } from "./lib/db";
+import { db } from "./lib/db";
 import { Company } from "@prisma/client";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -20,36 +20,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const emailStr = (credentials.email as string).toLowerCase();
         const passwordStr = credentials.password as string;
 
-        // If logging in as admin@grupoazul.com.br, verify the password is admin12345
-        if (emailStr === "admin@grupoazul.com.br" && passwordStr !== "admin12345") {
-          return null;
-        }
-
-        let user = await dbSim.getUserByEmail(emailStr);
+        let user = await db.getUserByEmail(emailStr);
         
-        if (!user && emailStr.includes("@")) {
-          const domain = emailStr.split("@")[1]?.toLowerCase();
-          const namePart = emailStr.split("@")[0];
-          
-          const name = namePart
-            .split(/[._-]/)
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(" ");
-
-          let company: Company = Company.CENTRAL;
-          if (domain.includes("borgodelvin")) company = Company.BORGO;
-          else if (domain.includes("maplebear")) company = Company.MAPLE_BEAR;
-          else if (domain.includes("azulinc")) company = Company.AZUL;
-
-          const isSystemAdmin = emailStr === "admin@grupoazul.com.br";
-
-          user = await dbSim.addUser({
-            name: isSystemAdmin ? "Administrador Central" : name,
-            email: emailStr,
-            role: isSystemAdmin ? "ADMIN" : "VIEWER",
-            hierarchyLevel: isSystemAdmin ? 1 : 3,
-            company,
-          });
+        if (user) {
+          // Verify password from the database
+          if (user.password && user.password !== passwordStr) {
+            return null;
+          }
+        } else {
+          return null;
         }
 
         if (user) {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { decode, encode } from "next-auth/jwt";
-import { dbSim } from "@/lib/db";
+import { db } from "@/lib/db";
 import { cookies } from "next/headers";
 
 export async function POST(request: NextRequest) {
@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "userId obrigatorio" }, { status: 400 });
     }
 
-    const dbUser = await dbSim.getUserById(userId);
+    const dbUser = await db.getUserById(userId);
     if (!dbUser) {
       return NextResponse.json({ error: "Usuario nao encontrado" }, { status: 404 });
     }
@@ -49,6 +49,11 @@ export async function POST(request: NextRequest) {
 
     if (!token) {
       return NextResponse.json({ error: "Falha ao decodificar sessao" }, { status: 401 });
+    }
+
+    // Security check: Only allow users to refresh their own session token
+    if (token.id !== userId && token.sub !== userId) {
+      return NextResponse.json({ error: "Acesso negado. Voce nao pode atualizar a sessao de outro usuario." }, { status: 403 });
     }
 
     token.role = dbUser.role;
