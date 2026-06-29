@@ -94,7 +94,7 @@ export const DesktopSidebar = ({
   return (
     <motion.div
       className={cn(
-        "h-screen py-6 hidden md:flex md:flex-col bg-white flex-shrink-0 border-r border-brand-terciar/10 will-change-[width,padding] transform-gpu",
+        "h-screen py-6 hidden md:flex md:flex-col bg-white flex-shrink-0 border-r border-brand-terciar/10 sticky top-0 will-change-[width,padding] transform-gpu",
         className,
       )}
       style={{
