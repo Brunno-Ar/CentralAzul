@@ -43,22 +43,22 @@ export const refreshRoleSchema = z.object({
 // USER SCHEMAS
 // ============================================
 
-export const userRoleEnum = z.enum(["ADMIN", "COORDINATOR", "VIEWER"]);
-export const hierarchyLevelSchema = z.number().int().min(1).max(3);
+export const userRoleEnum = z.string().min(1, "Cargo e obrigatorio");
+export const hierarchyLevelSchema = z.number().int().min(1);
 export const userStatusEnum = z.enum(["ACTIVE", "INACTIVE", "PENDING"]);
 
 export const updateUserSchema = z.object({
-  userId: z.string().min(1, "User ID é obrigatório"),
+  userId: z.string().min(1, "User ID e obrigatorio"),
   role: userRoleEnum,
-  hierarchyLevel: hierarchyLevelSchema,
+  hierarchyLevel: hierarchyLevelSchema.optional(),
   status: userStatusEnum.optional(),
 });
 
 export const createUserSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").max(100),
-  email: z.string().email("Email inválido"),
+  email: z.string().email("Email invalido"),
   role: userRoleEnum.default("VIEWER"),
-  hierarchyLevel: hierarchyLevelSchema.default(3),
+  hierarchyLevel: hierarchyLevelSchema.optional(),
   company: z.nativeEnum(Company).default(Company.CENTRAL),
   status: userStatusEnum.default("ACTIVE"),
 });

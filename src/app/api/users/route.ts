@@ -67,10 +67,15 @@ async function handlePut(request: NextRequest) {
       return validation.error;
     }
 
-    const { userId, role, hierarchyLevel, status } = validation.data;
+    const { userId, role, status } = validation.data;
+
+    // Resolve hierarchyLevel matching the selected role config
+    const rolesList = await db.getRoles();
+    const selectedRole = rolesList.find((r) => r.name === role);
+    const resolvedLevel = selectedRole ? selectedRole.hierarchyLevel : 3;
 
     // Security check: cannot assign a hierarchyLevel superior (numerically smaller) to caller's own level
-    if (hierarchyLevel < userLevel) {
+    if (resolvedLevel < userLevel) {
       return NextResponse.json(
         { error: "Acesso negado. Voce nao pode atribuir um nivel de hierarquia superior ao seu." },
         { status: 403 }
@@ -81,7 +86,7 @@ async function handlePut(request: NextRequest) {
     const updatedUser = await db.updateUserHierarchy(
       userId,
       role as string,
-      hierarchyLevel,
+      resolvedLevel,
       status,
     );
 
@@ -109,7 +114,7 @@ async function handlePut(request: NextRequest) {
     await db.addLog(
       user.id,
       "ALTERAR_HIERARQUIA",
-      `Alterou permissao do usuario ${updatedUser?.email || userId} para Role: ${role}, Nivel: ${hierarchyLevel}, Status: ${status || "ACTIVE"}.`,
+      `Alterou permissao do usuario ${updatedUser?.email || userId} para Role: ${role}, Nivel: ${resolvedLevel}, Status: ${status || "ACTIVE"}.`,
       ip,
       userAgent,
     );
@@ -145,14 +150,19 @@ async function handlePost(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, email, password, role, hierarchyLevel } = body;
+    const { name, email, password, role } = body;
 
-    if (!name || !email || !password || !role || !hierarchyLevel) {
+    if (!name || !email || !password || !role) {
       return NextResponse.json(
         { error: "Preencha todos os campos obrigatórios." },
         { status: 400 },
       );
     }
+
+    // Resolve hierarchyLevel matching the selected role config
+    const rolesList = await db.getRoles();
+    const selectedRole = rolesList.find((r) => r.name === role);
+    const resolvedLevel = selectedRole ? selectedRole.hierarchyLevel : 3;
 
     // Check if user already exists
     const existing = await db.getUserByEmail(email);
@@ -167,7 +177,7 @@ async function handlePost(request: NextRequest) {
       name,
       email: email.toLowerCase().trim(),
       role,
-      hierarchyLevel: parseInt(hierarchyLevel, 10),
+      hierarchyLevel: resolvedLevel,
       company: caller.company || "CENTRAL",
       password,
     });
@@ -178,7 +188,7 @@ async function handlePost(request: NextRequest) {
     await db.addLog(
       caller.id,
       "CRIAR_USUARIO",
-      `Criou a conta do colaborador ${email} com Cargo: ${role}, Nível: ${hierarchyLevel}.`,
+      `Criou a conta do colaborador ${email} com Cargo: ${role}, Nível: ${resolvedLevel}.`,
       ip,
       userAgent,
     );

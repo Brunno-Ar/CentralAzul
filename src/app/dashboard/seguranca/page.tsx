@@ -276,7 +276,7 @@ export default function SegurancaPage() {
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newUserName || !newUserEmail || !newUserPassword || !newUserRole || !newUserLevel) {
+    if (!newUserName || !newUserEmail || !newUserPassword || !newUserRole) {
       setUserMessage({ type: "error", text: "Preencha todos os campos obrigatorios" });
       return;
     }
@@ -290,7 +290,6 @@ export default function SegurancaPage() {
           email: newUserEmail,
           password: newUserPassword,
           role: newUserRole,
-          hierarchyLevel: newUserLevel,
         }),
       });
 
@@ -300,7 +299,6 @@ export default function SegurancaPage() {
         setNewUserEmail("");
         setNewUserPassword("");
         setNewUserRole("VIEWER");
-        setNewUserLevel(3);
         setIsCreatingUser(false);
         await Promise.all([loadUsers(), loadLogs()]);
       } else {
@@ -654,41 +652,19 @@ export default function SegurancaPage() {
                       className="w-full px-3 py-1.5 bg-white border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar focus:outline-none focus:border-brand-secundar"
                     />
                   </div>
-                  <div className="space-y-1 grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <label className="text-[10px] text-brand-terciar/70 font-mono uppercase">Cargo</label>
-                      <select
-                        value={newUserRole}
-                        onChange={(e) => {
-                          setNewUserRole(e.target.value);
-                          const selectedRole = roles.find(r => r.name === e.target.value);
-                          if (selectedRole) {
-                            setNewUserLevel(selectedRole.hierarchyLevel);
-                          }
-                        }}
-                        className="w-full px-2 py-1.5 bg-white border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar focus:outline-none focus:border-brand-secundar"
-                      >
-                        {roles.map((r) => (
-                          <option key={r.id} value={r.name}>
-                            {r.displayName}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] text-brand-terciar/70 font-mono uppercase">Nivel</label>
-                      <select
-                        value={newUserLevel}
-                        onChange={(e) => setNewUserLevel(parseInt(e.target.value, 10))}
-                        className="w-full px-2 py-1.5 bg-white border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar focus:outline-none focus:border-brand-secundar cursor-pointer"
-                      >
-                        {levels.map((lvl) => (
-                          <option key={lvl.id} value={lvl.level}>
-                            Lvl {lvl.level} ({lvl.name})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-brand-terciar/70 font-mono uppercase">Cargo</label>
+                    <select
+                      value={newUserRole}
+                      onChange={(e) => setNewUserRole(e.target.value)}
+                      className="w-full px-2 py-1.5 bg-white border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar focus:outline-none focus:border-brand-secundar cursor-pointer"
+                    >
+                      {roles.map((r) => (
+                        <option key={r.id} value={r.name}>
+                          {r.displayName} (Nivel {r.hierarchyLevel})
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
                 <div className="flex justify-end pt-2">
@@ -733,37 +709,24 @@ export default function SegurancaPage() {
                         </div>
                       </td>
                       <td className="py-3 px-2">
-                        <div className="flex flex-col sm:flex-row gap-1 sm:gap-2">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1.5">
                           <select
                             value={u.role}
                             disabled={updatingUserId === u.id || u.id === currentUser.id}
                             onChange={(e) => {
-                              const selectedRole = roles.find(r => r.name === e.target.value);
-                              handleUpdateUser(u.id, { 
-                                role: e.target.value,
-                                hierarchyLevel: selectedRole ? selectedRole.hierarchyLevel : u.hierarchyLevel
-                              });
+                              handleUpdateUser(u.id, { role: e.target.value });
                             }}
                             className="bg-brand-principal/40 border border-brand-terciar/15 text-[10px] rounded px-1.5 py-0.5 text-brand-terciar focus:outline-none cursor-pointer focus:bg-white"
                           >
                             {roles.map((r) => (
                               <option key={r.id} value={r.name}>
-                                {r.displayName} ({r.name})
+                                {r.displayName}
                               </option>
                             ))}
                           </select>
-                          <select
-                            value={u.hierarchyLevel}
-                            disabled={updatingUserId === u.id || u.id === currentUser.id}
-                            onChange={(e) => handleUpdateUser(u.id, { hierarchyLevel: parseInt(e.target.value, 10) })}
-                            className="bg-brand-principal/40 border border-brand-terciar/15 text-[10px] rounded px-1.5 py-0.5 text-brand-terciar focus:outline-none cursor-pointer focus:bg-white"
-                          >
-                            {levels.map((lvl) => (
-                              <option key={lvl.id} value={lvl.level}>
-                                Lvl {lvl.level} ({lvl.name})
-                              </option>
-                            ))}
-                          </select>
+                          <span className="text-[10px] text-brand-terciar/50 font-mono">
+                            (Lvl {u.hierarchyLevel})
+                          </span>
                         </div>
                       </td>
                       <td className="py-3 px-2">
