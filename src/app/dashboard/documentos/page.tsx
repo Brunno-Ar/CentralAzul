@@ -21,6 +21,7 @@ import {
   Folder
 } from "lucide-react";
 import { SessionUser } from "@/types/auth";
+import { PageWrapper } from "@/components/PageWrapper";
 
 interface DocumentItem {
   id: string;
@@ -192,7 +193,8 @@ export default function DocumentosPage() {
   };
 
   return (
-    <div className="space-y-6 text-brand-terciar">
+    <PageWrapper title="Drive de Arquivos & Mídias">
+      <div className="space-y-6 text-brand-terciar">
       {/* Title & Action */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -269,6 +271,14 @@ export default function DocumentosPage() {
                 >
                   Vincular Link Externo (Drive/SharePoint/Videos)
                 </button>
+              </div>
+
+              {/* Alert notice about large files and local limit */}
+              <div className="p-3 bg-brand-principal/20 border border-brand-terciar/10 rounded-xl space-y-1">
+                <p className="text-[10px] font-bold text-brand-extra1 uppercase tracking-wider">Aviso Importante</p>
+                <p className="text-[10px] text-brand-terciar/70 leading-relaxed">
+                  Arquivos grandes, videos ou midias pesadas devem ser vinculados via links externos (ex: Google Drive, SharePoint e YouTube) para poupar espaco. O limite maximo para uploads locais e de 10 GB.
+                </p>
               </div>
 
               {message && (
@@ -605,5 +615,6 @@ export default function DocumentosPage() {
         </p>
       </div>
     </div>
+    </PageWrapper>
   );
 }
