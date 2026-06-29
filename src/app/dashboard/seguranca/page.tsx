@@ -87,29 +87,15 @@ export default function SegurancaPage() {
   const [newUserLevel, setNewUserLevel] = useState(3);
   const [userMessage, setUserMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // Dynamic Levels and Menu Permissions state
-  interface LevelConfig {
-    id: string;
-    level: number;
-    name: string;
-    createdAt: string;
-  }
+  // Dynamic Menu Permissions state
   interface MenuPermissionItem {
     href: string;
     name: string;
     minLevel: number;
   }
 
-  const [levels, setLevels] = useState<LevelConfig[]>([]);
   const [menuPermissions, setMenuPermissions] = useState<MenuPermissionItem[]>([]);
-  const [loadingLevels, setLoadingLevels] = useState(true);
   const [loadingMenuPerms, setLoadingMenuPerms] = useState(true);
-
-  // Custom levels form state
-  const [isCreatingLevel, setIsCreatingLevel] = useState(false);
-  const [newLevelNum, setNewLevelNum] = useState<number>(4);
-  const [newLevelName, setNewLevelName] = useState("");
-  const [levelMessage, setLevelMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Menu permissions form state
   const [updatingMenuHref, setUpdatingMenuHref] = useState<string | null>(null);
@@ -166,20 +152,6 @@ export default function SegurancaPage() {
     }
   }, []);
 
-  const loadLevels = useCallback(async () => {
-    try {
-      const res = await fetch("/api/levels");
-      if (res.ok) {
-        const data = await res.json();
-        setLevels(data);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingLevels(false);
-    }
-  }, []);
-
   const loadMenuPermissions = useCallback(async () => {
     try {
       const res = await fetch("/api/menu-permissions");
@@ -200,12 +172,11 @@ export default function SegurancaPage() {
         loadUsers();
         loadRoles();
         loadLogs();
-        loadLevels();
         loadMenuPermissions();
       }, 0);
       return () => clearTimeout(timer);
     }
-  }, [isUserAdmin, loadUsers, loadRoles, loadLogs, loadLevels, loadMenuPermissions]);
+  }, [isUserAdmin, loadUsers, loadRoles, loadLogs, loadMenuPermissions]);
 
   const handleUpdateUser = async (userId: string, updates: Partial<UserItem>) => {
     setUpdatingUserId(userId);
@@ -310,64 +281,7 @@ export default function SegurancaPage() {
     }
   };
 
-  const handleCreateLevel = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newLevelNum || !newLevelName) {
-      setLevelMessage({ type: "error", text: "Preencha o numero do nivel e o nome" });
-      return;
-    }
 
-    try {
-      const res = await fetch("/api/levels", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          level: newLevelNum,
-          name: newLevelName,
-        }),
-      });
-
-      if (res.ok) {
-        setLevelMessage({ type: "success", text: "Nivel de hierarquia criado com sucesso" });
-        setNewLevelNum(newLevelNum + 1);
-        setNewLevelName("");
-        setIsCreatingLevel(false);
-        await Promise.all([loadLevels(), loadLogs()]);
-      } else {
-        const errData = await res.json();
-        setLevelMessage({ type: "error", text: errData.error || "Erro ao criar nivel" });
-      }
-    } catch {
-      setLevelMessage({ type: "error", text: "Erro na conexao com o servidor" });
-    }
-  };
-
-  const handleDeleteLevel = async (id: string, name: string) => {
-    if (name === "Direcao Geral" || name === "Gerencia / Coordenacao" || name === "Operacional") {
-      setLevelMessage({ type: "error", text: "Os niveis padrao nao podem ser excluidos" });
-      return;
-    }
-
-    if (!confirm(`Tem certeza que deseja apagar o nivel de hierarquia '${name}'?`)) {
-      return;
-    }
-
-    try {
-      const res = await fetch(`/api/levels?id=${id}`, {
-        method: "DELETE",
-      });
-
-      if (res.ok) {
-        setLevelMessage({ type: "success", text: "Nivel de hierarquia removido com sucesso" });
-        await Promise.all([loadLevels(), loadLogs()]);
-      } else {
-        const errData = await res.json();
-        setLevelMessage({ type: "error", text: errData.error || "Erro ao remover nivel" });
-      }
-    } catch {
-      setLevelMessage({ type: "error", text: "Erro na conexao com o servidor" });
-    }
-  };
 
   const handleUpdateMenuPermission = async (href: string, minLevel: number) => {
     setUpdatingMenuHref(href);
@@ -476,6 +390,17 @@ export default function SegurancaPage() {
       case "CONFIGURAR_CARGO": return "text-amber-800 border-amber-200 bg-amber-50";
       default: return "text-brand-secundar border-brand-secundar/10 bg-brand-principal";
     }
+  };
+
+  // Get unique list of levels from roles to show in dropdowns
+  const uniqueLevels = Array.from(new Set(roles.map((r) => r.hierarchyLevel))).sort((a, b) => a - b);
+
+  const getLevelLabel = (lvl: number) => {
+    if (lvl === 1) return "Direcao Geral";
+    if (lvl === 2) return "Coordenacao / Gerencia";
+    if (lvl === 3) return "Operacional";
+    const roleForLevel = roles.find((r) => r.hierarchyLevel === lvl);
+    return roleForLevel ? roleForLevel.displayName : `Nivel ${lvl}`;
   };
 
   if (!isUserAdmin) {
@@ -840,11 +765,11 @@ export default function SegurancaPage() {
                       onChange={(e) => setNewRoleLevel(parseInt(e.target.value, 10))}
                       className="w-full px-3 py-1.5 bg-white border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar focus:outline-none focus:border-brand-secundar transition-colors cursor-pointer"
                     >
-                      {levels.map((lvl) => (
-                        <option key={lvl.id} value={lvl.level}>
-                          Nivel {lvl.level} ({lvl.name})
-                        </option>
-                      ))}
+                      <option value="1">Nivel 1 (Direcao Geral)</option>
+                      <option value="2">Nivel 2 (Coordenacao / Gerencia)</option>
+                      <option value="3">Nivel 3 (Operacional)</option>
+                      <option value="4">Nivel 4 (Customizado)</option>
+                      <option value="5">Nivel 5 (Customizado)</option>
                     </select>
                   </div>
                 </div>
@@ -974,144 +899,6 @@ export default function SegurancaPage() {
         </div>
       </div>
 
-      {/* Custom Hierarchy Levels Card */}
-      <div className="p-5 rounded-2xl border border-brand-terciar/10 bg-white shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h2 className="text-xs font-mono uppercase text-brand-terciar/60 tracking-wider flex items-center gap-2">
-            <Sliders className="w-3.5 h-3.5 text-brand-terciar" />
-            Niveis de Hierarquia Customizados
-          </h2>
-
-          <button
-            onClick={() => {
-              setLevelMessage(null);
-              setIsCreatingLevel(!isCreatingLevel);
-            }}
-            className="flex items-center justify-center gap-1.5 self-start sm:self-center px-3 py-1.5 bg-brand-secundar text-white font-bold rounded-lg text-xs hover:bg-brand-secundar/90 transition-colors cursor-pointer transform-gpu"
-          >
-            {isCreatingLevel ? (
-              <>
-                <X className="w-3 h-3" />
-                Fechar
-              </>
-            ) : (
-              <>
-                <Plus className="w-3 h-3" />
-                Novo Nivel
-              </>
-            )}
-          </button>
-        </div>
-
-        {levelMessage && (
-          <div className={`p-3 rounded-lg text-xs border ${
-            levelMessage.type === "success" 
-              ? "border-emerald-200 bg-emerald-50 text-emerald-800 font-semibold" 
-              : "border-red-200 bg-red-50 text-red-800"
-          }`}>
-            {levelMessage.text}
-          </div>
-        )}
-
-        <AnimatePresence>
-          {isCreatingLevel && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2, ease: "linear" }}
-              className="overflow-hidden transform-gpu"
-            >
-              <form onSubmit={handleCreateLevel} className="p-4 rounded-xl bg-brand-principal/20 border border-brand-terciar/10 space-y-4">
-                <h3 className="text-xs font-bold text-brand-extra1">Criar Novo Nivel de Hierarquia</h3>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] text-brand-terciar/70 font-mono uppercase">Numero do Nivel (Ex: 4)</label>
-                    <input
-                      type="number"
-                      required
-                      min="1"
-                      value={newLevelNum}
-                      onChange={(e) => setNewLevelNum(parseInt(e.target.value, 10))}
-                      placeholder="Ex: 4"
-                      className="w-full px-3 py-1.5 bg-white border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar focus:outline-none focus:border-brand-secundar transition-colors"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] text-brand-terciar/70 font-mono uppercase">Nome / Descricao do Nivel</label>
-                    <input
-                      type="text"
-                      required
-                      value={newLevelName}
-                      onChange={(e) => setNewLevelName(e.target.value)}
-                      placeholder="Ex: Supervisor Geral"
-                      className="w-full px-3 py-1.5 bg-white border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar focus:outline-none focus:border-brand-secundar transition-colors"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsCreatingLevel(false)}
-                    className="px-3 py-1.5 border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar/70 hover:bg-white cursor-pointer"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-3 py-1.5 bg-brand-secundar text-white font-bold rounded-lg text-xs hover:bg-brand-secundar/90 shadow-sm transition-colors cursor-pointer"
-                  >
-                    Salvar Nivel
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div className="overflow-x-auto border border-brand-terciar/10 rounded-xl">
-          {loadingLevels ? (
-            <div className="p-4 text-xs text-brand-terciar/50 text-center animate-pulse">Carregando niveis...</div>
-          ) : (
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-brand-terciar/10 bg-brand-principal/10 text-brand-terciar/60 font-mono text-[9px] uppercase tracking-wider">
-                  <th className="py-2.5 px-3">Numero do Nivel</th>
-                  <th className="py-2.5 px-3">Nome / Descricao</th>
-                  <th className="py-2.5 px-3 text-right">Acoes</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-brand-terciar/10">
-                {levels.map((lvl) => (
-                  <tr key={lvl.id} className="hover:bg-brand-principal/10">
-                    <td className="py-3 px-3 font-semibold text-brand-extra1">
-                      Nivel {lvl.level}
-                    </td>
-                    <td className="py-3 px-3 text-brand-terciar">
-                      {lvl.name}
-                    </td>
-                    <td className="py-3 px-3 text-right">
-                      {lvl.name !== "Direcao Geral" && lvl.name !== "Gerencia / Coordenacao" && lvl.name !== "Operacional" ? (
-                        <button
-                          onClick={() => handleDeleteLevel(lvl.id, lvl.name)}
-                          className="p-1 text-red-650 bg-red-50 hover:bg-red-100 rounded border border-red-200 cursor-pointer"
-                          title="Excluir Nivel"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      ) : (
-                        <span className="text-[10px] text-brand-terciar/40 font-mono">Padrao</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
 
       {/* Menu Permissions Card */}
       <div className="p-5 rounded-2xl border border-brand-terciar/10 bg-white shadow-sm space-y-4">
@@ -1159,9 +946,9 @@ export default function SegurancaPage() {
                         disabled={updatingMenuHref === item.href}
                         className="px-2.5 py-1 bg-white border border-brand-terciar/20 rounded-lg text-xs text-brand-terciar focus:outline-none cursor-pointer focus:border-brand-secundar"
                       >
-                        {levels.map((lvl) => (
-                          <option key={lvl.id} value={lvl.level}>
-                            Nivel {lvl.level} ({lvl.name})
+                        {uniqueLevels.map((lvl) => (
+                          <option key={lvl} value={lvl}>
+                            Nivel {lvl} ({getLevelLabel(lvl)})
                           </option>
                         ))}
                       </select>
