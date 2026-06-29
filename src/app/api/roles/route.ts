@@ -1,17 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { dbSim } from "@/lib/db";
+import { db } from "@/lib/db";
 import { SessionUser } from "@/types/auth";
+import { 
+  validateRequest, 
+  validateSearchParams, 
+  validateParams,
+  paginationSchema,
+  createRoleSchema,
+  updateRoleSchema,
+  deleteRoleSchema
+} from "@/lib/validation";
+import { rateLimit } from "@/lib/rate-limit";
 
-export async function GET() {
+async function handleGet(request: NextRequest) {
   try {
     const session = await auth();
     if (!session || !session.user) {
       return NextResponse.json({ error: "Nao autorizado" }, { status: 401 });
     }
 
+    // Validate pagination
+    const paginationValidation = validateSearchParams(
+      request.nextUrl.searchParams,
+      paginationSchema
+    );
+    if (!paginationValidation.success) {
+      return paginationValidation.error;
+    }
+
     // Any authenticated user can list the roles to see descriptions or for selectors
-    const roles = await dbSim.getRoles();
+    const roles = await db.getRoles();
     return NextResponse.json(roles);
   } catch (error) {
     console.error("Erro ao listar cargos:", error);
@@ -19,7 +38,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   try {
     const session = await auth();
     if (!session || !session.user) {
@@ -34,19 +53,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Acesso negado. Apenas Nivel 1." }, { status: 403 });
     }
 
-    const body = await request.json();
-    const { name, displayName, hierarchyLevel } = body;
-
-    if (!name || !displayName || typeof hierarchyLevel !== "number") {
-      return NextResponse.json({ error: "Dados invalidos" }, { status: 400 });
+    // Validate request body with Zod
+    const validation = await validateRequest(request, createRoleSchema);
+    if (!validation.success) {
+      return validation.error;
     }
 
-    const newRole = await dbSim.addRole({ name, displayName, hierarchyLevel });
+    const { name, displayName, hierarchyLevel } = validation.data;
+
+    const newRole = await db.createRole({ name, displayName, hierarchyLevel });
 
     // Log the security event
     const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
     const userAgent = request.headers.get("user-agent") || "Browser";
-    await dbSim.addLog(
+    await db.addLog(
       (session.user as SessionUser).id,
       "CONFIGURAR_CARGO",
       `Criou o cargo '${name}' (${displayName}) com Nivel ${hierarchyLevel}.`,
@@ -61,7 +81,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function PUT(request: NextRequest) {
+async function handlePut(request: NextRequest) {
   try {
     const session = await auth();
     if (!session || !session.user) {
@@ -76,19 +96,20 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Acesso negado. Apenas Nivel 1." }, { status: 403 });
     }
 
-    const body = await request.json();
-    const { id, name, displayName, hierarchyLevel } = body;
-
-    if (!id) {
-      return NextResponse.json({ error: "ID do cargo e obrigatorio" }, { status: 400 });
+    // Validate request body with Zod
+    const validation = await validateRequest(request, updateRoleSchema);
+    if (!validation.success) {
+      return validation.error;
     }
 
-    const updatedRole = await dbSim.updateRole(id, { name, displayName, hierarchyLevel });
+    const { id, name, displayName, hierarchyLevel } = validation.data;
+
+    const updatedRole = await db.updateRole(id, { name, displayName, hierarchyLevel });
 
     // Log the security event
     const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
     const userAgent = request.headers.get("user-agent") || "Browser";
-    await dbSim.addLog(
+    await db.addLog(
       (session.user as SessionUser).id,
       "CONFIGURAR_CARGO",
       `Atualizou o cargo ID '${id}' para Nome: ${name || "sem alteracao"}, Display: ${displayName || "sem alteracao"}, Nivel: ${hierarchyLevel !== undefined ? hierarchyLevel : "sem alteracao"}.`,
@@ -103,7 +124,7 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest) {
+async function handleDelete(request: NextRequest) {
   try {
     const session = await auth();
     if (!session || !session.user) {
@@ -118,16 +139,20 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Acesso negado. Apenas Nivel 1." }, { status: 403 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-
-    if (!id) {
-      return NextResponse.json({ error: "ID do cargo e obrigatorio" }, { status: 400 });
+    // Validate query params with Zod
+    const paramsValidation = validateParams(
+      Object.fromEntries(request.nextUrl.searchParams),
+      deleteRoleSchema
+    );
+    if (!paramsValidation.success) {
+      return paramsValidation.error;
     }
+
+    const { id } = paramsValidation.data;
 
     // Safety: prevent deleting default roles like ADMIN or VIEWER if you want,
     // or allow complete editing/deletion as requested. The user said: "criar, apagar, mudar nivel, mudar nome dos niveis e editar por completo".
-    const success = await dbSim.deleteRole(id);
+    const success = await db.deleteRole(id);
 
     if (!success) {
       return NextResponse.json({ error: "Cargo nao encontrado" }, { status: 404 });
@@ -136,7 +161,7 @@ export async function DELETE(request: NextRequest) {
     // Log the security event
     const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
     const userAgent = request.headers.get("user-agent") || "Browser";
-    await dbSim.addLog(
+    await db.addLog(
       (session.user as SessionUser).id,
       "CONFIGURAR_CARGO",
       `Apagou o cargo ID '${id}'.`,
@@ -149,4 +174,28 @@ export async function DELETE(request: NextRequest) {
     console.error("Erro ao apagar cargo:", error);
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });
   }
+}
+
+export async function GET(request: NextRequest) {
+  const limiterResponse = await rateLimit(request, "api");
+  if (limiterResponse) return limiterResponse;
+  return handleGet(request);
+}
+
+export async function POST(request: NextRequest) {
+  const limiterResponse = await rateLimit(request, "mutation");
+  if (limiterResponse) return limiterResponse;
+  return handlePost(request);
+}
+
+export async function PUT(request: NextRequest) {
+  const limiterResponse = await rateLimit(request, "mutation");
+  if (limiterResponse) return limiterResponse;
+  return handlePut(request);
+}
+
+export async function DELETE(request: NextRequest) {
+  const limiterResponse = await rateLimit(request, "mutation");
+  if (limiterResponse) return limiterResponse;
+  return handleDelete(request);
 }
