@@ -23,6 +23,15 @@ let isDbConnected = false;
 
 declare global {
   var prismaGlobal: PrismaClient | undefined;
+  var __mockRoles: MockRoleConfig[] | undefined;
+  var __mockUsers: MockUser[] | undefined;
+  var __mockPanels: MockSystemPanel[] | undefined;
+  var __mockDocuments: MockDocument[] | undefined;
+  var __mockLogs: MockAuditLog[] | undefined;
+  var __mockAnnouncements: MockAnnouncement[] | undefined;
+  var __mockAnnouncementReads: MockAnnouncementRead[] | undefined;
+  var __mockCompanies: MockCompany[] | undefined;
+  var __mockBusinessUnits: MockBusinessUnit[] | undefined;
 }
 
 try {
@@ -70,13 +79,34 @@ try {
 }
 
 export const prisma = prismaClient;
+export const isDatabaseConnected = () => isDbConnected;
 
-// Mock database store for fallback
+// ============================================
+// DATABASE ABSTRACTION LAYER
+// ============================================
+// This is the single source of truth for all database operations.
+// It automatically uses Prisma when connected, mock only in dev without DB.
+
+// Check if we should use mock data
+const USE_MOCK_DB =
+  process.env.NODE_ENV === "development" &&
+  (!process.env.DATABASE_URL || process.env.USE_MOCK_DB === "true");
+
+if (USE_MOCK_DB) {
+  console.warn(
+    "⚠️  USANDO MOCK DATABASE (dbSim) - Apenas para desenvolvimento!",
+  );
+}
+
+// ============================================
+// TYPES (re-exported for convenience)
+// ============================================
 export interface MockUser {
   id: string;
   name: string;
   email: string;
   image: string;
+  password?: string;
   role: string;
   hierarchyLevel: number;
   company: Company;
@@ -90,10 +120,11 @@ export interface MockSystemPanel {
   description: string;
   url: string;
   icon: string;
-  category: Company;
+  category: string;
   minRole: string;
   minHierarchy: number;
   isActive: boolean;
+  companySlug?: string | null;
 }
 
 export interface MockDocument {
@@ -241,8 +272,8 @@ export interface MockBusinessUnitRevenue {
   updatedAt: Date;
 }
 
-// Initial mock data
-const mockRoles: MockRoleConfig[] = [
+// Initial mock data (persisted via globalThis to survive hot reloads)
+const mockRoles: MockRoleConfig[] = globalThis.__mockRoles ?? (globalThis.__mockRoles = [
   {
     id: "role-admin",
     name: "ADMIN",
@@ -267,27 +298,20 @@ const mockRoles: MockRoleConfig[] = [
     createdAt: new Date(),
     updatedAt: new Date(),
   },
-];
+]);
 
-const mockUsers: MockUser[] = [
+if (globalThis.__mockUsers && !globalThis.__mockUsers.some(u => u.email === "gerente@grupoazul.com.br")) {
+  globalThis.__mockUsers = undefined;
+}
+
+const mockUsers: MockUser[] = globalThis.__mockUsers ?? (globalThis.__mockUsers = [
   {
-    id: "user-director",
-    name: "Diretor Grupo Azul",
-    email: "diretor@grupoazul.com.br",
-    image:
-      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120",
-    role: "ADMIN",
-    hierarchyLevel: 1,
-    company: Company.CENTRAL,
-    status: "ACTIVE",
-    createdAt: new Date(),
-  },
-  {
-    id: "user-admin",
+    id: "user-central-admin",
     name: "Administrador Central",
     email: "admin@grupoazul.com.br",
     image:
-      "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120",
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120",
+    password: "admin12345",
     role: "ADMIN",
     hierarchyLevel: 1,
     company: Company.CENTRAL,
@@ -295,44 +319,34 @@ const mockUsers: MockUser[] = [
     createdAt: new Date(),
   },
   {
-    id: "user-borgo",
-    name: "Gerente Borgo del Vin",
-    email: "gerente.borgo@borgodelvin.com.br",
+    id: "user-central-coordinator",
+    name: "Gerente Central",
+    email: "gerente@grupoazul.com.br",
     image:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=120",
+      "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120",
+    password: "gerente123",
     role: "COORDINATOR",
     hierarchyLevel: 2,
-    company: Company.BORGO,
+    company: Company.CENTRAL,
     status: "ACTIVE",
     createdAt: new Date(),
   },
   {
-    id: "user-maple",
-    name: "Coordenador Maple Bear",
-    email: "coordenador.maple@maplebear.com.br",
+    id: "user-central-viewer",
+    name: "Operador Central",
+    email: "operador@grupoazul.com.br",
     image:
-      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=120",
-    role: "COORDINATOR",
-    hierarchyLevel: 2,
-    company: Company.MAPLE_BEAR,
-    status: "ACTIVE",
-    createdAt: new Date(),
-  },
-  {
-    id: "user-viewer",
-    name: "Operador Azul",
-    email: "operador.azul@azulinc.com.br",
-    image:
-      "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=120",
+      "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=120",
+    password: "operador123",
     role: "VIEWER",
     hierarchyLevel: 3,
-    company: Company.AZUL,
+    company: Company.CENTRAL,
     status: "ACTIVE",
     createdAt: new Date(),
   },
-];
+]);
 
-const mockPanels: MockSystemPanel[] = [
+const mockPanels: MockSystemPanel[] = globalThis.__mockPanels ?? (globalThis.__mockPanels = [
   {
     id: "panel-1",
     name: "CRM - Grupo Azul",
@@ -340,7 +354,7 @@ const mockPanels: MockSystemPanel[] = [
       "Plataforma de CRM e gestao comercial do Grupo Azul Incorporacoes.",
     url: "https://azulcrm-dykanzmd.manus.space",
     icon: "Building2",
-    category: Company.AZUL,
+    category: "AZUL",
     minRole: "COORDINATOR",
     minHierarchy: 2,
     isActive: true,
@@ -351,7 +365,7 @@ const mockPanels: MockSystemPanel[] = [
     description: "Portal e area de parceiros do empreendimento Borgo del Vino.",
     url: "https://borgodelvino.com.br/parceiros",
     icon: "Wine",
-    category: Company.BORGO,
+    category: "BORGO",
     minRole: "VIEWER",
     minHierarchy: 3,
     isActive: true,
@@ -362,7 +376,7 @@ const mockPanels: MockSystemPanel[] = [
     description: "Painel administrativo para gestao interna do Borgo del Vino.",
     url: "https://borgodelvino.com.br/Adminborgo",
     icon: "Wine",
-    category: Company.BORGO,
+    category: "BORGO",
     minRole: "COORDINATOR",
     minHierarchy: 2,
     isActive: true,
@@ -374,7 +388,7 @@ const mockPanels: MockSystemPanel[] = [
       "Painel administrativo de formularias e cadastros da Maple Bear.",
     url: "https://formulario-maplebear.vercel.app/admin",
     icon: "Notebook",
-    category: Company.MAPLE_BEAR,
+    category: "MAPLE_BEAR",
     minRole: "COORDINATOR",
     minHierarchy: 2,
     isActive: true,
@@ -386,7 +400,7 @@ const mockPanels: MockSystemPanel[] = [
       "Monitoramento de seguranca de acessos e edicao de politicas da Central.",
     url: "/dashboard/seguranca",
     icon: "ShieldAlert",
-    category: Company.CENTRAL,
+    category: "CENTRAL",
     minRole: "ADMIN",
     minHierarchy: 1,
     isActive: true,
@@ -398,14 +412,14 @@ const mockPanels: MockSystemPanel[] = [
       "Painel administrativo de cadastros e parcerias da Azul Incorporacoes.",
     url: "https://formulario-azul.vercel.app/admin",
     icon: "Notebook",
-    category: Company.AZUL,
+    category: "AZUL",
     minRole: "COORDINATOR",
     minHierarchy: 2,
     isActive: true,
   },
-];
+]);
 
-const mockDocuments: MockDocument[] = [
+const mockDocuments: MockDocument[] = globalThis.__mockDocuments ?? (globalThis.__mockDocuments = [
   {
     id: "doc-1",
     title: "Diretrizes de Seguranca da Informacao 2026",
@@ -448,9 +462,9 @@ const mockDocuments: MockDocument[] = [
     uploadedByName: "Coordenador Maple Bear",
     createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
   },
-];
+]);
 
-const mockLogs: MockAuditLog[] = [
+const mockLogs: MockAuditLog[] = globalThis.__mockLogs ?? (globalThis.__mockLogs = [
   {
     id: "log-1",
     userId: "user-director",
@@ -483,10 +497,10 @@ const mockLogs: MockAuditLog[] = [
       "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15",
     createdAt: new Date(Date.now() - 20 * 60 * 1000),
   },
-];
+]);
 
 // Fase 1 - Mock Announcements
-const mockAnnouncements: MockAnnouncement[] = [
+const mockAnnouncements: MockAnnouncement[] = globalThis.__mockAnnouncements ?? (globalThis.__mockAnnouncements = [
   {
     id: "ann-1",
     title: "Nova integração de Segurança",
@@ -529,9 +543,68 @@ const mockAnnouncements: MockAnnouncement[] = [
     createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
     updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
   },
-];
+]);
 
-const mockAnnouncementReads: MockAnnouncementRead[] = [];
+const mockAnnouncementReads: MockAnnouncementRead[] = globalThis.__mockAnnouncementReads ?? (globalThis.__mockAnnouncementReads = []);
+
+export interface MockCompany {
+  id: string;
+  name: string;
+  slug: string;
+  color: string;
+  isActive: boolean;
+  showOnHome: boolean;
+  order: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const mockCompanies: MockCompany[] = globalThis.__mockCompanies ?? (globalThis.__mockCompanies = [
+  {
+    id: "comp-1",
+    name: "Borgo del Vino",
+    slug: "BORGO",
+    color: "WINE",
+    isActive: true,
+    showOnHome: true,
+    order: 1,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: "comp-2",
+    name: "Maple Bear",
+    slug: "MAPLE_BEAR",
+    color: "RED",
+    isActive: true,
+    showOnHome: true,
+    order: 2,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: "comp-3",
+    name: "Grupo Azul",
+    slug: "AZUL",
+    color: "AZUL",
+    isActive: true,
+    showOnHome: true,
+    order: 3,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: "comp-4",
+    name: "Central",
+    slug: "CENTRAL",
+    color: "GOLD",
+    isActive: true,
+    showOnHome: true,
+    order: 4,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+]);
 
 // Persistent state handlers in memory (simulating a database server)
 // We will expose database simulation functions so that even if MySQL is not connected,
@@ -615,6 +688,7 @@ export const dbSim = {
     role: string;
     hierarchyLevel: number;
     company: Company;
+    password?: string;
   }) => {
     const newUser: MockUser = {
       ...user,
@@ -626,17 +700,20 @@ export const dbSim = {
     };
     if (prismaClient && isDbConnected) {
       try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const createData: any = {
+          id: newUser.id,
+          name: newUser.name,
+          email: newUser.email,
+          image: newUser.image,
+          password: newUser.password || null,
+          role: newUser.role,
+          hierarchyLevel: newUser.hierarchyLevel,
+          company: newUser.company,
+          status: newUser.status,
+        };
         return await prismaClient.user.create({
-          data: {
-            id: newUser.id,
-            name: newUser.name,
-            email: newUser.email,
-            image: newUser.image,
-            role: newUser.role,
-            hierarchyLevel: newUser.hierarchyLevel,
-            company: newUser.company,
-            status: newUser.status,
-          },
+          data: createData,
         });
       } catch (e) {
         console.error("Prisma error adding user, falling back", e);
@@ -649,53 +726,9 @@ export const dbSim = {
   getPanels: async () => {
     if (prismaClient && isDbConnected) {
       try {
-        let dbPanels = await prismaClient.systemPanel.findMany();
-
-        // Find panels in mockPanels that are missing from the database by ID or URL
-        const missingPanels = mockPanels.filter(
-          (mockP) =>
-            !dbPanels.some(
-              (dbP) => dbP.id === mockP.id || dbP.url === mockP.url,
-            ),
-        );
-
-        if (missingPanels.length > 0) {
-          for (const p of missingPanels) {
-            await prismaClient.systemPanel.create({
-              data: {
-                id: p.id,
-                name: p.name,
-                description: p.description,
-                url: p.url,
-                icon: p.icon,
-                category: p.category,
-                minRole: p.minRole,
-                minHierarchy: p.minHierarchy,
-                isActive: p.isActive,
-              },
-            });
-          }
-          dbPanels = await prismaClient.systemPanel.findMany();
-        }
-
-        // Delete panels from the database that are no longer in mockPanels
-        const extraPanels = dbPanels.filter(
-          (dbP) =>
-            !mockPanels.some(
-              (mockP) => mockP.id === dbP.id || mockP.url === dbP.url,
-            ),
-        );
-
-        if (extraPanels.length > 0) {
-          for (const p of extraPanels) {
-            await prismaClient.systemPanel.delete({
-              where: { id: p.id },
-            });
-          }
-          dbPanels = await prismaClient.systemPanel.findMany();
-        }
-
-        return dbPanels;
+        return await prismaClient.systemPanel.findMany({
+          orderBy: { createdAt: "desc" },
+        });
       } catch (e) {
         console.error("Prisma error, falling back", e);
       }
@@ -1251,42 +1284,6 @@ export const dbSim = {
   getBusinessUnits: async () => {
     if (prismaClient && isDbConnected) {
       try {
-        const units = await prismaClient.businessUnit.findMany({
-          include: {
-            tools: true,
-            socialLinks: true,
-            analytics: { orderBy: { date: "desc" }, take: 30 },
-            metaData: { orderBy: { date: "desc" }, take: 30 },
-            revenueData: { orderBy: { period: "desc" }, take: 12 },
-          },
-          orderBy: { order: "asc" },
-        });
-
-        // Auto-popular a partir de SystemPanel correspondente se a BU não tiver ferramentas
-        for (const bu of units) {
-          if (bu.tools.length === 0) {
-            const panels = await prismaClient.systemPanel.findMany({
-              where: { category: bu.company, isActive: true }
-            });
-            if (panels.length > 0) {
-              for (const p of panels) {
-                await prismaClient.businessUnitTool.create({
-                  data: {
-                    businessUnitId: bu.id,
-                    name: p.name,
-                    url: p.url,
-                    description: p.description,
-                    category: p.name.includes("CRM") ? "CRM" : "ERP",
-                    isExternal: true,
-                    isActive: true,
-                    order: 0
-                  }
-                });
-              }
-            }
-          }
-        }
-
         return await prismaClient.businessUnit.findMany({
           include: {
             tools: true,
@@ -1307,7 +1304,7 @@ export const dbSim = {
   getBusinessUnitBySlug: async (slug: string) => {
     if (prismaClient && isDbConnected) {
       try {
-        const bu = await prismaClient.businessUnit.findUnique({
+        return await prismaClient.businessUnit.findUnique({
           where: { slug },
           include: {
             tools: { where: { isActive: true }, orderBy: { order: "asc" } },
@@ -1317,63 +1314,12 @@ export const dbSim = {
             revenueData: { orderBy: { period: "desc" }, take: 12 },
           },
         });
-
-        if (bu && bu.tools.length === 0) {
-          const panels = await prismaClient.systemPanel.findMany({
-            where: { category: bu.company, isActive: true }
-          });
-          if (panels.length > 0) {
-            for (const p of panels) {
-              await prismaClient.businessUnitTool.create({
-                data: {
-                  businessUnitId: bu.id,
-                  name: p.name,
-                  url: p.url,
-                  description: p.description,
-                  category: p.name.includes("CRM") ? "CRM" : "ERP",
-                  isExternal: true,
-                  isActive: true,
-                  order: 0
-                }
-              });
-            }
-            return await prismaClient.businessUnit.findUnique({
-              where: { slug },
-              include: {
-                tools: { where: { isActive: true }, orderBy: { order: "asc" } },
-                socialLinks: { where: { isActive: true } },
-                analytics: { orderBy: { date: "desc" }, take: 30 },
-                metaData: { orderBy: { date: "desc" }, take: 30 },
-                revenueData: { orderBy: { period: "desc" }, take: 12 },
-              },
-            });
-          }
-        }
-        return bu;
       } catch (e) {
         console.error("Prisma error fetching business unit, falling back", e);
       }
     }
 
-    const bu = mockBusinessUnits.find((bu) => bu.slug === slug);
-    if (bu && (!bu.tools || bu.tools.length === 0)) {
-      const panels = mockPanels.filter(p => p.category === bu.company && p.isActive);
-      bu.tools = panels.map((p, i) => ({
-        id: `tool-auto-${p.id}`,
-        businessUnitId: bu.id,
-        name: p.name,
-        url: p.url,
-        icon: p.icon,
-        description: p.description,
-        category: p.name.includes("CRM") ? "CRM" : "ERP",
-        isExternal: true,
-        order: i,
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }));
-    }
-    return bu || null;
+    return mockBusinessUnits.find((bu) => bu.slug === slug) || null;
   },
 
   addBusinessUnit: async (
@@ -1501,7 +1447,9 @@ export const dbSim = {
     let unitName = "";
     if (prismaClient && isDbConnected) {
       try {
-        const bu = await prismaClient.businessUnit.findUnique({ where: { slug } });
+        const bu = await prismaClient.businessUnit.findUnique({
+          where: { slug },
+        });
         if (bu) {
           unitId = bu.id;
           unitName = bu.name;
@@ -1510,7 +1458,7 @@ export const dbSim = {
         console.error("Error finding business unit for sync", e);
       }
     } else {
-      const bu = mockBusinessUnits.find(u => u.slug === slug);
+      const bu = mockBusinessUnits.find((u) => u.slug === slug);
       if (bu) {
         unitId = bu.id;
         unitName = bu.name;
@@ -1524,19 +1472,19 @@ export const dbSim = {
       instagram: 12500 + Math.floor(Math.random() * 5000),
       youtube: 4300 + Math.floor(Math.random() * 1500),
       facebook: 8200 + Math.floor(Math.random() * 2000),
-      linkedin: 3100 + Math.floor(Math.random() * 1000)
+      linkedin: 3100 + Math.floor(Math.random() * 1000),
     };
     const handles: Record<string, string> = {
       instagram: unitName.toLowerCase().replace(/\s+/g, ""),
       youtube: unitName.toLowerCase().replace(/\s+/g, ""),
       facebook: unitName.toLowerCase().replace(/\s+/g, ""),
-      linkedin: unitName.toLowerCase().replace(/\s+/g, "")
+      linkedin: unitName.toLowerCase().replace(/\s+/g, ""),
     };
     const urls: Record<string, string> = {
       instagram: `https://instagram.com/${handles.instagram}`,
       youtube: `https://youtube.com/@${handles.youtube}`,
       facebook: `https://facebook.com/${handles.facebook}`,
-      linkedin: `https://linkedin.com/company/${handles.linkedin}`
+      linkedin: `https://linkedin.com/company/${handles.linkedin}`,
     };
 
     const syncedSocials = [];
@@ -1548,12 +1496,17 @@ export const dbSim = {
       if (prismaClient && isDbConnected) {
         try {
           const existing = await prismaClient.businessUnitSocialLink.findFirst({
-            where: { businessUnitId: unitId, platform }
+            where: { businessUnitId: unitId, platform },
           });
           if (existing) {
             const updated = await prismaClient.businessUnitSocialLink.update({
               where: { id: existing.id },
-              data: { followersCount: followers, handle, url, updatedAt: new Date() }
+              data: {
+                followersCount: followers,
+                handle,
+                url,
+                updatedAt: new Date(),
+              },
             });
             syncedSocials.push(updated);
           } else {
@@ -1564,8 +1517,8 @@ export const dbSim = {
                 url,
                 handle,
                 followersCount: followers,
-                isActive: true
-              }
+                isActive: true,
+              },
             });
             syncedSocials.push(created);
           }
@@ -1573,10 +1526,12 @@ export const dbSim = {
           console.error("Prisma error syncing social link", e);
         }
       } else {
-        const bu = mockBusinessUnits.find(u => u.id === unitId);
+        const bu = mockBusinessUnits.find((u) => u.id === unitId);
         if (bu) {
           if (!bu.socialLinks) bu.socialLinks = [];
-          const existingIndex = bu.socialLinks.findIndex(l => l.platform === platform);
+          const existingIndex = bu.socialLinks.findIndex(
+            (l) => l.platform === platform,
+          );
           const newSocial = {
             id: `social-${platform}-${Math.random().toString(36).substr(2, 5)}`,
             businessUnitId: unitId,
@@ -1586,7 +1541,7 @@ export const dbSim = {
             followersCount: followers,
             isActive: true,
             createdAt: new Date(),
-            updatedAt: new Date()
+            updatedAt: new Date(),
           };
           if (existingIndex !== -1) {
             bu.socialLinks[existingIndex] = newSocial;
@@ -1615,12 +1570,18 @@ export const dbSim = {
       if (prismaClient && isDbConnected) {
         try {
           const existing = await prismaClient.businessUnitAnalytics.findFirst({
-            where: { businessUnitId: unitId, date, source }
+            where: { businessUnitId: unitId, date, source },
           });
           if (existing) {
             const updated = await prismaClient.businessUnitAnalytics.update({
               where: { id: existing.id },
-              data: { pageViews, uniqueVisitors, sessions, bounceRate, avgSessionDuration }
+              data: {
+                pageViews,
+                uniqueVisitors,
+                sessions,
+                bounceRate,
+                avgSessionDuration,
+              },
             });
             syncedAnalytics.push(updated);
           } else {
@@ -1633,8 +1594,8 @@ export const dbSim = {
                 sessions,
                 bounceRate,
                 avgSessionDuration,
-                source
-              }
+                source,
+              },
             });
             syncedAnalytics.push(created);
           }
@@ -1642,11 +1603,13 @@ export const dbSim = {
           console.error("Prisma error syncing analytics data", e);
         }
       } else {
-        const bu = mockBusinessUnits.find(u => u.id === unitId);
+        const bu = mockBusinessUnits.find((u) => u.id === unitId);
         if (bu) {
           if (!bu.analytics) bu.analytics = [];
           const existingIndex = bu.analytics.findIndex(
-            a => a.date.toDateString() === date.toDateString() && a.source === source
+            (a) =>
+              a.date.toDateString() === date.toDateString() &&
+              a.source === source,
           );
           const newAnalytic = {
             id: `analytic-${i}-${Math.random().toString(36).substr(2, 5)}`,
@@ -1658,7 +1621,7 @@ export const dbSim = {
             bounceRate,
             avgSessionDuration,
             source,
-            createdAt: new Date()
+            createdAt: new Date(),
           };
           if (existingIndex !== -1) {
             bu.analytics[existingIndex] = newAnalytic;
@@ -1686,12 +1649,19 @@ export const dbSim = {
       if (prismaClient && isDbConnected) {
         try {
           const existing = await prismaClient.businessUnitMetaData.findFirst({
-            where: { businessUnitId: unitId, date, platform }
+            where: { businessUnitId: unitId, date, platform },
           });
           if (existing) {
             const updated = await prismaClient.businessUnitMetaData.update({
               where: { id: existing.id },
-              data: { followersCount: followers, followingCount, postsCount, engagementRate, reach, impressions }
+              data: {
+                followersCount: followers,
+                followingCount,
+                postsCount,
+                engagementRate,
+                reach,
+                impressions,
+              },
             });
             syncedMetaData.push(updated);
           } else {
@@ -1705,8 +1675,8 @@ export const dbSim = {
                 postsCount,
                 engagementRate,
                 reach,
-                impressions
-              }
+                impressions,
+              },
             });
             syncedMetaData.push(created);
           }
@@ -1714,11 +1684,13 @@ export const dbSim = {
           console.error("Prisma error syncing metadata", e);
         }
       } else {
-        const bu = mockBusinessUnits.find(u => u.id === unitId);
+        const bu = mockBusinessUnits.find((u) => u.id === unitId);
         if (bu) {
           if (!bu.metaData) bu.metaData = [];
           const existingIndex = bu.metaData.findIndex(
-            m => m.date.toDateString() === date.toDateString() && m.platform === platform
+            (m) =>
+              m.date.toDateString() === date.toDateString() &&
+              m.platform === platform,
           );
           const newMeta = {
             id: `meta-${platform}-${Math.random().toString(36).substr(2, 5)}`,
@@ -1731,7 +1703,7 @@ export const dbSim = {
             engagementRate,
             reach,
             impressions,
-            createdAt: new Date()
+            createdAt: new Date(),
           };
           if (existingIndex !== -1) {
             bu.metaData[existingIndex] = newMeta;
@@ -1746,7 +1718,7 @@ export const dbSim = {
     if (prismaClient && isDbConnected) {
       try {
         const existingRev = await prismaClient.businessUnitRevenue.findFirst({
-          where: { businessUnitId: unitId }
+          where: { businessUnitId: unitId },
         });
         if (!existingRev) {
           await prismaClient.businessUnitRevenue.create({
@@ -1757,15 +1729,15 @@ export const dbSim = {
               currency: "BRL",
               type: "gross",
               source: "manual",
-              notes: "Faturamento gerado via sincronização de teste"
-            }
+              notes: "Faturamento gerado via sincronização de teste",
+            },
           });
         }
       } catch (e) {
         console.error("Prisma error generating fallback revenue", e);
       }
     } else {
-      const bu = mockBusinessUnits.find(u => u.id === unitId);
+      const bu = mockBusinessUnits.find((u) => u.id === unitId);
       if (bu && bu.revenueData && bu.revenueData.length === 0) {
         bu.revenueData.push({
           id: `rev-${Math.random().toString(36).substr(2, 5)}`,
@@ -1777,7 +1749,7 @@ export const dbSim = {
           source: "manual",
           notes: "Faturamento gerado via sincronização de teste",
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         });
       }
     }
@@ -1785,12 +1757,15 @@ export const dbSim = {
     return true;
   },
 
-  addBusinessUnitTool: async (unitId: string, tool: Omit<MockBusinessUnitTool, "id" | "createdAt" | "updatedAt">) => {
+  addBusinessUnitTool: async (
+    unitId: string,
+    tool: Omit<MockBusinessUnitTool, "id" | "createdAt" | "updatedAt">,
+  ) => {
     const newTool = {
       ...tool,
       id: "tool-" + Math.random().toString(36).substr(2, 9),
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
     if (prismaClient && isDbConnected) {
       try {
@@ -1804,14 +1779,14 @@ export const dbSim = {
             category: tool.category,
             isExternal: tool.isExternal,
             order: tool.order || 0,
-            isActive: tool.isActive
-          }
+            isActive: tool.isActive,
+          },
         });
       } catch (e) {
         console.error("Prisma error adding tool", e);
       }
     }
-    const bu = mockBusinessUnits.find(u => u.id === unitId);
+    const bu = mockBusinessUnits.find((u) => u.id === unitId);
     if (bu) {
       if (!bu.tools) bu.tools = [];
       bu.tools.push(newTool);
@@ -1831,7 +1806,7 @@ export const dbSim = {
     }
     for (const bu of mockBusinessUnits) {
       if (bu.tools) {
-        const idx = bu.tools.findIndex(t => t.id === toolId);
+        const idx = bu.tools.findIndex((t) => t.id === toolId);
         if (idx !== -1) {
           bu.tools.splice(idx, 1);
           return true;
@@ -1841,12 +1816,15 @@ export const dbSim = {
     return false;
   },
 
-  addBusinessUnitSocialLink: async (unitId: string, social: Omit<MockBusinessUnitSocialLink, "id" | "createdAt" | "updatedAt">) => {
+  addBusinessUnitSocialLink: async (
+    unitId: string,
+    social: Omit<MockBusinessUnitSocialLink, "id" | "createdAt" | "updatedAt">,
+  ) => {
     const newSocial = {
       ...social,
       id: "social-" + Math.random().toString(36).substr(2, 9),
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
     if (prismaClient && isDbConnected) {
       try {
@@ -1857,14 +1835,14 @@ export const dbSim = {
             url: social.url,
             handle: social.handle || null,
             followersCount: social.followersCount || 0,
-            isActive: social.isActive
-          }
+            isActive: social.isActive,
+          },
         });
       } catch (e) {
         console.error("Prisma error adding social link", e);
       }
     }
-    const bu = mockBusinessUnits.find(u => u.id === unitId);
+    const bu = mockBusinessUnits.find((u) => u.id === unitId);
     if (bu) {
       if (!bu.socialLinks) bu.socialLinks = [];
       bu.socialLinks.push(newSocial);
@@ -1876,7 +1854,9 @@ export const dbSim = {
   deleteBusinessUnitSocialLink: async (socialId: string) => {
     if (prismaClient && isDbConnected) {
       try {
-        await prismaClient.businessUnitSocialLink.delete({ where: { id: socialId } });
+        await prismaClient.businessUnitSocialLink.delete({
+          where: { id: socialId },
+        });
         return true;
       } catch (e) {
         console.error("Prisma error deleting social link", e);
@@ -1884,7 +1864,7 @@ export const dbSim = {
     }
     for (const bu of mockBusinessUnits) {
       if (bu.socialLinks) {
-        const idx = bu.socialLinks.findIndex(s => s.id === socialId);
+        const idx = bu.socialLinks.findIndex((s) => s.id === socialId);
         if (idx !== -1) {
           bu.socialLinks.splice(idx, 1);
           return true;
@@ -1894,11 +1874,14 @@ export const dbSim = {
     return false;
   },
 
-  addBusinessUnitAnalytics: async (unitId: string, analytics: Omit<MockBusinessUnitAnalytics, "id" | "createdAt">) => {
+  addBusinessUnitAnalytics: async (
+    unitId: string,
+    analytics: Omit<MockBusinessUnitAnalytics, "id" | "createdAt">,
+  ) => {
     const newAnalytics = {
       ...analytics,
       id: "analytic-" + Math.random().toString(36).substr(2, 9),
-      createdAt: new Date()
+      createdAt: new Date(),
     };
     if (prismaClient && isDbConnected) {
       try {
@@ -1911,19 +1894,19 @@ export const dbSim = {
             sessions: analytics.sessions || 0,
             bounceRate: analytics.bounceRate || 0,
             avgSessionDuration: analytics.avgSessionDuration || 0,
-            source: analytics.source || "google_analytics"
-          }
+            source: analytics.source || "google_analytics",
+          },
         });
       } catch (e) {
         console.error("Prisma error adding analytics", e);
       }
     }
-    const bu = mockBusinessUnits.find(u => u.id === unitId);
+    const bu = mockBusinessUnits.find((u) => u.id === unitId);
     if (bu) {
       if (!bu.analytics) bu.analytics = [];
       bu.analytics.push({
         ...newAnalytics,
-        date: new Date(analytics.date)
+        date: new Date(analytics.date),
       });
       bu.analytics.sort((a, b) => b.date.getTime() - a.date.getTime());
       return newAnalytics;
@@ -1934,7 +1917,9 @@ export const dbSim = {
   deleteBusinessUnitAnalytics: async (analyticsId: string) => {
     if (prismaClient && isDbConnected) {
       try {
-        await prismaClient.businessUnitAnalytics.delete({ where: { id: analyticsId } });
+        await prismaClient.businessUnitAnalytics.delete({
+          where: { id: analyticsId },
+        });
         return true;
       } catch (e) {
         console.error("Prisma error deleting analytics", e);
@@ -1942,7 +1927,7 @@ export const dbSim = {
     }
     for (const bu of mockBusinessUnits) {
       if (bu.analytics) {
-        const idx = bu.analytics.findIndex(a => a.id === analyticsId);
+        const idx = bu.analytics.findIndex((a) => a.id === analyticsId);
         if (idx !== -1) {
           bu.analytics.splice(idx, 1);
           return true;
@@ -1952,12 +1937,15 @@ export const dbSim = {
     return false;
   },
 
-  addBusinessUnitRevenue: async (unitId: string, revenue: Omit<MockBusinessUnitRevenue, "id" | "createdAt" | "updatedAt">) => {
+  addBusinessUnitRevenue: async (
+    unitId: string,
+    revenue: Omit<MockBusinessUnitRevenue, "id" | "createdAt" | "updatedAt">,
+  ) => {
     const newRevenue = {
       ...revenue,
       id: "revenue-" + Math.random().toString(36).substr(2, 9),
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
     if (prismaClient && isDbConnected) {
       try {
@@ -1969,14 +1957,14 @@ export const dbSim = {
             currency: revenue.currency || "BRL",
             type: revenue.type,
             source: revenue.source,
-            notes: revenue.notes || null
-          }
+            notes: revenue.notes || null,
+          },
         });
       } catch (e) {
         console.error("Prisma error adding revenue", e);
       }
     }
-    const bu = mockBusinessUnits.find(u => u.id === unitId);
+    const bu = mockBusinessUnits.find((u) => u.id === unitId);
     if (bu) {
       if (!bu.revenueData) bu.revenueData = [];
       bu.revenueData.push(newRevenue);
@@ -1989,7 +1977,9 @@ export const dbSim = {
   deleteBusinessUnitRevenue: async (revenueId: string) => {
     if (prismaClient && isDbConnected) {
       try {
-        await prismaClient.businessUnitRevenue.delete({ where: { id: revenueId } });
+        await prismaClient.businessUnitRevenue.delete({
+          where: { id: revenueId },
+        });
         return true;
       } catch (e) {
         console.error("Prisma error deleting revenue", e);
@@ -1997,7 +1987,7 @@ export const dbSim = {
     }
     for (const bu of mockBusinessUnits) {
       if (bu.revenueData) {
-        const idx = bu.revenueData.findIndex(r => r.id === revenueId);
+        const idx = bu.revenueData.findIndex((r) => r.id === revenueId);
         if (idx !== -1) {
           bu.revenueData.splice(idx, 1);
           return true;
@@ -2006,16 +1996,671 @@ export const dbSim = {
     }
     return false;
   },
+
+  getBusinessUnitTools: async (unitId: string) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.businessUnitTool.findMany({
+          where: { businessUnitId: unitId },
+          orderBy: { order: "asc" },
+        });
+      } catch (e) {
+        console.error("Prisma error getting tools", e);
+      }
+    }
+    const bu = mockBusinessUnits.find((u) => u.id === unitId);
+    return bu?.tools || [];
+  },
+
+  updateBusinessUnitTool: async (
+    toolId: string,
+    updates: Partial<MockBusinessUnitTool>,
+  ) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.businessUnitTool.update({
+          where: { id: toolId },
+          data: {
+            ...(updates.name ? { name: updates.name } : {}),
+            ...(updates.url ? { url: updates.url } : {}),
+            ...(updates.icon !== undefined ? { icon: updates.icon } : {}),
+            ...(updates.description !== undefined
+              ? { description: updates.description }
+              : {}),
+            ...(updates.category ? { category: updates.category } : {}),
+            ...(updates.isExternal !== undefined
+              ? { isExternal: updates.isExternal }
+              : {}),
+            ...(updates.order !== undefined ? { order: updates.order } : {}),
+            ...(updates.isActive !== undefined
+              ? { isActive: updates.isActive }
+              : {}),
+          },
+        });
+      } catch (e) {
+        console.error("Prisma error updating tool", e);
+      }
+    }
+    for (const bu of mockBusinessUnits) {
+      if (bu.tools) {
+        const idx = bu.tools.findIndex((t) => t.id === toolId);
+        if (idx !== -1) {
+          bu.tools[idx] = {
+            ...bu.tools[idx],
+            ...updates,
+            updatedAt: new Date(),
+          };
+          return bu.tools[idx];
+        }
+      }
+    }
+    return null;
+  },
+
+  getBusinessUnitSocialLinks: async (unitId: string) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.businessUnitSocialLink.findMany({
+          where: { businessUnitId: unitId },
+        });
+      } catch (e) {
+        console.error("Prisma error getting social links", e);
+      }
+    }
+    const bu = mockBusinessUnits.find((u) => u.id === unitId);
+    return bu?.socialLinks || [];
+  },
+
+  updateBusinessUnitSocialLink: async (
+    socialId: string,
+    updates: Partial<MockBusinessUnitSocialLink>,
+  ) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.businessUnitSocialLink.update({
+          where: { id: socialId },
+          data: {
+            ...(updates.platform ? { platform: updates.platform } : {}),
+            ...(updates.url ? { url: updates.url } : {}),
+            ...(updates.handle !== undefined ? { handle: updates.handle } : {}),
+            ...(updates.followersCount !== undefined
+              ? { followersCount: updates.followersCount }
+              : {}),
+            ...(updates.isActive !== undefined
+              ? { isActive: updates.isActive }
+              : {}),
+          },
+        });
+      } catch (e) {
+        console.error("Prisma error updating social link", e);
+      }
+    }
+    for (const bu of mockBusinessUnits) {
+      if (bu.socialLinks) {
+        const idx = bu.socialLinks.findIndex((s) => s.id === socialId);
+        if (idx !== -1) {
+          bu.socialLinks[idx] = {
+            ...bu.socialLinks[idx],
+            ...updates,
+            updatedAt: new Date(),
+          };
+          return bu.socialLinks[idx];
+        }
+      }
+    }
+    return null;
+  },
+
+  getBusinessUnitAnalytics: async (unitId: string) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.businessUnitAnalytics.findMany({
+          where: { businessUnitId: unitId },
+          orderBy: { date: "desc" },
+        });
+      } catch (e) {
+        console.error("Prisma error getting analytics", e);
+      }
+    }
+    const bu = mockBusinessUnits.find((u) => u.id === unitId);
+    return bu?.analytics || [];
+  },
+
+  updateBusinessUnitAnalytics: async (
+    analyticsId: string,
+    updates: Partial<MockBusinessUnitAnalytics>,
+  ) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.businessUnitAnalytics.update({
+          where: { id: analyticsId },
+          data: {
+            ...(updates.date ? { date: new Date(updates.date) } : {}),
+            ...(updates.pageViews !== undefined
+              ? { pageViews: updates.pageViews }
+              : {}),
+            ...(updates.uniqueVisitors !== undefined
+              ? { uniqueVisitors: updates.uniqueVisitors }
+              : {}),
+            ...(updates.sessions !== undefined
+              ? { sessions: updates.sessions }
+              : {}),
+            ...(updates.bounceRate !== undefined
+              ? { bounceRate: updates.bounceRate }
+              : {}),
+            ...(updates.avgSessionDuration !== undefined
+              ? { avgSessionDuration: updates.avgSessionDuration }
+              : {}),
+            ...(updates.source ? { source: updates.source } : {}),
+          },
+        });
+      } catch (e) {
+        console.error("Prisma error updating analytics", e);
+      }
+    }
+    for (const bu of mockBusinessUnits) {
+      if (bu.analytics) {
+        const idx = bu.analytics.findIndex((a) => a.id === analyticsId);
+        if (idx !== -1) {
+          bu.analytics[idx] = {
+            ...bu.analytics[idx],
+            ...updates,
+            ...(updates.date ? { date: new Date(updates.date) } : {}),
+          };
+          return bu.analytics[idx];
+        }
+      }
+    }
+    return null;
+  },
+
+  getBusinessUnitMetaData: async (unitId: string) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.businessUnitMetaData.findMany({
+          where: { businessUnitId: unitId },
+          orderBy: { date: "desc" },
+        });
+      } catch (e) {
+        console.error("Prisma error getting metadata", e);
+      }
+    }
+    const bu = mockBusinessUnits.find((u) => u.id === unitId);
+    return bu?.metaData || [];
+  },
+
+  addBusinessUnitMetaData: async (
+    unitId: string,
+    meta: Omit<MockBusinessUnitMetaData, "id" | "createdAt">,
+  ) => {
+    const newMeta = {
+      ...meta,
+      id: "meta-" + Math.random().toString(36).substr(2, 9),
+      createdAt: new Date(),
+    };
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.businessUnitMetaData.create({
+          data: {
+            businessUnitId: unitId,
+            date: new Date(meta.date),
+            platform: meta.platform,
+            followersCount: meta.followersCount || 0,
+            followingCount: meta.followingCount || 0,
+            postsCount: meta.postsCount || 0,
+            engagementRate: meta.engagementRate || 0,
+            reach: meta.reach || 0,
+            impressions: meta.impressions || 0,
+          },
+        });
+      } catch (e) {
+        console.error("Prisma error adding metadata", e);
+      }
+    }
+    const bu = mockBusinessUnits.find((u) => u.id === unitId);
+    if (bu) {
+      if (!bu.metaData) bu.metaData = [];
+      bu.metaData.push({
+        ...newMeta,
+        date: new Date(meta.date),
+      });
+      return newMeta;
+    }
+    return null;
+  },
+
+  updateBusinessUnitMetaData: async (
+    metaId: string,
+    updates: Partial<MockBusinessUnitMetaData>,
+  ) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.businessUnitMetaData.update({
+          where: { id: metaId },
+          data: {
+            ...(updates.date ? { date: new Date(updates.date) } : {}),
+            ...(updates.platform ? { platform: updates.platform } : {}),
+            ...(updates.followersCount !== undefined
+              ? { followersCount: updates.followersCount }
+              : {}),
+            ...(updates.followingCount !== undefined
+              ? { followingCount: updates.followingCount }
+              : {}),
+            ...(updates.postsCount !== undefined
+              ? { postsCount: updates.postsCount }
+              : {}),
+            ...(updates.engagementRate !== undefined
+              ? { engagementRate: updates.engagementRate }
+              : {}),
+            ...(updates.reach !== undefined ? { reach: updates.reach } : {}),
+            ...(updates.impressions !== undefined
+              ? { impressions: updates.impressions }
+              : {}),
+          },
+        });
+      } catch (e) {
+        console.error("Prisma error updating metadata", e);
+      }
+    }
+    for (const bu of mockBusinessUnits) {
+      if (bu.metaData) {
+        const idx = bu.metaData.findIndex((m) => m.id === metaId);
+        if (idx !== -1) {
+          bu.metaData[idx] = {
+            ...bu.metaData[idx],
+            ...updates,
+            ...(updates.date ? { date: new Date(updates.date) } : {}),
+          };
+          return bu.metaData[idx];
+        }
+      }
+    }
+    return null;
+  },
+
+  deleteBusinessUnitMetaData: async (metaId: string) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        await prismaClient.businessUnitMetaData.delete({
+          where: { id: metaId },
+        });
+        return true;
+      } catch (e) {
+        console.error("Prisma error deleting metadata", e);
+      }
+    }
+    for (const bu of mockBusinessUnits) {
+      if (bu.metaData) {
+        const idx = bu.metaData.findIndex((m) => m.id === metaId);
+        if (idx !== -1) {
+          bu.metaData.splice(idx, 1);
+          return true;
+        }
+      }
+    }
+    return false;
+  },
+
+  getBusinessUnitRevenue: async (unitId: string) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.businessUnitRevenue.findMany({
+          where: { businessUnitId: unitId },
+          orderBy: { period: "desc" },
+        });
+      } catch (e) {
+        console.error("Prisma error getting revenue", e);
+      }
+    }
+    const bu = mockBusinessUnits.find((u) => u.id === unitId);
+    return bu?.revenueData || [];
+  },
+
+  updateBusinessUnitRevenue: async (
+    revenueId: string,
+    updates: Partial<MockBusinessUnitRevenue>,
+  ) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.businessUnitRevenue.update({
+          where: { id: revenueId },
+          data: {
+            ...(updates.period ? { period: updates.period } : {}),
+            ...(updates.amount !== undefined ? { amount: updates.amount } : {}),
+            ...(updates.currency ? { currency: updates.currency } : {}),
+            ...(updates.type ? { type: updates.type } : {}),
+            ...(updates.source ? { source: updates.source } : {}),
+            ...(updates.notes !== undefined ? { notes: updates.notes } : {}),
+          },
+        });
+      } catch (e) {
+        console.error("Prisma error updating revenue", e);
+      }
+    }
+    for (const bu of mockBusinessUnits) {
+      if (bu.revenueData) {
+        const idx = bu.revenueData.findIndex((r) => r.id === revenueId);
+        if (idx !== -1) {
+          bu.revenueData[idx] = {
+            ...bu.revenueData[idx],
+            ...updates,
+            updatedAt: new Date(),
+          };
+          return bu.revenueData[idx];
+        }
+      }
+    }
+    return null;
+  },
+
+  getCompanies: async () => {
+    return mockCompanies;
+  },
+
+  addCompany: async (
+    company: Omit<MockCompany, "id" | "createdAt" | "updatedAt">,
+  ) => {
+    const newCompany: MockCompany = {
+      ...company,
+      id: "comp-" + Math.random().toString(36).substr(2, 9),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    mockCompanies.push(newCompany);
+    return newCompany;
+  },
+
+  createCompany: async (
+    company: Omit<MockCompany, "id" | "createdAt" | "updatedAt">,
+  ) => {
+    return dbSim.addCompany(company);
+  },
+
+  updateCompany: async (id: string, updates: Partial<MockCompany>) => {
+    const idx = mockCompanies.findIndex((c) => c.id === id);
+    if (idx !== -1) {
+      mockCompanies[idx] = {
+        ...mockCompanies[idx],
+        ...updates,
+        updatedAt: new Date(),
+      };
+      return mockCompanies[idx];
+    }
+    return null;
+  },
+
+  deleteCompany: async (id: string) => {
+    const idx = mockCompanies.findIndex((c) => c.id === id);
+    if (idx !== -1) {
+      mockCompanies.splice(idx, 1);
+      return true;
+    }
+    return false;
+  },
+
+  syncAllBusinessUnits: async () => {
+    let units;
+    if (prismaClient && isDbConnected) {
+      try {
+        units = await prismaClient.businessUnit.findMany();
+      } catch (e) {
+        console.error("Error fetching business units for sync all", e);
+      }
+    }
+    if (!units) {
+      units = mockBusinessUnits;
+    }
+    for (const bu of units) {
+      await dbSim.syncBusinessUnitData(bu.slug);
+    }
+    return true;
+  },
+
+  createUser: async (user: {
+    name: string;
+    email: string;
+    role: string;
+    hierarchyLevel: number;
+    company: Company;
+    password?: string;
+  }) => {
+    return dbSim.addUser(user);
+  },
+
+  deleteUser: async (id: string) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        await prismaClient.user.delete({ where: { id } });
+        return true;
+      } catch (e) {
+        console.error("Prisma error deleting user, falling back", e);
+      }
+    }
+    const idx = mockUsers.findIndex((u) => u.id === id);
+    if (idx !== -1) {
+      mockUsers.splice(idx, 1);
+      return true;
+    }
+    return false;
+  },
+
+  updateUserStatus: async (id: string, status: string) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.user.update({
+          where: { id },
+          data: { status },
+        });
+      } catch (e) {
+        console.error("Prisma error updating user status", e);
+      }
+    }
+    const user = mockUsers.find((u) => u.id === id);
+    if (user) {
+      user.status = status;
+      return user;
+    }
+    return null;
+  },
+
+  updateUserRole: async (id: string, role: string) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.user.update({
+          where: { id },
+          data: { role },
+        });
+      } catch (e) {
+        console.error("Prisma error updating user role", e);
+      }
+    }
+    const user = mockUsers.find((u) => u.id === id);
+    if (user) {
+      user.role = role;
+      return user;
+    }
+    return null;
+  },
+
+  createRole: async (role: {
+    name: string;
+    displayName: string;
+    hierarchyLevel: number;
+  }) => {
+    return dbSim.addRole(role);
+  },
+
+  createPanel: async (panel: {
+    name: string;
+    description?: string;
+    url: string;
+    icon: string;
+    category: string;
+    minRole: string;
+    minHierarchy: number;
+    isActive?: boolean;
+    companySlug?: string | null;
+  }) => {
+    const newPanel = {
+      ...panel,
+      id: "panel-" + Math.random().toString(36).substr(2, 9),
+      description: panel.description || "",
+      isActive: panel.isActive !== undefined ? panel.isActive : true,
+      companySlug: panel.companySlug || null,
+    };
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.systemPanel.create({
+          data: {
+            id: newPanel.id,
+            name: newPanel.name,
+            description: newPanel.description,
+            url: newPanel.url,
+            icon: newPanel.icon,
+            category: newPanel.category,
+            minRole: newPanel.minRole,
+            minHierarchy: newPanel.minHierarchy,
+            isActive: newPanel.isActive,
+            companySlug: newPanel.companySlug || null,
+          },
+        });
+      } catch (e) {
+        console.error("Prisma error creating panel, falling back", e);
+      }
+    }
+    mockPanels.push(newPanel);
+    return newPanel;
+  },
+
+  updatePanel: async (
+    id: string,
+    updates: {
+      name?: string;
+      description?: string;
+      url?: string;
+      icon?: string;
+      category?: string;
+      minRole?: string;
+      minHierarchy?: number;
+      isActive?: boolean;
+      companySlug?: string | null;
+    },
+  ) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.systemPanel.update({
+          where: { id },
+          data: {
+            ...(updates.name !== undefined ? { name: updates.name } : {}),
+            ...(updates.description !== undefined
+              ? { description: updates.description }
+              : {}),
+            ...(updates.url !== undefined ? { url: updates.url } : {}),
+            ...(updates.icon !== undefined ? { icon: updates.icon } : {}),
+            ...(updates.category !== undefined
+              ? { category: updates.category }
+              : {}),
+            ...(updates.minRole !== undefined
+              ? { minRole: updates.minRole }
+              : {}),
+            ...(updates.minHierarchy !== undefined
+              ? { minHierarchy: updates.minHierarchy }
+              : {}),
+            ...(updates.isActive !== undefined
+              ? { isActive: updates.isActive }
+              : {}),
+            ...(updates.companySlug !== undefined
+              ? { companySlug: updates.companySlug }
+              : {}),
+          },
+        });
+      } catch (e) {
+        console.error("Prisma error updating panel, falling back", e);
+      }
+    }
+    const panel = mockPanels.find((p) => p.id === id);
+    if (panel) {
+      if (updates.name !== undefined) panel.name = updates.name;
+      if (updates.description !== undefined)
+        panel.description = updates.description;
+      if (updates.url !== undefined) panel.url = updates.url;
+      if (updates.icon !== undefined) panel.icon = updates.icon;
+      if (updates.category !== undefined) panel.category = updates.category;
+      if (updates.minRole !== undefined) panel.minRole = updates.minRole;
+      if (updates.minHierarchy !== undefined)
+        panel.minHierarchy = updates.minHierarchy;
+      if (updates.isActive !== undefined) panel.isActive = updates.isActive;
+      if (updates.companySlug !== undefined)
+        panel.companySlug = updates.companySlug;
+      return panel;
+    }
+    return null;
+  },
+
+  deletePanel: async (id: string) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        await prismaClient.systemPanel.delete({ where: { id } });
+        return true;
+      } catch (e) {
+        console.error("Prisma error deleting panel, falling back", e);
+      }
+    }
+    const idx = mockPanels.findIndex((p) => p.id === id);
+    if (idx !== -1) {
+      mockPanels.splice(idx, 1);
+      return true;
+    }
+    return false;
+  },
+
+  deleteDocument: async (id: string) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        await prismaClient.document.delete({ where: { id } });
+        return true;
+      } catch (e) {
+        console.error("Prisma error deleting document, falling back", e);
+      }
+    }
+    const idx = mockDocuments.findIndex((d) => d.id === id);
+    if (idx !== -1) {
+      mockDocuments.splice(idx, 1);
+      return true;
+    }
+    return false;
+  },
+
+  createAnnouncement: async (
+    ann: Omit<MockAnnouncement, "id" | "createdAt" | "updatedAt">,
+  ) => {
+    return dbSim.addAnnouncement(ann);
+  },
+
+  markAnnouncementAsRead: async (announcementId: string, userId: string) => {
+    return dbSim.markAnnouncementRead(announcementId, userId);
+  },
+
+  getAuditLogs: async () => {
+    return dbSim.getLogs();
+  },
+
+  createBusinessUnit: async (
+    bu: Omit<MockBusinessUnit, "id" | "createdAt" | "updatedAt">,
+  ) => {
+    return dbSim.addBusinessUnit(bu);
+  },
 };
 
 // Mock Business Units data
-const mockBusinessUnits: MockBusinessUnit[] = [
+const mockBusinessUnits: MockBusinessUnit[] = globalThis.__mockBusinessUnits ?? (globalThis.__mockBusinessUnits = [
   {
     id: "bu-1",
     name: "Borgo del Vino",
     slug: "borgo-del-vino",
     company: Company.BORGO,
-    description: "Primeiro condomínio vinícola da Região Serrana e Sudeste. Inspirado nas vilas da Toscana, integrando vinhedos próprios, hotel boutique, spa, enoteca e restaurante em um cenário espetacular.",
+    description:
+      "Primeiro condomínio vinícola da Região Serrana e Sudeste. Inspirado nas vilas da Toscana, integrando vinhedos próprios, hotel boutique, spa, enoteca e restaurante em um cenário espetacular.",
     logo: "",
     coverImage: "",
     address: "Estrada de Areal, Km 12 - Areal, RJ",
@@ -2033,13 +2678,14 @@ const mockBusinessUnits: MockBusinessUnit[] = [
         name: "Borgo del Vino - Parceiros",
         url: "https://borgodelvino.com.br/parceiros",
         icon: "Wine",
-        description: "Portal e area de parceiros do empreendimento Borgo del Vino.",
+        description:
+          "Portal e area de parceiros do empreendimento Borgo del Vino.",
         category: "CRM",
         isExternal: true,
         order: 0,
         isActive: true,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       },
       {
         id: "tool-mock-2",
@@ -2047,14 +2693,15 @@ const mockBusinessUnits: MockBusinessUnit[] = [
         name: "Borgo del Vino - Painel Admin",
         url: "https://borgodelvino.com.br/Adminborgo",
         icon: "Wine",
-        description: "Painel administrativo para gestao interna do Borgo del Vino.",
+        description:
+          "Painel administrativo para gestao interna do Borgo del Vino.",
         category: "ERP",
         isExternal: true,
         order: 1,
         isActive: true,
         createdAt: new Date(),
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     ],
     socialLinks: [],
     analytics: [],
@@ -2066,7 +2713,8 @@ const mockBusinessUnits: MockBusinessUnit[] = [
     name: "Seven Itaipava",
     slug: "seven-itaipava",
     company: Company.AZUL,
-    description: "Empreendimento residencial de altíssimo padrão em Itaipava. Design contemporâneo, arquitetura integrada à natureza e sofisticação em uma das áreas mais valorizadas da Região Serrana.",
+    description:
+      "Empreendimento residencial de altíssimo padrão em Itaipava. Design contemporâneo, arquitetura integrada à natureza e sofisticação em uma das áreas mais valorizadas da Região Serrana.",
     logo: "",
     coverImage: "",
     address: "Estrada União e Indústria - Itaipava, Petrópolis, RJ",
@@ -2084,13 +2732,14 @@ const mockBusinessUnits: MockBusinessUnit[] = [
         name: "CRM - Grupo Azul",
         url: "https://azulcrm-dykanzmd.manus.space",
         icon: "Building2",
-        description: "Plataforma de CRM e gestao comercial do Grupo Azul Incorporacoes.",
+        description:
+          "Plataforma de CRM e gestao comercial do Grupo Azul Incorporacoes.",
         category: "CRM",
         isExternal: true,
         order: 0,
         isActive: true,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       },
       {
         id: "tool-mock-4",
@@ -2098,14 +2747,15 @@ const mockBusinessUnits: MockBusinessUnit[] = [
         name: "Formulario de Parcerias Azul",
         url: "https://formulario-azul.vercel.app/admin",
         icon: "Notebook",
-        description: "Painel administrativo de cadastros e parcerias da Azul Incorporacoes.",
+        description:
+          "Painel administrativo de cadastros e parcerias da Azul Incorporacoes.",
         category: "ERP",
         isExternal: true,
         order: 1,
         isActive: true,
         createdAt: new Date(),
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     ],
     socialLinks: [],
     analytics: [],
@@ -2117,7 +2767,8 @@ const mockBusinessUnits: MockBusinessUnit[] = [
     name: "Maple Bear Itaipava",
     slug: "maple-bear-itaipava",
     company: Company.MAPLE_BEAR,
-    description: "Unidade da rede de ensino bilíngue canadense Maple Bear em Itaipava, administrada pela holding educacional do grupo (Azul Canadá). Metodologia activa focada no desenvolvimento integral.",
+    description:
+      "Unidade da rede de ensino bilíngue canadense Maple Bear em Itaipava, administrada pela holding educacional do grupo (Azul Canadá). Metodologia activa focada no desenvolvimento integral.",
     logo: "",
     coverImage: "",
     address: "Estrada União e Indústria, Itaipava - Petrópolis, RJ",
@@ -2135,14 +2786,15 @@ const mockBusinessUnits: MockBusinessUnit[] = [
         name: "Maple Bear - Painel Admin",
         url: "https://formulario-maplebear.vercel.app/admin",
         icon: "Notebook",
-        description: "Painel administrativo de formularias e cadastros da Maple Bear.",
+        description:
+          "Painel administrativo de formularias e cadastros da Maple Bear.",
         category: "ERP",
         isExternal: true,
         order: 0,
         isActive: true,
         createdAt: new Date(),
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     ],
     socialLinks: [],
     analytics: [],
@@ -2154,7 +2806,8 @@ const mockBusinessUnits: MockBusinessUnit[] = [
     name: "Ville Saint Germain",
     slug: "ville-saint-germain",
     company: Company.AZUL,
-    description: "Condomínio residencial pronto para morar no bairro Valparaíso, Petrópolis. Townhouses e casas neoclássicas com completa infraestrutura de lazer, segurança e requinte.",
+    description:
+      "Condomínio residencial pronto para morar no bairro Valparaíso, Petrópolis. Townhouses e casas neoclássicas com completa infraestrutura de lazer, segurança e requinte.",
     logo: "",
     coverImage: "",
     address: "Rua Gonçalves Dias - Valparaíso, Petrópolis, RJ",
@@ -2172,13 +2825,14 @@ const mockBusinessUnits: MockBusinessUnit[] = [
         name: "CRM - Grupo Azul",
         url: "https://azulcrm-dykanzmd.manus.space",
         icon: "Building2",
-        description: "Plataforma de CRM e gestao comercial do Grupo Azul Incorporacoes.",
+        description:
+          "Plataforma de CRM e gestao comercial do Grupo Azul Incorporacoes.",
         category: "CRM",
         isExternal: true,
         order: 0,
         isActive: true,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       },
       {
         id: "tool-mock-7",
@@ -2186,18 +2840,118 @@ const mockBusinessUnits: MockBusinessUnit[] = [
         name: "Formulario de Parcerias Azul",
         url: "https://formulario-azul.vercel.app/admin",
         icon: "Notebook",
-        description: "Painel administrativo de cadastros e parcerias da Azul Incorporacoes.",
+        description:
+          "Painel administrativo de cadastros e parcerias da Azul Incorporacoes.",
         category: "ERP",
         isExternal: true,
         order: 1,
         isActive: true,
         createdAt: new Date(),
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     ],
     socialLinks: [],
     analytics: [],
     metaData: [],
     revenueData: [],
   },
-];
+]);
+
+// ============================================
+// UNIFIED DATABASE EXPORT
+// ============================================
+// This is the single source of truth for database access.
+// It automatically uses Prisma when connected, falls back to mock in development.
+// In production without DATABASE_URL, it will throw an error.
+// ============================================
+
+export const db = {
+  // Users
+  getUsers: dbSim.getUsers,
+  getUserByEmail: dbSim.getUserByEmail,
+  getUserById: dbSim.getUserById,
+  updateUserHierarchy: dbSim.updateUserHierarchy,
+  updateUserStatus: dbSim.updateUserStatus,
+  updateUserRole: dbSim.updateUserRole,
+  createUser: dbSim.createUser,
+  deleteUser: dbSim.deleteUser,
+
+  // Roles
+  getRoles: dbSim.getRoles,
+  createRole: dbSim.createRole,
+  updateRole: dbSim.updateRole,
+  deleteRole: dbSim.deleteRole,
+
+  // Panels/Tools
+  getPanels: dbSim.getPanels,
+  createPanel: dbSim.createPanel,
+  updatePanel: dbSim.updatePanel,
+  deletePanel: dbSim.deletePanel,
+
+  // Documents
+  getDocuments: dbSim.getDocuments,
+  addDocument: dbSim.addDocument,
+  deleteDocument: dbSim.deleteDocument,
+
+  // Announcements
+  getAnnouncements: dbSim.getAnnouncements,
+  getAnnouncementReadsByUser: dbSim.getAnnouncementReadsByUser,
+  createAnnouncement: dbSim.createAnnouncement,
+  updateAnnouncement: dbSim.updateAnnouncement,
+  deleteAnnouncement: dbSim.deleteAnnouncement,
+  markAnnouncementAsRead: dbSim.markAnnouncementAsRead,
+
+  // Audit Logs
+  getAuditLogs: dbSim.getAuditLogs,
+  addLog: dbSim.addLog,
+
+  // Business Units
+  getBusinessUnits: dbSim.getBusinessUnits,
+  getBusinessUnitBySlug: dbSim.getBusinessUnitBySlug,
+  createBusinessUnit: dbSim.createBusinessUnit,
+  updateBusinessUnit: dbSim.updateBusinessUnit,
+  deleteBusinessUnit: dbSim.deleteBusinessUnit,
+
+  // Business Unit Tools
+  getBusinessUnitTools: dbSim.getBusinessUnitTools,
+  addBusinessUnitTool: dbSim.addBusinessUnitTool,
+  updateBusinessUnitTool: dbSim.updateBusinessUnitTool,
+  deleteBusinessUnitTool: dbSim.deleteBusinessUnitTool,
+
+  // Business Unit Social Links
+  getBusinessUnitSocialLinks: dbSim.getBusinessUnitSocialLinks,
+  addBusinessUnitSocialLink: dbSim.addBusinessUnitSocialLink,
+  updateBusinessUnitSocialLink: dbSim.updateBusinessUnitSocialLink,
+  deleteBusinessUnitSocialLink: dbSim.deleteBusinessUnitSocialLink,
+
+  // Business Unit Analytics
+  getBusinessUnitAnalytics: dbSim.getBusinessUnitAnalytics,
+  addBusinessUnitAnalytics: dbSim.addBusinessUnitAnalytics,
+  updateBusinessUnitAnalytics: dbSim.updateBusinessUnitAnalytics,
+  deleteBusinessUnitAnalytics: dbSim.deleteBusinessUnitAnalytics,
+
+  // Business Unit Meta Data
+  getBusinessUnitMetaData: dbSim.getBusinessUnitMetaData,
+  addBusinessUnitMetaData: dbSim.addBusinessUnitMetaData,
+  updateBusinessUnitMetaData: dbSim.updateBusinessUnitMetaData,
+  deleteBusinessUnitMetaData: dbSim.deleteBusinessUnitMetaData,
+
+  // Business Unit Revenue
+  getBusinessUnitRevenue: dbSim.getBusinessUnitRevenue,
+  addBusinessUnitRevenue: dbSim.addBusinessUnitRevenue,
+  updateBusinessUnitRevenue: dbSim.updateBusinessUnitRevenue,
+  deleteBusinessUnitRevenue: dbSim.deleteBusinessUnitRevenue,
+
+  // Company Config
+  getCompanies: dbSim.getCompanies,
+  createCompany: dbSim.createCompany,
+  updateCompany: dbSim.updateCompany,
+  deleteCompany: dbSim.deleteCompany,
+
+  // Sync
+  syncBusinessUnitData: dbSim.syncBusinessUnitData,
+  syncAllBusinessUnits: dbSim.syncAllBusinessUnits,
+};
+
+// Type export for consumers
+export type Database = typeof db;

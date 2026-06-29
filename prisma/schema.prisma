@@ -28,6 +28,7 @@ model User {
   email          String?    @unique
   emailVerified  DateTime?
   image          String?
+  password       String?
   role           String     @default("VIEWER") // References RoleConfig.name
   hierarchyLevel Int        @default(3)
   company        Company    @default(CENTRAL)
@@ -46,10 +47,11 @@ model SystemPanel {
   description   String
   url           String
   icon          String
-  category      Company
+  category      String
   minRole       String   @default("VIEWER")
   minHierarchy  Int      @default(3)
   isActive      Boolean  @default(true)
+  companySlug   String?
   createdAt     DateTime @default(now())
 }
 

@@ -1,0 +1,503 @@
+{
+  "users": [
+    {
+      "id": "user-director",
+      "name": "Diretor Grupo Azul",
+      "email": "diretor@grupoazul.com.br",
+      "image": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120",
+      "role": "ADMIN",
+      "hierarchyLevel": 1,
+      "company": "CENTRAL",
+      "status": "ACTIVE",
+      "createdAt": "2026-06-26T19:32:06.621Z"
+    },
+    {
+      "id": "user-admin",
+      "name": "Administrador Central",
+      "email": "admin@grupoazul.com.br",
+      "image": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120",
+      "role": "ADMIN",
+      "hierarchyLevel": 1,
+      "company": "CENTRAL",
+      "status": "ACTIVE",
+      "createdAt": "2026-06-26T19:32:06.621Z"
+    },
+    {
+      "id": "user-borgo",
+      "name": "Gerente Borgo del Vin",
+      "email": "gerente.borgo@borgodelvin.com.br",
+      "image": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=120",
+      "role": "COORDINATOR",
+      "hierarchyLevel": 2,
+      "company": "BORGO",
+      "status": "ACTIVE",
+      "createdAt": "2026-06-26T19:32:06.621Z"
+    },
+    {
+      "id": "user-maple",
+      "name": "Coordenador Maple Bear",
+      "email": "coordenador.maple@maplebear.com.br",
+      "image": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=120",
+      "role": "COORDINATOR",
+      "hierarchyLevel": 2,
+      "company": "MAPLE_BEAR",
+      "status": "ACTIVE",
+      "createdAt": "2026-06-26T19:32:06.621Z"
+    },
+    {
+      "id": "user-viewer",
+      "name": "Operador Azul",
+      "email": "operador.azul@azulinc.com.br",
+      "image": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=120",
+      "role": "VIEWER",
+      "hierarchyLevel": 3,
+      "company": "AZUL",
+      "status": "ACTIVE",
+      "createdAt": "2026-06-26T19:32:06.621Z"
+    }
+  ],
+  "companies": [
+    {
+      "id": "comp-borgo",
+      "name": "Borgo del Vino",
+      "slug": "comp-borgo-del-vino",
+      "color": "BORGO",
+      "isActive": true,
+      "showOnHome": true,
+      "order": 1,
+      "createdAt": "2026-06-26T19:44:08.237Z"
+    },
+    {
+      "id": "comp-maple",
+      "name": "Maple Bear",
+      "slug": "comp-maple-bear",
+      "color": "MAPLE_BEAR",
+      "isActive": true,
+      "showOnHome": true,
+      "order": 2,
+      "createdAt": "2026-06-26T19:44:08.299Z"
+    },
+    {
+      "id": "comp-azul",
+      "name": "Azul Incorporações",
+      "slug": "comp-azul-incorporacoes",
+      "color": "AZUL",
+      "isActive": true,
+      "showOnHome": true,
+      "order": 3,
+      "createdAt": "2026-06-26T19:44:08.357Z"
+    }
+  ],
+  "panels": [
+    {
+      "id": "panel-1",
+      "name": "CRM - Grupo Azul",
+      "description": "Plataforma de CRM e gestao comercial do Grupo Azul Incorporacoes.",
+      "url": "https://azulcrm-dykanzmd.manus.space",
+      "icon": "Building2",
+      "category": "AZUL",
+      "minRole": "COORDINATOR",
+      "minHierarchy": 2,
+      "isActive": true,
+      "companySlug": null,
+      "createdAt": "2026-06-23T03:09:53.940Z"
+    },
+    {
+      "id": "panel-2",
+      "name": "Borgo del Vino - Parceiros",
+      "description": "Portal e area de parceiros do empreendimento Borgo del Vino.",
+      "url": "https://borgodelvino.com.br/parceiros",
+      "icon": "Wine",
+      "category": "BORGO",
+      "minRole": "VIEWER",
+      "minHierarchy": 3,
+      "isActive": true,
+      "companySlug": null,
+      "createdAt": "2026-06-23T03:09:54.217Z"
+    },
+    {
+      "id": "panel-3",
+      "name": "Borgo del Vino - Painel Admin",
+      "description": "Painel administrativo para gestao interna do Borgo del Vino.",
+      "url": "https://borgodelvino.com.br/Adminborgo",
+      "icon": "Wine",
+      "category": "BORGO",
+      "minRole": "COORDINATOR",
+      "minHierarchy": 2,
+      "isActive": true,
+      "companySlug": null,
+      "createdAt": "2026-06-23T03:09:54.428Z"
+    },
+    {
+      "id": "panel-4",
+      "name": "Maple Bear - Painel Admin",
+      "description": "Painel administrativo de formularias e cadastros da Maple Bear.",
+      "url": "https://formulario-maplebear.vercel.app/admin",
+      "icon": "Notebook",
+      "category": "MAPLE_BEAR",
+      "minRole": "COORDINATOR",
+      "minHierarchy": 2,
+      "isActive": true,
+      "companySlug": null,
+      "createdAt": "2026-06-23T03:09:54.637Z"
+    },
+    {
+      "id": "panel-5",
+      "name": "Central Azul - Politicas & Logs",
+      "description": "Monitoramento de seguranca de acessos e edicao de politicas da Central.",
+      "url": "/dashboard/seguranca",
+      "icon": "ShieldAlert",
+      "category": "CENTRAL",
+      "minRole": "ADMIN",
+      "minHierarchy": 1,
+      "isActive": true,
+      "companySlug": null,
+      "createdAt": "2026-06-23T03:09:54.852Z"
+    },
+    {
+      "id": "panel-6",
+      "name": "Formulario de Parcerias Azul",
+      "description": "Painel administrativo de cadastros e parcerias da Azul Incorporacoes.",
+      "url": "https://formulario-azul.vercel.app/admin",
+      "icon": "Notebook",
+      "category": "AZUL",
+      "minRole": "COORDINATOR",
+      "minHierarchy": 2,
+      "isActive": true,
+      "companySlug": null,
+      "createdAt": "2026-06-23T03:09:55.062Z"
+    }
+  ],
+  "documents": [
+    {
+      "id": "doc-1",
+      "title": "Diretrizes de Seguranca da Informacao 2026",
+      "description": "Manual de politicas de acesso, senhas e conformidade digital do Grupo Azul.",
+      "fileUrl": "#",
+      "fileSize": 2450000,
+      "fileType": "application/pdf",
+      "category": "CENTRAL",
+      "minHierarchyLevel": 3,
+      "uploadedById": "user-director",
+      "uploadedByName": "Diretor Grupo Azul",
+      "createdAt": "2026-06-21T20:30:38.093Z"
+    },
+    {
+      "id": "doc-2",
+      "title": "Relatorio de Vendas Borgo del Vin - Q1 2026",
+      "description": "Acompanhamento comercial, lotes negociados e projecoes de faturamento.",
+      "fileUrl": "#",
+      "fileSize": 4200000,
+      "fileType": "application/pdf",
+      "category": "BORGO",
+      "minHierarchyLevel": 2,
+      "uploadedById": "user-borgo",
+      "uploadedByName": "Gerente Borgo del Vin",
+      "createdAt": "2026-06-24T20:30:38.093Z"
+    },
+    {
+      "id": "doc-3",
+      "title": "Planejamento Pedagogico Maple Bear - Semestre 2",
+      "description": "Calendario de atividades, grade curricular e metas de expansao.",
+      "fileUrl": "#",
+      "fileSize": 1800000,
+      "fileType": "application/pdf",
+      "category": "MAPLE_BEAR",
+      "minHierarchyLevel": 3,
+      "uploadedById": "user-maple",
+      "uploadedByName": "Coordenador Maple Bear",
+      "createdAt": "2026-06-16T20:30:38.093Z"
+    }
+  ],
+  "logs": [
+    {
+      "id": "log-1",
+      "userId": "user-director",
+      "userName": "Diretor Grupo Azul",
+      "action": "LOGIN",
+      "details": "Autenticacao realizada com sucesso via Outlook (Entra ID)",
+      "ipAddress": "192.168.1.10",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+      "createdAt": "2026-06-26T19:30:38.093Z"
+    },
+    {
+      "id": "log-2",
+      "userId": "user-director",
+      "userName": "Diretor Grupo Azul",
+      "action": "ALTERAR_HIERARQUIA",
+      "details": "Alterou o nivel de acesso de 'Coordenador Maple Bear' para Nivel 2",
+      "ipAddress": "192.168.1.10",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+      "createdAt": "2026-06-26T19:45:38.093Z"
+    },
+    {
+      "id": "log-3",
+      "userId": "user-borgo",
+      "userName": "Gerente Borgo del Vin",
+      "action": "ACESSO_PAINEL",
+      "details": "Acessou o painel 'Borgo del Vin - CRM & Vendas'",
+      "ipAddress": "187.32.45.122",
+      "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15",
+      "createdAt": "2026-06-26T20:10:38.093Z"
+    }
+  ],
+  "roles": [
+    {
+      "id": "cmqi97ff40000voheeu4qmfhm",
+      "name": "ADMIN",
+      "displayName": "Direcao Geral",
+      "hierarchyLevel": 1,
+      "createdAt": "2026-06-17T15:56:45.137Z",
+      "updatedAt": "2026-06-17T15:56:45.137Z"
+    },
+    {
+      "id": "cmqi97flw0001vohefwvvp7x4",
+      "name": "COORDINATOR",
+      "displayName": "Gerencia",
+      "hierarchyLevel": 2,
+      "createdAt": "2026-06-17T15:56:45.380Z",
+      "updatedAt": "2026-06-17T15:56:45.380Z"
+    },
+    {
+      "id": "cmqi97fsr0002vohe33jwg1ac",
+      "name": "VIEWER",
+      "displayName": "Operacional",
+      "hierarchyLevel": 3,
+      "createdAt": "2026-06-17T15:56:45.627Z",
+      "updatedAt": "2026-06-17T15:56:45.627Z"
+    }
+  ],
+  "announcements": [
+    {
+      "id": "ann-1",
+      "title": "Nova integração de Segurança",
+      "content": "Todas as credenciais de ferramentas agora estão integradas com o token ativo do Outlook profissional. Não é mais necessário login separado para acessar os painéis.",
+      "priority": "IMPORTANT",
+      "targetCompanies": "",
+      "expiresAt": null,
+      "isPinned": true,
+      "isActive": true,
+      "createdById": "user-director",
+      "createdAt": "2026-06-24T20:30:38.093Z",
+      "updatedAt": "2026-06-24T20:30:38.093Z"
+    },
+    {
+      "id": "ann-2",
+      "title": "Manutenção Hostinger MySQL",
+      "content": "Manutenção programada do banco de dados na madrugada de domingo das 02:00 às 04:00. A CentralAzul CentralAzul pode ficar indisponível neste período.",
+      "priority": "WARNING",
+      "targetCompanies": "",
+      "expiresAt": "2026-07-01T20:30:38.093Z",
+      "isPinned": false,
+      "isActive": true,
+      "createdById": "user-admin",
+      "createdAt": "2026-06-25T20:30:38.093Z",
+      "updatedAt": "2026-06-25T20:30:38.093Z"
+    },
+    {
+      "id": "ann-3",
+      "title": "Atualização de Políticas de Acesso",
+      "content": "Foram atualizadas novas diretrizes de segurança da informação. Todos os colaboradores devem revisar o documento 'Diretrizes de Segurança da Informação 2026' disponível no Drive.",
+      "priority": "INFO",
+      "targetCompanies": "",
+      "expiresAt": "2026-07-26T20:30:38.093Z",
+      "isPinned": false,
+      "isActive": true,
+      "createdById": "user-director",
+      "createdAt": "2026-06-21T20:30:38.093Z",
+      "updatedAt": "2026-06-21T20:30:38.093Z"
+    }
+  ],
+  "businessUnits": [
+    {
+      "id": "bu-1",
+      "name": "Borgo del Vino",
+      "slug": "borgo-del-vino",
+      "company": "BORGO",
+      "description": "Primeiro condomínio vinícola da Região Serrana e Sudeste. Inspirado nas vilas da Toscana, integrando vinhedos próprios, hotel boutique, spa, enoteca e restaurante em um cenário espetacular.",
+      "logo": "",
+      "coverImage": "",
+      "address": "Estrada de Areal, Km 12 - Areal, RJ",
+      "phone": "(24) 2232-0024",
+      "email": "contato@borgodelvino.com.br",
+      "website": "https://borgodelvino.com.br",
+      "isActive": true,
+      "order": 1,
+      "createdAt": "2026-04-27T20:30:38.137Z",
+      "updatedAt": "2026-06-26T20:30:38.137Z",
+      "tools": [
+        {
+          "id": "tool-mock-1",
+          "businessUnitId": "bu-1",
+          "name": "Borgo del Vino - Parceiros",
+          "url": "https://borgodelvino.com.br/parceiros",
+          "icon": "Wine",
+          "description": "Portal e area de parceiros do empreendimento Borgo del Vino.",
+          "category": "CRM",
+          "isExternal": true,
+          "order": 0,
+          "isActive": true,
+          "createdAt": "2026-06-26T20:30:38.137Z",
+          "updatedAt": "2026-06-26T20:30:38.137Z"
+        },
+        {
+          "id": "tool-mock-2",
+          "businessUnitId": "bu-1",
+          "name": "Borgo del Vino - Painel Admin",
+          "url": "https://borgodelvino.com.br/Adminborgo",
+          "icon": "Wine",
+          "description": "Painel administrativo para gestao interna do Borgo del Vino.",
+          "category": "ERP",
+          "isExternal": true,
+          "order": 1,
+          "isActive": true,
+          "createdAt": "2026-06-26T20:30:38.137Z",
+          "updatedAt": "2026-06-26T20:30:38.137Z"
+        }
+      ],
+      "socialLinks": [],
+      "analytics": [],
+      "metaData": [],
+      "revenueData": []
+    },
+    {
+      "id": "bu-2",
+      "name": "Seven Itaipava",
+      "slug": "seven-itaipava",
+      "company": "AZUL",
+      "description": "Empreendimento residencial de altíssimo padrão em Itaipava. Design contemporâneo, arquitetura integrada à natureza e sofisticação em uma das áreas mais valorizadas da Região Serrana.",
+      "logo": "",
+      "coverImage": "",
+      "address": "Estrada União e Indústria - Itaipava, Petrópolis, RJ",
+      "phone": "(24) 2232-0024",
+      "email": "contato@azulincorporacoes.com.br",
+      "website": "https://azulincorporacoes.com.br",
+      "isActive": true,
+      "order": 2,
+      "createdAt": "2026-05-27T20:30:38.137Z",
+      "updatedAt": "2026-06-26T20:30:38.137Z",
+      "tools": [
+        {
+          "id": "tool-mock-3",
+          "businessUnitId": "bu-2",
+          "name": "CRM - Grupo Azul",
+          "url": "https://azulcrm-dykanzmd.manus.space",
+          "icon": "Building2",
+          "description": "Plataforma de CRM e gestao comercial do Grupo Azul Incorporacoes.",
+          "category": "CRM",
+          "isExternal": true,
+          "order": 0,
+          "isActive": true,
+          "createdAt": "2026-06-26T20:30:38.137Z",
+          "updatedAt": "2026-06-26T20:30:38.137Z"
+        },
+        {
+          "id": "tool-mock-4",
+          "businessUnitId": "bu-2",
+          "name": "Formulario de Parcerias Azul",
+          "url": "https://formulario-azul.vercel.app/admin",
+          "icon": "Notebook",
+          "description": "Painel administrativo de cadastros e parcerias da Azul Incorporacoes.",
+          "category": "ERP",
+          "isExternal": true,
+          "order": 1,
+          "isActive": true,
+          "createdAt": "2026-06-26T20:30:38.137Z",
+          "updatedAt": "2026-06-26T20:30:38.137Z"
+        }
+      ],
+      "socialLinks": [],
+      "analytics": [],
+      "metaData": [],
+      "revenueData": []
+    },
+    {
+      "id": "bu-3",
+      "name": "Maple Bear Itaipava",
+      "slug": "maple-bear-itaipava",
+      "company": "MAPLE_BEAR",
+      "description": "Unidade da rede de ensino bilíngue canadense Maple Bear em Itaipava, administrada pela holding educacional do grupo (Azul Canadá). Metodologia activa focada no desenvolvimento integral.",
+      "logo": "",
+      "coverImage": "",
+      "address": "Estrada União e Indústria, Itaipava - Petrópolis, RJ",
+      "phone": "(24) 2232-0024",
+      "email": "itaipava@maplebear.com.br",
+      "website": "https://maplebear.com.br",
+      "isActive": true,
+      "order": 3,
+      "createdAt": "2026-05-12T20:30:38.137Z",
+      "updatedAt": "2026-06-26T20:30:38.137Z",
+      "tools": [
+        {
+          "id": "tool-mock-5",
+          "businessUnitId": "bu-3",
+          "name": "Maple Bear - Painel Admin",
+          "url": "https://formulario-maplebear.vercel.app/admin",
+          "icon": "Notebook",
+          "description": "Painel administrativo de formularias e cadastros da Maple Bear.",
+          "category": "ERP",
+          "isExternal": true,
+          "order": 0,
+          "isActive": true,
+          "createdAt": "2026-06-26T20:30:38.137Z",
+          "updatedAt": "2026-06-26T20:30:38.137Z"
+        }
+      ],
+      "socialLinks": [],
+      "analytics": [],
+      "metaData": [],
+      "revenueData": []
+    },
+    {
+      "id": "bu-4",
+      "name": "Ville Saint Germain",
+      "slug": "ville-saint-germain",
+      "company": "AZUL",
+      "description": "Condomínio residencial pronto para morar no bairro Valparaíso, Petrópolis. Townhouses e casas neoclássicas com completa infraestrutura de lazer, segurança e requinte.",
+      "logo": "",
+      "coverImage": "",
+      "address": "Rua Gonçalves Dias - Valparaíso, Petrópolis, RJ",
+      "phone": "(24) 2232-0024",
+      "email": "vendas@azulincorporacoes.com.br",
+      "website": "https://azulincorporacoes.com.br",
+      "isActive": true,
+      "order": 4,
+      "createdAt": "2026-06-06T20:30:38.137Z",
+      "updatedAt": "2026-06-26T20:30:38.137Z",
+      "tools": [
+        {
+          "id": "tool-mock-6",
+          "businessUnitId": "bu-4",
+          "name": "CRM - Grupo Azul",
+          "url": "https://azulcrm-dykanzmd.manus.space",
+          "icon": "Building2",
+          "description": "Plataforma de CRM e gestao comercial do Grupo Azul Incorporacoes.",
+          "category": "CRM",
+          "isExternal": true,
+          "order": 0,
+          "isActive": true,
+          "createdAt": "2026-06-26T20:30:38.137Z",
+          "updatedAt": "2026-06-26T20:30:38.137Z"
+        },
+        {
+          "id": "tool-mock-7",
+          "businessUnitId": "bu-4",
+          "name": "Formulario de Parcerias Azul",
+          "url": "https://formulario-azul.vercel.app/admin",
+          "icon": "Notebook",
+          "description": "Painel administrativo de cadastros e parcerias da Azul Incorporacoes.",
+          "category": "ERP",
+          "isExternal": true,
+          "order": 1,
+          "isActive": true,
+          "createdAt": "2026-06-26T20:30:38.137Z",
+          "updatedAt": "2026-06-26T20:30:38.137Z"
+        }
+      ],
+      "socialLinks": [],
+      "analytics": [],
+      "metaData": [],
+      "revenueData": []
+    }
+  ]
+}
