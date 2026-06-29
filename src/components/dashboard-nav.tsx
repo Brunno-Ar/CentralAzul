@@ -47,6 +47,27 @@ export default function DashboardNav() {
     fetchUnread();
   }, []);
 
+  const [menuPermissions, setMenuPermissions] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const fetchPermissions = async () => {
+      try {
+        const res = await fetch("/api/menu-permissions");
+        if (res.ok) {
+          const data = await res.json();
+          const mappings: Record<string, number> = {};
+          data.forEach((p: { href: string; minLevel: number }) => {
+            mappings[p.href] = p.minLevel;
+          });
+          setMenuPermissions(mappings);
+        }
+      } catch (err) {
+        console.error("Erro ao buscar permissoes do menu:", err);
+      }
+    };
+    fetchPermissions();
+  }, []);
+
   const navItems = [
     {
       name: "Painel Principal",
@@ -110,11 +131,10 @@ export default function DashboardNav() {
           {/* Navigation Links */}
           <div className="mt-8 flex flex-col gap-1.5">
             {navItems
-              .filter(
-                (item) =>
-                  item.allowedRoles.includes(userRole) &&
-                  userLevel <= item.minLevel,
-              )
+              .filter((item) => {
+                const requiredLevel = menuPermissions[item.href] ?? item.minLevel;
+                return userLevel <= requiredLevel;
+              })
               .map((item, idx) => {
                 const isActive = pathname === item.href;
                 const link = {

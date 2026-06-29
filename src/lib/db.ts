@@ -32,6 +32,8 @@ declare global {
   var __mockAnnouncementReads: MockAnnouncementRead[] | undefined;
   var __mockCompanies: MockCompany[] | undefined;
   var __mockBusinessUnits: MockBusinessUnit[] | undefined;
+  var __mockLevels: MockLevelConfig[] | undefined;
+  var __mockMenuPermissions: MockMenuPermission[] | undefined;
 }
 
 try {
@@ -271,6 +273,35 @@ export interface MockBusinessUnitRevenue {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface MockLevelConfig {
+  id: string;
+  level: number;
+  name: string;
+  createdAt: Date;
+}
+
+export interface MockMenuPermission {
+  href: string;
+  name: string;
+  minLevel: number;
+}
+
+const mockLevels: MockLevelConfig[] = globalThis.__mockLevels ?? (globalThis.__mockLevels = [
+  { id: "lvl-1", level: 1, name: "Direcao Geral", createdAt: new Date() },
+  { id: "lvl-2", level: 2, name: "Gerencia / Coordenacao", createdAt: new Date() },
+  { id: "lvl-3", level: 3, name: "Operacional", createdAt: new Date() },
+]);
+
+const mockMenuPermissions: MockMenuPermission[] = globalThis.__mockMenuPermissions ?? (globalThis.__mockMenuPermissions = [
+  { href: "/dashboard", name: "Painel Principal", minLevel: 3 },
+  { href: "/dashboard/ferramentas", name: "Ferramentas", minLevel: 3 },
+  { href: "/dashboard/comunicados", name: "Comunicados", minLevel: 3 },
+  { href: "/dashboard/unidades", name: "Unidades de Negocio", minLevel: 3 },
+  { href: "/dashboard/documentos", name: "Drive de Arquivos", minLevel: 3 },
+  { href: "/dashboard/empresas", name: "Empresas & Ferramentas", minLevel: 1 },
+  { href: "/dashboard/seguranca", name: "Seguranca & Niveis", minLevel: 1 },
+]);
 
 // Initial mock data (persisted via globalThis to survive hot reloads)
 const mockRoles: MockRoleConfig[] = globalThis.__mockRoles ?? (globalThis.__mockRoles = [
@@ -2650,6 +2681,43 @@ export const dbSim = {
   ) => {
     return dbSim.addBusinessUnit(bu);
   },
+
+  getLevels: async () => {
+    return mockLevels.sort((a, b) => a.level - b.level);
+  },
+
+  createLevel: async (level: { level: number; name: string }) => {
+    const newLvl: MockLevelConfig = {
+      id: "lvl-" + Math.random().toString(36).substr(2, 9),
+      level: level.level,
+      name: level.name,
+      createdAt: new Date(),
+    };
+    mockLevels.push(newLvl);
+    return newLvl;
+  },
+
+  deleteLevel: async (id: string) => {
+    const idx = mockLevels.findIndex((l) => l.id === id);
+    if (idx !== -1) {
+      mockLevels.splice(idx, 1);
+      return true;
+    }
+    return false;
+  },
+
+  getMenuPermissions: async () => {
+    return mockMenuPermissions;
+  },
+
+  updateMenuPermission: async (href: string, minLevel: number) => {
+    const permission = mockMenuPermissions.find((p) => p.href === href);
+    if (permission) {
+      permission.minLevel = minLevel;
+      return permission;
+    }
+    return null;
+  },
 };
 
 // Mock Business Units data
@@ -2951,6 +3019,15 @@ export const db = {
   // Sync
   syncBusinessUnitData: dbSim.syncBusinessUnitData,
   syncAllBusinessUnits: dbSim.syncAllBusinessUnits,
+
+  // Custom Levels
+  getLevels: dbSim.getLevels,
+  createLevel: dbSim.createLevel,
+  deleteLevel: dbSim.deleteLevel,
+
+  // Menu Permissions
+  getMenuPermissions: dbSim.getMenuPermissions,
+  updateMenuPermission: dbSim.updateMenuPermission,
 };
 
 // Type export for consumers
