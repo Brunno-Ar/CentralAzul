@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { dbSim, MockAnnouncement, MockAnnouncementRead } from "@/lib/db";
+import { db, MockAnnouncement, MockAnnouncementRead } from "@/lib/db";
 import { SessionUser } from "@/types/auth";
+import { 
+  validateRequest, 
+  validateSearchParams, 
+  paginationSchema,
+  createAnnouncementSchema 
+} from "@/lib/validation";
+import { rateLimit } from "@/lib/rate-limit";
 
-export async function GET() {
+async function handleGet(request: NextRequest) {
   try {
     const session = await auth();
     if (!session || !session.user) {
@@ -13,6 +20,15 @@ export async function GET() {
     const user = session.user as SessionUser;
     const userCompany = user.company;
 
+    // Validate pagination
+    const paginationValidation = validateSearchParams(
+      request.nextUrl.searchParams,
+      paginationSchema
+    );
+    if (!paginationValidation.success) {
+      return paginationValidation.error;
+    }
+
     // Buscar do banco
     let announcements: Array<
       { targetCompanies: string | null } & Omit<
@@ -20,8 +36,8 @@ export async function GET() {
         "targetCompanies"
       >
     > = [];
-    if (dbSim.getAnnouncements) {
-      announcements = await dbSim.getAnnouncements();
+    if (db.getAnnouncements) {
+      announcements = await db.getAnnouncements();
     }
 
     // Filtrar por empresa, expiração e status ativo
@@ -29,16 +45,7 @@ export async function GET() {
     const filtered = announcements
       .filter((a) => a.isActive)
       .filter((a) => !a.expiresAt || new Date(a.expiresAt) > now)
-      .filter((a) => {
-        // Filtrar por empresa alvo
-        if (a.targetCompanies && a.targetCompanies.trim()) {
-          const targetCompanies = a.targetCompanies
-            .split(",")
-            .map((c: string) => c.trim());
-          if (!targetCompanies.includes(userCompany)) return false;
-        }
-        return true;
-      })
+
       .sort((a, b) => {
         // Fixados primeiro, depois por data de criação
         if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
@@ -50,8 +57,8 @@ export async function GET() {
     // Verificar quais já foram lidos
     const userId = user.id;
     const readIds = new Set<string>();
-    if (dbSim.getAnnouncementReadsByUser) {
-      const reads = await dbSim.getAnnouncementReadsByUser(userId);
+    if (db.getAnnouncementReadsByUser) {
+      const reads = await db.getAnnouncementReadsByUser(userId);
       reads.forEach((r: MockAnnouncementRead) => readIds.add(r.announcementId));
     }
 
@@ -70,7 +77,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   try {
     const session = await auth();
     if (!session || !session.user) {
@@ -88,25 +95,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
-    const { title, content, priority, targetCompanies, expiresAt, isPinned } =
-      body;
-
-    if (!title || !content) {
-      return NextResponse.json(
-        { error: "Título e conteúdo são obrigatórios" },
-        { status: 400 },
-      );
+    // Validate request body with Zod
+    const validation = await validateRequest(request, createAnnouncementSchema);
+    if (!validation.success) {
+      return validation.error;
     }
 
-    if (!dbSim.addAnnouncement) {
+    const { title, content, priority, targetCompanies, expiresAt, isPinned } = validation.data;
+
+    if (!db.createAnnouncement) {
       return NextResponse.json(
         { error: "Função não implementada" },
         { status: 500 },
       );
     }
 
-    const newAnnouncement = await dbSim.addAnnouncement({
+    const newAnnouncement = await db.createAnnouncement({
       title,
       content,
       priority: priority || "INFO",
@@ -118,7 +122,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Log de auditoria
-    await dbSim.addLog(
+    await db.addLog(
       user.id,
       "CRIAR_ANUNCIO",
       `Criou anúncio: ${title} (${priority})`,
@@ -134,4 +138,17 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
+}
+
+// Use method-aware rate limiting
+export async function GET(request: NextRequest) {
+  const limiterResponse = await rateLimit(request, "api");
+  if (limiterResponse) return limiterResponse;
+  return handleGet(request);
+}
+
+export async function POST(request: NextRequest) {
+  const limiterResponse = await rateLimit(request, "mutation");
+  if (limiterResponse) return limiterResponse;
+  return handlePost(request);
 }

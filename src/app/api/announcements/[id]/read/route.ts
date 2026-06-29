@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { dbSim } from "@/lib/db";
+import { db } from "@/lib/db";
 import { SessionUser } from "@/types/auth";
 
 export async function POST(
@@ -17,7 +17,7 @@ export async function POST(
     const userId = user.id;
     const { id } = await params;
 
-    await dbSim.markAnnouncementRead(id, userId);
+    await db.markAnnouncementAsRead(id, userId);
 
     return NextResponse.json({ success: true });
   } catch (error) {

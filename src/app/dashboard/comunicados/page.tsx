@@ -26,6 +26,7 @@ import { useForm, Resolver, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { SessionUser } from "@/types/auth";
+import { PageWrapper } from "@/components/PageWrapper";
 
 interface Announcement {
   id: string;
@@ -322,7 +323,8 @@ export default function ComunicadosPage() {
     : selectedCompanies.join(",");
 
   return (
-    <div className="space-y-6 text-brand-terciar">
+    <PageWrapper title="Comunicados & Avisos">
+      <div className="space-y-6 text-brand-terciar">
       {/* Title & Action */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -788,5 +790,6 @@ export default function ComunicadosPage() {
         </div>
       )}
     </div>
+    </PageWrapper>
   );
 }
