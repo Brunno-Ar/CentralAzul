@@ -637,7 +637,7 @@ export default function SegurancaPage() {
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1.5">
                           <select
                             value={u.role}
-                            disabled={updatingUserId === u.id || u.id === currentUser.id}
+                            disabled={updatingUserId === u.id || u.id === currentUser?.id}
                             onChange={(e) => {
                               handleUpdateUser(u.id, { role: e.target.value });
                             }}
@@ -657,7 +657,7 @@ export default function SegurancaPage() {
                       <td className="py-3 px-2">
                         <select
                           value={u.status}
-                          disabled={updatingUserId === u.id || u.id === currentUser.id}
+                          disabled={updatingUserId === u.id || u.id === currentUser?.id}
                           onChange={(e) => handleUpdateUser(u.id, { status: e.target.value })}
                           className={`bg-brand-principal/40 border border-brand-terciar/15 text-[10px] rounded px-1.5 py-0.5 focus:outline-none cursor-pointer focus:bg-white ${
                             u.status === "ACTIVE" ? "text-emerald-700 font-bold" : "text-red-700 font-bold"
