@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { dbSim } from "@/lib/db";
+import { db } from "@/lib/db";
 import { SessionUser } from "@/types/auth";
 
 export async function POST(
@@ -23,22 +23,23 @@ export async function POST(
     const body = await request.json();
     const { type, data } = body;
 
-    const businessUnit = await dbSim.getBusinessUnitBySlug(slug);
+    const businessUnit = await db.getBusinessUnitBySlug(slug);
     if (!businessUnit) {
       return NextResponse.json({ error: "Unidade não encontrada" }, { status: 404 });
     }
 
+
+
     let result = null;
-    const dbSimAny = dbSim as any;
 
     if (type === "tool") {
-      result = await dbSimAny.addBusinessUnitTool(businessUnit.id, data);
+      result = await db.addBusinessUnitTool(businessUnit.id, data);
     } else if (type === "social") {
-      result = await dbSimAny.addBusinessUnitSocialLink(businessUnit.id, data);
+      result = await db.addBusinessUnitSocialLink(businessUnit.id, data);
     } else if (type === "analytics") {
-      result = await dbSimAny.addBusinessUnitAnalytics(businessUnit.id, data);
+      result = await db.addBusinessUnitAnalytics(businessUnit.id, data);
     } else if (type === "revenue") {
-      result = await dbSimAny.addBusinessUnitRevenue(businessUnit.id, data);
+      result = await db.addBusinessUnitRevenue(businessUnit.id, data);
     } else {
       return NextResponse.json({ error: "Tipo de item inválido" }, { status: 400 });
     }
@@ -47,7 +48,7 @@ export async function POST(
       return NextResponse.json({ error: "Erro ao adicionar item" }, { status: 500 });
     }
 
-    await dbSim.addLog(
+    await db.addLog(
       user.id,
       "ADICIONAR_SUB_ITEM",
       `Adicionou item ${type} na unidade: ${businessUnit.name}`,
@@ -87,22 +88,23 @@ export async function DELETE(
       return NextResponse.json({ error: "Parâmetros type e id são obrigatórios" }, { status: 400 });
     }
 
-    const businessUnit = await dbSim.getBusinessUnitBySlug(slug);
+    const businessUnit = await db.getBusinessUnitBySlug(slug);
     if (!businessUnit) {
       return NextResponse.json({ error: "Unidade não encontrada" }, { status: 404 });
     }
 
+
+
     let deleted = false;
-    const dbSimAny = dbSim as any;
 
     if (type === "tool") {
-      deleted = await dbSimAny.deleteBusinessUnitTool(id);
+      deleted = await db.deleteBusinessUnitTool(id);
     } else if (type === "social") {
-      deleted = await dbSimAny.deleteBusinessUnitSocialLink(id);
+      deleted = await db.deleteBusinessUnitSocialLink(id);
     } else if (type === "analytics") {
-      deleted = await dbSimAny.deleteBusinessUnitAnalytics(id);
+      deleted = await db.deleteBusinessUnitAnalytics(id);
     } else if (type === "revenue") {
-      deleted = await dbSimAny.deleteBusinessUnitRevenue(id);
+      deleted = await db.deleteBusinessUnitRevenue(id);
     } else {
       return NextResponse.json({ error: "Tipo de item inválido" }, { status: 400 });
     }
@@ -111,7 +113,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Erro ao remover item ou item não encontrado" }, { status: 500 });
     }
 
-    await dbSim.addLog(
+    await db.addLog(
       user.id,
       "REMOVER_SUB_ITEM",
       `Removeu item ${type} (ID: ${id}) na unidade: ${businessUnit.name}`,

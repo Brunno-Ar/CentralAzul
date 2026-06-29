@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { Building2, MapPin, Phone, Mail, Plus, Search, X } from "lucide-react";
 import { SessionUser } from "@/types/auth";
+import { PageWrapper } from "@/components/PageWrapper";
 
 interface BusinessUnitTool {
   id: string;
@@ -225,7 +226,8 @@ export default function BusinessUnitsListPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <PageWrapper title="Unidades de Negócio">
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -284,7 +286,7 @@ export default function BusinessUnitsListPage() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm"
-          onClick={() => setShowCreateModal(false)}
+          onMouseDown={() => setShowCreateModal(false)}
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -292,7 +294,7 @@ export default function BusinessUnitsListPage() {
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
             className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-brand-terciar/10 overflow-hidden max-h-[90vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between p-4 border-b border-brand-terciar/10">
               <h2 className="text-sm font-bold text-brand-extra1 flex items-center gap-2">
@@ -595,5 +597,6 @@ export default function BusinessUnitsListPage() {
         </div>
       )}
     </div>
+    </PageWrapper>
   );
 }

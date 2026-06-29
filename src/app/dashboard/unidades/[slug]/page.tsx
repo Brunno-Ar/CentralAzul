@@ -175,7 +175,7 @@ export default function BusinessUnitDetailPage() {
   const [showAddAnalyticsModal, setShowAddAnalyticsModal] = useState(false);
   const [showAddRevenueModal, setShowAddRevenueModal] = useState(false);
 
-  const handleAddItem = async (type: string, data: any) => {
+  const handleAddItem = async (type: string, data: unknown) => {
     try {
       const res = await fetch(`/api/business-units/${slug}/items`, {
         method: "POST",
@@ -533,7 +533,7 @@ export default function BusinessUnitDetailPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-white rounded-xl p-1 border border-brand-terciar/10">
+      <div className="flex gap-1 bg-white rounded-xl p-1 border border-brand-terciar/10 overflow-x-auto scrollbar-hide pb-1">
         {[
           { id: "overview", label: "Visão Geral", icon: Building2 },
           { id: "tools", label: "Ferramentas", icon: Settings },
@@ -544,7 +544,7 @@ export default function BusinessUnitDetailPage() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as typeof activeTab)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-all ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
               activeTab === tab.id
                 ? "bg-brand-secundar text-white shadow-sm"
                 : "text-brand-terciar/60 hover:text-brand-secundar hover:bg-brand-principal/20"
@@ -1002,7 +1002,7 @@ export default function BusinessUnitDetailPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowEditModal(false)}
+            onMouseDown={() => setShowEditModal(false)}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -1010,7 +1010,7 @@ export default function BusinessUnitDetailPage() {
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: "tween", duration: 0.2 }}
               className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-brand-terciar/10 overflow-hidden max-h-[90vh] flex flex-col transform-gpu"
-              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between p-4 border-b border-brand-terciar/10">
                 <h2 className="text-sm font-bold text-brand-extra1 flex items-center gap-2">
@@ -1195,7 +1195,7 @@ export default function BusinessUnitDetailPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowAddToolModal(false)}
+            onMouseDown={() => setShowAddToolModal(false)}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -1203,7 +1203,7 @@ export default function BusinessUnitDetailPage() {
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: "tween", duration: 0.2 }}
               className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-brand-terciar/10 overflow-hidden max-h-[90vh] flex flex-col transform-gpu"
-              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between p-4 border-b border-brand-terciar/10">
                 <h2 className="text-sm font-bold text-brand-extra1 flex items-center gap-2">
@@ -1276,7 +1276,7 @@ export default function BusinessUnitDetailPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowAddSocialModal(false)}
+            onMouseDown={() => setShowAddSocialModal(false)}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -1284,7 +1284,7 @@ export default function BusinessUnitDetailPage() {
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: "tween", duration: 0.2 }}
               className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-brand-terciar/10 overflow-hidden max-h-[90vh] flex flex-col transform-gpu"
-              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between p-4 border-b border-brand-terciar/10">
                 <h2 className="text-sm font-bold text-brand-extra1 flex items-center gap-2">
@@ -1355,7 +1355,7 @@ export default function BusinessUnitDetailPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowAddAnalyticsModal(false)}
+            onMouseDown={() => setShowAddAnalyticsModal(false)}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -1363,7 +1363,7 @@ export default function BusinessUnitDetailPage() {
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: "tween", duration: 0.2 }}
               className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-brand-terciar/10 overflow-hidden max-h-[90vh] flex flex-col transform-gpu"
-              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between p-4 border-b border-brand-terciar/10">
                 <h2 className="text-sm font-bold text-brand-extra1 flex items-center gap-2">
@@ -1442,7 +1442,7 @@ export default function BusinessUnitDetailPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowAddRevenueModal(false)}
+            onMouseDown={() => setShowAddRevenueModal(false)}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -1450,7 +1450,7 @@ export default function BusinessUnitDetailPage() {
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: "tween", duration: 0.2 }}
               className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-brand-terciar/10 overflow-hidden max-h-[90vh] flex flex-col transform-gpu"
-              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between p-4 border-b border-brand-terciar/10">
                 <h2 className="text-sm font-bold text-brand-extra1 flex items-center gap-2">
@@ -1582,7 +1582,7 @@ function ContactItem({
 
 function ToolCard({ tool, onDelete }: { tool: BusinessUnitTool; onDelete?: () => void }) {
   return (
-    <div className="relative group/tool">
+    <div className="relative group/tool pr-10">
       <a
         href={tool.url}
         target="_blank"
@@ -1612,7 +1612,7 @@ function ToolCard({ tool, onDelete }: { tool: BusinessUnitTool; onDelete?: () =>
             e.stopPropagation();
             onDelete();
           }}
-          className="absolute right-12 top-1/2 -translate-y-1/2 p-2 text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover/tool:opacity-100 transition-opacity"
+          className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover/tool:opacity-100 transition-opacity"
           title="Remover ferramenta"
         >
           <Trash2 className="w-3.5 h-3.5" />
@@ -1633,7 +1633,7 @@ function SocialCard({ social, onDelete }: { social: BusinessUnitSocialLink; onDe
   };
 
   return (
-    <div className="relative group/social">
+    <div className="relative group/social pr-10">
       <a
         href={social.url}
         target="_blank"
@@ -1673,7 +1673,7 @@ function SocialCard({ social, onDelete }: { social: BusinessUnitSocialLink; onDe
             e.stopPropagation();
             onDelete();
           }}
-          className="absolute right-12 top-1/2 -translate-y-1/2 p-2 text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover/social:opacity-100 transition-opacity"
+          className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover/social:opacity-100 transition-opacity"
           title="Remover rede social"
         >
           <Trash2 className="w-3.5 h-3.5" />

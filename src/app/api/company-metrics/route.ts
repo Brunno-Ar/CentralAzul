@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { dbSim } from "@/lib/db";
+import { db } from "@/lib/db";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const session = await auth();
     if (!session || !session.user) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
-    const businessUnits = await dbSim.getBusinessUnits();
+    const businessUnits = await db.getBusinessUnits();
 
     const borgoUnit = businessUnits.find(bu => bu.company === "BORGO");
     const mapleUnit = businessUnits.find(bu => bu.company === "MAPLE_BEAR");

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { dbSim } from "@/lib/db";
+import { db } from "@/lib/db";
 import { SessionUser } from "@/types/auth";
 
 export async function POST(
@@ -17,7 +17,7 @@ export async function POST(
     const { slug } = await params;
 
     // Check if the business unit exists
-    const businessUnit = await dbSim.getBusinessUnitBySlug(slug);
+    const businessUnit = await db.getBusinessUnitBySlug(slug);
     if (!businessUnit) {
       return NextResponse.json(
         { error: "Unidade não encontrada" },
@@ -25,15 +25,14 @@ export async function POST(
       );
     }
 
-    const syncFn = (dbSim as any).syncBusinessUnitData;
-    if (!syncFn) {
-      return NextResponse.json(
-        { error: "Função de sincronização não disponível" },
-        { status: 500 },
-      );
+    // Access control: only allow admins or coordinators (Level 1 or 2)
+    const userLevel = user.hierarchyLevel || 3;
+
+    if (userLevel > 2) {
+      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
     }
 
-    const success = await syncFn(slug);
+    const success = await db.syncBusinessUnitData(slug);
 
     if (!success) {
       return NextResponse.json(
@@ -43,7 +42,7 @@ export async function POST(
     }
 
     // Log de auditoria
-    await dbSim.addLog(
+    await db.addLog(
       user.id,
       "SINCRONIZAR_METRICAS",
       `Sincronizou métricas e redes sociais da unidade: ${businessUnit.name}`,

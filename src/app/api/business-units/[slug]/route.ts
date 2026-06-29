@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { dbSim } from "@/lib/db";
+import { db } from "@/lib/db";
 import { SessionUser } from "@/types/auth";
 
 export async function GET(
@@ -18,11 +18,11 @@ export async function GET(
     const userLevel = user.hierarchyLevel || 3;
     const userCompany = user.company;
 
-    if (!dbSim.getBusinessUnitBySlug) {
+    if (!db.getBusinessUnitBySlug) {
       return NextResponse.json({ error: "Não encontrado" }, { status: 404 });
     }
 
-    const businessUnit = await dbSim.getBusinessUnitBySlug(slug);
+    const businessUnit = await db.getBusinessUnitBySlug(slug);
 
     if (!businessUnit) {
       return NextResponse.json(
@@ -31,14 +31,7 @@ export async function GET(
       );
     }
 
-    // Check access
-    if (
-      userLevel > 1 &&
-      businessUnit.company !== userCompany &&
-      businessUnit.company !== "CENTRAL"
-    ) {
-      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
-    }
+
 
     return NextResponse.json(businessUnit);
   } catch (error) {
@@ -74,7 +67,7 @@ export async function PUT(
     const { slug } = await params;
     const body = await request.json();
 
-    if (!dbSim.updateBusinessUnit) {
+    if (!db.updateBusinessUnit) {
       return NextResponse.json(
         { error: "Função não implementada" },
         { status: 500 },
@@ -82,7 +75,7 @@ export async function PUT(
     }
 
     // Find the business unit first
-    const businessUnit = await dbSim.getBusinessUnitBySlug(slug);
+    const businessUnit = await db.getBusinessUnitBySlug(slug);
     if (!businessUnit) {
       return NextResponse.json(
         { error: "Unidade não encontrada" },
@@ -90,14 +83,14 @@ export async function PUT(
       );
     }
 
-    const updated = await dbSim.updateBusinessUnit(businessUnit.id, body);
+    const updated = await db.updateBusinessUnit(businessUnit.id, body);
 
     if (!updated) {
       return NextResponse.json({ error: "Erro ao atualizar" }, { status: 500 });
     }
 
     // Log de auditoria
-    await dbSim.addLog(
+    await db.addLog(
       user.id,
       "ATUALIZAR_UNIDADE_NEGOCIO",
       `Atualizou unidade de negócio: ${updated.name}`,
@@ -138,14 +131,14 @@ export async function DELETE(
 
     const { slug } = await params;
 
-    if (!dbSim.getBusinessUnitBySlug || !dbSim.deleteBusinessUnit) {
+    if (!db.getBusinessUnitBySlug || !db.deleteBusinessUnit) {
       return NextResponse.json(
         { error: "Função não implementada" },
         { status: 500 },
       );
     }
 
-    const businessUnit = await dbSim.getBusinessUnitBySlug(slug);
+    const businessUnit = await db.getBusinessUnitBySlug(slug);
     if (!businessUnit) {
       return NextResponse.json(
         { error: "Unidade não encontrada" },
@@ -153,14 +146,14 @@ export async function DELETE(
       );
     }
 
-    const deleted = await dbSim.deleteBusinessUnit(businessUnit.id);
+    const deleted = await db.deleteBusinessUnit(businessUnit.id);
 
     if (!deleted) {
       return NextResponse.json({ error: "Erro ao deletar" }, { status: 500 });
     }
 
     // Log de auditoria
-    await dbSim.addLog(
+    await db.addLog(
       user.id,
       "DELETAR_UNIDADE_NEGOCIO",
       `Removeu unidade de negócio: ${businessUnit.name}`,

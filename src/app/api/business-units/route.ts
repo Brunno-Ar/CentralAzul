@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { dbSim } from "@/lib/db";
+import { db } from "@/lib/db";
 import { SessionUser } from "@/types/auth";
+import { 
+  validateRequest, 
+  validateSearchParams, 
+  paginationSchema,
+  createBusinessUnitSchema 
+} from "@/lib/validation";
+import { rateLimit } from "@/lib/rate-limit";
 
-export async function GET() {
+async function handleGet(request: NextRequest) {
   try {
     const session = await auth();
     if (!session || !session.user) {
@@ -12,25 +19,22 @@ export async function GET() {
 
     const user = session.user as SessionUser;
 
-    if (!dbSim.getBusinessUnits) {
+    // Validate pagination
+    const paginationValidation = validateSearchParams(
+      request.nextUrl.searchParams,
+      paginationSchema
+    );
+    if (!paginationValidation.success) {
+      return paginationValidation.error;
+    }
+
+    if (!db.getBusinessUnits) {
       return NextResponse.json([]);
     }
 
-    const businessUnits = await dbSim.getBusinessUnits();
+    const businessUnits = await db.getBusinessUnits();
 
-    // Filter by user's company if not admin
-    const userLevel = user.hierarchyLevel || 3;
-    const userCompany = user.company;
-
-    const filtered =
-      userLevel <= 1
-        ? businessUnits
-        : businessUnits.filter(
-            (bu: { company: string }) =>
-              bu.company === userCompany || bu.company === "CENTRAL",
-          );
-
-    return NextResponse.json(filtered);
+    return NextResponse.json(businessUnits);
   } catch (error) {
     console.error("Erro ao listar unidades de negócio:", error);
     return NextResponse.json(
@@ -40,7 +44,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   try {
     const session = await auth();
     if (!session || !session.user) {
@@ -58,37 +62,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
-    const {
-      name,
-      slug,
-      company,
-      description,
-      logo,
-      coverImage,
-      address,
-      phone,
-      email,
-      website,
-      isActive,
-      order,
-    } = body;
-
-    if (!name || !slug || !company) {
-      return NextResponse.json(
-        { error: "Nome, slug e empresa são obrigatórios" },
-        { status: 400 },
-      );
+    // Validate request body with Zod
+    const validation = await validateRequest(request, createBusinessUnitSchema);
+    if (!validation.success) {
+      return validation.error;
     }
 
-    if (!dbSim.addBusinessUnit) {
+    const { 
+      name, slug, company, description, logo, coverImage, 
+      address, phone, email, website, isActive, order 
+    } = validation.data;
+
+    if (!db.createBusinessUnit) {
       return NextResponse.json(
         { error: "Função não implementada" },
         { status: 500 },
       );
     }
 
-    const newBusinessUnit = await dbSim.addBusinessUnit({
+    const newBusinessUnit = await db.createBusinessUnit({
       name,
       slug,
       company,
@@ -104,7 +96,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Log de auditoria
-    await dbSim.addLog(
+    await db.addLog(
       user.id,
       "CRIAR_UNIDADE_NEGOCIO",
       `Criou unidade de negócio: ${name} (${company})`,
@@ -120,4 +112,17 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
+}
+
+// Use method-aware rate limiting
+export async function GET(request: NextRequest) {
+  const limiterResponse = await rateLimit(request, "api");
+  if (limiterResponse) return limiterResponse;
+  return handleGet(request);
+}
+
+export async function POST(request: NextRequest) {
+  const limiterResponse = await rateLimit(request, "mutation");
+  if (limiterResponse) return limiterResponse;
+  return handlePost(request);
 }
