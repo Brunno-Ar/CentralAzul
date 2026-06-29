@@ -119,6 +119,13 @@ export default function DashboardNav() {
       allowedRoles: ["ADMIN"],
       minLevel: 1,
     },
+    {
+      name: "Configuracoes",
+      href: "/dashboard/configuracoes",
+      icon: Sliders,
+      allowedRoles: ["ADMIN", "COORDINATOR", "VIEWER"],
+      minLevel: 99,
+    },
   ];
 
   return (

@@ -301,6 +301,7 @@ const mockMenuPermissions: MockMenuPermission[] = globalThis.__mockMenuPermissio
   { href: "/dashboard/documentos", name: "Drive de Arquivos", minLevel: 3 },
   { href: "/dashboard/empresas", name: "Empresas & Ferramentas", minLevel: 1 },
   { href: "/dashboard/seguranca", name: "Seguranca & Niveis", minLevel: 1 },
+  { href: "/dashboard/configuracoes", name: "Configuracoes", minLevel: 99 },
 ]);
 
 // Initial mock data (persisted via globalThis to survive hot reloads)
@@ -708,6 +709,30 @@ export const dbSim = {
       user.role = role;
       user.hierarchyLevel = level;
       if (status) user.status = status;
+      return user;
+    }
+    return null;
+  },
+
+  updateUserProfile: async (
+    id: string,
+    data: { name?: string; image?: string; password?: string }
+  ) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.user.update({
+          where: { id },
+          data,
+        });
+      } catch (e) {
+        console.error("Prisma error, falling back", e);
+      }
+    }
+    const user = mockUsers.find((u) => u.id === id);
+    if (user) {
+      if (data.name !== undefined) user.name = data.name;
+      if (data.image !== undefined) user.image = data.image;
+      if (data.password !== undefined) user.password = data.password;
       return user;
     }
     return null;
@@ -2943,6 +2968,7 @@ export const db = {
   updateUserRole: dbSim.updateUserRole,
   createUser: dbSim.createUser,
   deleteUser: dbSim.deleteUser,
+  updateUserProfile: dbSim.updateUserProfile,
 
   // Roles
   getRoles: dbSim.getRoles,
