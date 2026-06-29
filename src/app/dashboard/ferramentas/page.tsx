@@ -17,6 +17,7 @@ import {
   ShieldAlert as ShieldIcon
 } from "lucide-react";
 import { SessionUser } from "@/types/auth";
+import { PageWrapper } from "@/components/PageWrapper";
 
 const iconMap: { [key: string]: React.ComponentType<{ className?: string }> } = {
   Wine,
@@ -39,11 +40,20 @@ interface SystemPanel {
   minRole: string;
   minHierarchy: number;
   isActive: boolean;
+  companySlug?: string | null;
+}
+
+interface CompanyConfig {
+  id: string;
+  name: string;
+  slug: string;
+  color: string;
 }
 
 export default function FerramentasPage() {
   const { data: session } = useSession();
   const [panels, setPanels] = useState<SystemPanel[]>([]);
+  const [companies, setCompanies] = useState<CompanyConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<string>("ALL");
@@ -64,39 +74,61 @@ export default function FerramentasPage() {
   }, []);
 
   useEffect(() => {
-    async function loadPanels() {
+    async function loadData() {
       try {
-        const response = await fetch("/api/panels");
-        if (response.ok) {
-          const data = await response.json();
+        const [panelsRes, companiesRes] = await Promise.all([
+          fetch("/api/panels"),
+          fetch("/api/companies")
+        ]);
+        if (panelsRes.ok) {
+          const data = await panelsRes.json();
           setPanels(data);
         }
+        if (companiesRes.ok) {
+          const data = await companiesRes.json();
+          setCompanies(data);
+        }
       } catch (err) {
-        console.error("Erro ao carregar paineis:", err);
+        console.error("Erro ao carregar dados:", err);
       } finally {
         setLoading(false);
       }
     }
-    loadPanels();
+    loadData();
   }, []);
+
+  const uniquePanelSlugs = Array.from(
+    new Set(
+      panels
+        .map((p) => p.companySlug?.toUpperCase())
+        .filter((slug): slug is string => !!slug)
+    )
+  ).filter((slug) => !companies.some((c) => c.slug.toUpperCase() === slug));
 
   const categories = [
     { label: "Todos", value: "ALL" },
-    { label: "Borgo del Vino", value: "BORGO" },
-    { label: "Maple Bear", value: "MAPLE_BEAR" },
-    { label: "Azul Incorp", value: "AZUL" },
-    { label: "Central", value: "CENTRAL" },
+    ...companies.map(c => ({
+      label: c.name,
+      value: c.slug.toUpperCase()
+    })),
+    ...uniquePanelSlugs.map(slug => ({
+      label: slug,
+      value: slug
+    }))
   ];
 
   const filteredPanels = panels.filter(panel => {
     const matchesSearch = panel.name.toLowerCase().includes(search.toLowerCase()) || 
                           panel.description.toLowerCase().includes(search.toLowerCase());
-    const matchesFilter = activeFilter === "ALL" || panel.category === activeFilter;
+    const matchesFilter = activeFilter === "ALL" || 
+                          panel.category?.toUpperCase() === activeFilter ||
+                          panel.companySlug?.toUpperCase() === activeFilter;
     return matchesSearch && matchesFilter;
   });
 
-  const getCategoryColor = (cat: string) => {
-    switch (cat) {
+  const getCategoryColor = (cat: string, companySlug?: string | null) => {
+    const activeCat = (companySlug || cat).toUpperCase();
+    switch (activeCat) {
       case "BORGO": return "text-brand-terciar bg-brand-terciar/10 border-brand-terciar/20";
       case "MAPLE_BEAR": return "text-brand-secundar bg-brand-secundar/10 border-brand-secundar/20";
       case "AZUL": return "text-brand-extra2 bg-brand-extra2/10 border-brand-extra2/20";
@@ -104,17 +136,22 @@ export default function FerramentasPage() {
     }
   };
 
-  const getCompanyLabel = (cat: string) => {
-    switch (cat) {
+  const getCompanyLabel = (cat: string, companySlug?: string | null) => {
+    const slugUpper = (companySlug || cat).toUpperCase();
+    const matched = companies.find(c => c.slug.toUpperCase() === slugUpper);
+    if (matched) return matched.name;
+
+    switch (slugUpper) {
       case "BORGO": return "Borgo del Vino";
       case "MAPLE_BEAR": return "Maple Bear";
       case "AZUL": return "Azul Incorporacoes";
-      default: return "Grupo Azul Central";
+      default: return companySlug || cat || "Grupo Azul Central";
     }
   };
 
   return (
-    <div className="space-y-6 text-brand-terciar">
+    <PageWrapper title="Ferramentas">
+      <div className="space-y-6 text-brand-terciar">
       {/* Title block */}
       <div>
         <h1 className="text-xl font-bold tracking-tight text-brand-extra1 sm:text-2xl">
@@ -200,8 +237,8 @@ export default function FerramentasPage() {
                   {/* Top info */}
                   <div className="space-y-4">
                     <div className="flex justify-between items-start w-full">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${getCategoryColor(panel.category)}`}>
-                        {getCompanyLabel(panel.category)}
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${getCategoryColor(panel.category, panel.companySlug)}`}>
+                        {getCompanyLabel(panel.category, panel.companySlug)}
                       </span>
                       
                       <div className={`p-2 rounded-xl ${hasAccess ? "bg-brand-principal text-brand-extra1" : "bg-brand-principal/20 text-brand-terciar/30"}`}>
@@ -259,5 +296,6 @@ export default function FerramentasPage() {
         </motion.div>
       )}
     </div>
+    </PageWrapper>
   );
 }
