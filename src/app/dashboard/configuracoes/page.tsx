@@ -6,14 +6,6 @@ import { PageWrapper } from "@/components/PageWrapper";
 import { User, Key, Camera, Sliders } from "lucide-react";
 import { SessionUser } from "@/types/auth";
 
-const PRESET_AVATARS = [
-  "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80",
-  "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&h=150&q=80",
-  "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&h=150&q=80",
-  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&h=150&q=80",
-  "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=150&h=150&q=80"
-];
-
 export default function ConfiguracoesPage() {
   const { data: session, update } = useSession();
   const user = session?.user as SessionUser | undefined;
@@ -23,6 +15,7 @@ export default function ConfiguracoesPage() {
   const [imageUrl, setImageUrl] = useState(user?.image || "");
   const [profileMessage, setProfileMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [updatingProfile, setUpdatingProfile] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Password fields state
   const [currentPassword, setCurrentPassword] = useState("");
@@ -30,6 +23,51 @@ export default function ConfiguracoesPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordMessage, setPasswordMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [updatingPassword, setUpdatingPassword] = useState(false);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setProfileMessage({ type: "error", text: "A foto de perfil deve ter no maximo 5MB" });
+      return;
+    }
+
+    setUploadingImage(true);
+    setProfileMessage(null);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("/api/users/profile/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setImageUrl(data.imageUrl);
+        setProfileMessage({ type: "success", text: "Foto de perfil enviada com sucesso" });
+        
+        // Update Session
+        await update({
+          ...session,
+          user: {
+            ...session?.user,
+            image: data.imageUrl,
+          }
+        });
+      } else {
+        const errData = await res.json();
+        setProfileMessage({ type: "error", text: errData.error || "Erro ao carregar foto" });
+      }
+    } catch {
+      setProfileMessage({ type: "error", text: "Erro ao enviar arquivo para o servidor" });
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,11 +78,11 @@ export default function ConfiguracoesPage() {
       const res = await fetch("/api/users/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, image: imageUrl }),
+        body: JSON.stringify({ name }),
       });
 
       if (res.ok) {
-        setProfileMessage({ type: "success", text: "Perfil atualizado com sucesso" });
+        setProfileMessage({ type: "success", text: "Nome de perfil atualizado com sucesso" });
         
         // Update Session
         await update({
@@ -52,7 +90,6 @@ export default function ConfiguracoesPage() {
           user: {
             ...session?.user,
             name,
-            image: imageUrl,
           }
         });
       } else {
@@ -122,7 +159,7 @@ export default function ConfiguracoesPage() {
         <div className="space-y-1">
           <h1 className="text-xl font-bold tracking-tight text-brand-extra1">Configuracoes da Conta</h1>
           <p className="text-xs text-brand-terciar/65">
-            Gerencie suas informacoes de perfil, selecione seu avatar ou atualize sua credencial de acesso.
+            Gerencie suas informacoes de perfil, faca upload de sua foto e atualize sua credencial de acesso.
           </p>
         </div>
 
@@ -130,17 +167,24 @@ export default function ConfiguracoesPage() {
           {/* Card: Account Summary */}
           <div className="lg:col-span-1 p-5 rounded-2xl border border-brand-terciar/10 bg-white shadow-sm flex flex-col items-center justify-between text-center space-y-4">
             <div className="space-y-3 w-full flex flex-col items-center">
-              <div className="relative group">
+              <label className="relative group cursor-pointer block w-20 h-20 rounded-full overflow-hidden border border-brand-terciar/15 shadow-sm transform-gpu transition-transform hover:scale-105 active:scale-95">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={imageUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80"}
                   alt={name}
-                  className="w-20 h-20 rounded-full object-cover border border-brand-terciar/15 shadow-sm"
+                  className="w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <Camera className="w-5 h-5 text-white" />
                 </div>
-              </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  disabled={uploadingImage}
+                />
+              </label>
 
               <div>
                 <h2 className="text-sm font-bold text-brand-extra1">{name}</h2>
@@ -200,34 +244,23 @@ export default function ConfiguracoesPage() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] text-brand-terciar/70 font-mono uppercase">URL da Foto de Perfil</label>
-                    <input
-                      type="text"
-                      value={imageUrl}
-                      onChange={(e) => setImageUrl(e.target.value)}
-                      placeholder="Link para a imagem"
-                      className="w-full px-3 py-1.5 bg-white border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar focus:outline-none focus:border-brand-secundar"
-                    />
-                  </div>
-                </div>
-
-                {/* Preset Avatars Selection */}
-                <div className="space-y-2">
-                  <label className="text-[10px] text-brand-terciar/70 font-mono uppercase block">Escolha uma foto padrao</label>
-                  <div className="flex gap-3.5">
-                    {PRESET_AVATARS.map((url, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setImageUrl(url)}
-                        className={`relative w-10 h-10 rounded-full overflow-hidden border cursor-pointer transition-all hover:scale-105 active:scale-95 ${
-                          imageUrl === url ? "border-brand-secundar ring-2 ring-brand-secundar/20" : "border-brand-terciar/15"
-                        }`}
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={url} alt={`Preset Avatar ${idx}`} className="w-full h-full object-cover" />
-                      </button>
-                    ))}
+                    <label className="text-[10px] text-brand-terciar/70 font-mono uppercase block">Foto de Perfil</label>
+                    <div className="flex items-center gap-3">
+                      <label className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-brand-principal border border-brand-terciar/15 rounded-lg text-xs font-bold text-brand-secundar hover:bg-brand-principal/80 transition-colors cursor-pointer w-full text-center">
+                        <Camera className="w-4 h-4 text-brand-secundar" />
+                        Enviar Nova Foto
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          className="hidden"
+                          disabled={uploadingImage}
+                        />
+                      </label>
+                    </div>
+                    {uploadingImage && (
+                      <span className="text-[9px] text-brand-secundar font-semibold animate-pulse block mt-1">Enviando arquivo...</span>
+                    )}
                   </div>
                 </div>
 
@@ -237,7 +270,7 @@ export default function ConfiguracoesPage() {
                     disabled={updatingProfile}
                     className="px-4 py-1.5 bg-brand-secundar text-white font-bold rounded-lg text-xs hover:bg-brand-secundar/90 transition-colors cursor-pointer disabled:opacity-50"
                   >
-                    {updatingProfile ? "Salvando..." : "Salvar Perfil"}
+                    {updatingProfile ? "Salvando..." : "Salvar Nome"}
                   </button>
                 </div>
               </form>
