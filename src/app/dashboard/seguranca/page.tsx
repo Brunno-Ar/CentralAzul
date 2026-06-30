@@ -84,7 +84,6 @@ export default function SegurancaPage() {
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserRole, setNewUserRole] = useState("VIEWER");
-  const [newUserLevel, setNewUserLevel] = useState(3);
   const [userMessage, setUserMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Dynamic Menu Permissions state
