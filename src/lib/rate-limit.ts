@@ -9,7 +9,17 @@ const limiters = {
   upload: new RateLimiterMemory({ points: 10, duration: 3600 }),   // 10/hour
 };
 
-function getClientKey(request: NextRequest): string {
+async function getClientKey(request: NextRequest): Promise<string> {
+  try {
+    const { auth } = await import("@/auth");
+    const session = await auth();
+    if (session?.user?.id) {
+      return `user:${session.user.id}`;
+    }
+  } catch (e) {
+    // Ignore auth error, fallback to IP
+  }
+
   const ip = request.headers.get("x-forwarded-for") || 
              request.headers.get("x-real-ip") || 
              "unknown";
@@ -22,7 +32,7 @@ export async function rateLimit(
   limiterKey: keyof typeof limiters = "api"
 ): Promise<NextResponse | null> {
   const limiter = limiters[limiterKey];
-  const clientKey = getClientKey(request);
+  const clientKey = await getClientKey(request);
   
   try {
     await limiter.consume(clientKey);
@@ -59,7 +69,7 @@ export function withRateLimit(
     const response = await handler(request);
     
     // Add rate limit headers to successful responses
-    const clientKey = getClientKey(request);
+    const clientKey = await getClientKey(request);
     try {
       const result = await limiters[limiterKey].get(clientKey);
       if (result) {

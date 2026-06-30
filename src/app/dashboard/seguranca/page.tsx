@@ -166,6 +166,32 @@ export default function SegurancaPage() {
     }
   }, []);
 
+  const loadConfig = useCallback(async () => {
+    try {
+      const res = await fetch("/api/config");
+      if (res.ok) {
+        const data = await res.json();
+        setRestrictDomain(data.restrictDomain === "true");
+        setMfaRequired(data.mfaRequired === "true");
+        setSessionTimeout(data.sessionTimeout === "true");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  const saveConfig = async (key: string, value: boolean) => {
+    try {
+      await fetch("/api/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [key]: value ? "true" : "false" })
+      });
+    } catch (e) {
+      console.error("Erro ao salvar config", e);
+    }
+  };
+
   useEffect(() => {
     if (isUserAdmin) {
       const timer = setTimeout(() => {
@@ -173,10 +199,11 @@ export default function SegurancaPage() {
         loadRoles();
         loadLogs();
         loadMenuPermissions();
+        loadConfig();
       }, 0);
       return () => clearTimeout(timer);
     }
-  }, [isUserAdmin, loadUsers, loadRoles, loadLogs, loadMenuPermissions]);
+  }, [isUserAdmin, loadUsers, loadRoles, loadLogs, loadMenuPermissions, loadConfig]);
 
   const handleUpdateUser = async (userId: string, updates: Partial<UserItem>) => {
     setUpdatingUserId(userId);
@@ -449,7 +476,11 @@ export default function SegurancaPage() {
                 </p>
               </div>
               <button 
-                onClick={() => setRestrictDomain(!restrictDomain)}
+                onClick={() => {
+                  const newVal = !restrictDomain;
+                  setRestrictDomain(newVal);
+                  saveConfig("restrictDomain", newVal);
+                }}
                 className="text-brand-terciar/50 hover:text-brand-extra1 cursor-pointer"
               >
                 {restrictDomain ? <ToggleRight className="w-9 h-9 text-emerald-600" /> : <ToggleLeft className="w-9 h-9 text-brand-terciar/30" />}
@@ -465,7 +496,11 @@ export default function SegurancaPage() {
                 </p>
               </div>
               <button 
-                onClick={() => setMfaRequired(!mfaRequired)}
+                onClick={() => {
+                  const newVal = !mfaRequired;
+                  setMfaRequired(newVal);
+                  saveConfig("mfaRequired", newVal);
+                }}
                 className="text-brand-terciar/50 hover:text-brand-extra1 cursor-pointer"
               >
                 {mfaRequired ? <ToggleRight className="w-9 h-9 text-emerald-600" /> : <ToggleLeft className="w-9 h-9 text-brand-terciar/30" />}
@@ -481,7 +516,11 @@ export default function SegurancaPage() {
                 </p>
               </div>
               <button 
-                onClick={() => setSessionTimeout(!sessionTimeout)}
+                onClick={() => {
+                  const newVal = !sessionTimeout;
+                  setSessionTimeout(newVal);
+                  saveConfig("sessionTimeout", newVal);
+                }}
                 className="text-brand-terciar/50 hover:text-brand-extra1 cursor-pointer"
               >
                 {sessionTimeout ? <ToggleRight className="w-9 h-9 text-emerald-600" /> : <ToggleLeft className="w-9 h-9 text-brand-terciar/30" />}

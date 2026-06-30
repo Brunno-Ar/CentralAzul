@@ -212,7 +212,7 @@ export default function FerramentasPage() {
         >
           <AnimatePresence mode="popLayout">
             {filteredPanels.map((panel) => {
-              const hasAccess = userLevel <= panel.minHierarchy;
+              const hasAccess = userLevel >= panel.minHierarchy;
               const PanelIcon = iconMap[panel.icon] || ShieldAlert;
 
               return (

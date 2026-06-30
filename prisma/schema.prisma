@@ -204,3 +204,10 @@ model BusinessUnitRevenue {
   @@unique([businessUnitId, period, type])
 }
 
+model SystemConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+

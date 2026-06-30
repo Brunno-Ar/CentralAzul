@@ -24,7 +24,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         
         if (user) {
           // Verify password from the database
-          if (user.password && user.password !== passwordStr) {
+          const bcrypt = await import("bcryptjs");
+          if (user.password && !(await bcrypt.compare(passwordStr, user.password))) {
             return null;
           }
         } else {

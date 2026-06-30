@@ -90,9 +90,7 @@ export const isDatabaseConnected = () => isDbConnected;
 // It automatically uses Prisma when connected, mock only in dev without DB.
 
 // Check if we should use mock data
-const USE_MOCK_DB =
-  process.env.NODE_ENV === "development" &&
-  (!process.env.DATABASE_URL || process.env.USE_MOCK_DB === "true");
+const USE_MOCK_DB = process.env.USE_MOCK_DB === "true";
 
 if (USE_MOCK_DB) {
   console.warn(

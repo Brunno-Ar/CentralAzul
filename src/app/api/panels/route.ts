@@ -36,8 +36,8 @@ export async function GET(request: NextRequest) {
 
     // Filter tools/panels based on user's hierarchy
     const filtered = panels.filter(p => {
-      // Check hierarchy: userLevel (e.g. 2) must be <= p.minHierarchy (e.g. 2 or 3)
-      return userLevel <= p.minHierarchy;
+      // Check hierarchy: userLevel (e.g. 2) must be >= p.minHierarchy (e.g. 2 or 3)
+      return userLevel >= p.minHierarchy;
     });
 
     return NextResponse.json(filtered);

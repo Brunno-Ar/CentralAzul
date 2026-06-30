@@ -72,7 +72,10 @@ async function handlePut(request: NextRequest) {
     // Resolve hierarchyLevel matching the selected role config
     const rolesList = await db.getRoles();
     const selectedRole = rolesList.find((r) => r.name === role);
-    const resolvedLevel = selectedRole ? selectedRole.hierarchyLevel : 3;
+    if (!selectedRole) {
+      return NextResponse.json({ error: "Cargo inválido." }, { status: 400 });
+    }
+    const resolvedLevel = selectedRole.hierarchyLevel;
 
     // Security check: cannot assign a hierarchyLevel superior (numerically smaller) to caller's own level
     if (resolvedLevel < userLevel) {
@@ -162,7 +165,13 @@ async function handlePost(request: NextRequest) {
     // Resolve hierarchyLevel matching the selected role config
     const rolesList = await db.getRoles();
     const selectedRole = rolesList.find((r) => r.name === role);
-    const resolvedLevel = selectedRole ? selectedRole.hierarchyLevel : 3;
+    if (!selectedRole) {
+      return NextResponse.json({ error: "Cargo inválido." }, { status: 400 });
+    }
+    const resolvedLevel = selectedRole.hierarchyLevel;
+
+    const bcrypt = await import("bcryptjs");
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     // Check if user already exists
     const existing = await db.getUserByEmail(email);
@@ -179,7 +188,7 @@ async function handlePost(request: NextRequest) {
       role,
       hierarchyLevel: resolvedLevel,
       company: caller.company || "CENTRAL",
-      password,
+      password: hashedPassword,
     });
 
     // Audit log
