@@ -378,6 +378,123 @@ export const searchSchema = z.object({
   limit: z.coerce.number().int().positive().max(50).default(10),
 });
 
+export const searchQuerySchema = z.object({
+  q: z.string().min(1, "Query de busca é obrigatória").max(200),
+  limit: z.coerce.number().int().positive().max(50).default(10),
+});
+
+// ============================================
+// CONFIG UPDATE SCHEMA (ALLOWLIST - strict)
+// ============================================
+
+export const configUpdateSchema = z.object({
+  siteName: z.string().max(200).optional(),
+  mfaEnabled: z.boolean().optional(),
+  maxUploadSize: z.number().int().positive().max(10 * 1024 * 1024 * 1024).optional(),
+  restrictDomain: z.string().max(500).optional(),
+  mfaRequired: z.boolean().optional(),
+  sessionTimeout: z.string().max(50).optional(),
+}).strict();
+
+// ============================================
+// BUSINESS UNIT UPDATE (SLUG ROUTE - strict, no id field)
+// ============================================
+
+export const updateBusinessUnitBySlugSchema = z.object({
+  name: z.string().min(2).max(200).optional(),
+  slug: z.string().min(2).max(100).regex(/^[a-z0-9-]+$/).optional(),
+  company: panelCategoryEnum.optional(),
+  description: z.string().max(2000).optional(),
+  logo: z.string().url().optional().or(z.literal("")),
+  coverImage: z.string().url().optional().or(z.literal("")),
+  address: z.string().max(500).optional(),
+  phone: z.string().max(50).optional(),
+  email: z.string().email().optional().or(z.literal("")),
+  website: z.string().url().optional().or(z.literal("")),
+  isActive: z.boolean().optional(),
+  order: z.number().int().min(0).optional(),
+}).strict();
+
+// ============================================
+// BUSINESS UNIT ITEM SCHEMA
+// ============================================
+
+export const createBusinessUnitItemSchema = z.object({
+  type: z.enum(["tool", "social", "analytics", "revenue"]),
+  data: z.record(z.string(), z.unknown()),
+});
+
+// ============================================
+// LEVEL SCHEMAS (manual create/delete)
+// ============================================
+
+export const createLevelSchema = z.object({
+  level: z.number().int().min(1, "Nivel deve ser um numero positivo"),
+  name: z.string().min(2, "Nome e obrigatorio").max(100),
+}).strict();
+
+export const deleteLevelSchema = z.object({
+  id: z.string().min(1, "ID e obrigatorio"),
+});
+
+// ============================================
+// MENU PERMISSION SCHEMA
+// ============================================
+
+export const updateMenuPermissionSchema = z.object({
+  href: z.string().min(1, "Caminho e obrigatorio").max(500),
+  minLevel: z.number().int().min(1, "Nivel minimo e obrigatorio"),
+}).strict();
+
+// ============================================
+// USER PROFILE UPDATE SCHEMA
+// ============================================
+
+export const updateProfileSchema = z.object({
+  name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").max(100).optional(),
+  image: z.string().max(500).optional(),
+  currentPassword: z.string().optional(),
+  newPassword: z.string().min(6, "A nova senha deve ter pelo menos 6 caracteres").max(200).optional(),
+}).strict();
+
+// ============================================
+// UPLOAD AVATAR SCHEMA (metadata validation)
+// ============================================
+
+export const uploadAvatarSchema = z.object({
+  fileSize: z.number().int().positive().max(5 * 1024 * 1024, "A foto de perfil deve ter no maximo 5MB"),
+  fileType: z.string().refine(
+    (v) => ["image/jpeg", "image/png", "image/webp", "image/gif"].includes(v),
+    "Formato de imagem invalido. Use JPEG, PNG, WebP ou GIF."
+  ),
+  fileName: z.string().min(1).max(255),
+});
+
+// ============================================
+// CREATE USER WITH PASSWORD SCHEMA
+// ============================================
+
+export const createUserWithPasswordSchema = z.object({
+  name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").max(100),
+  email: z.string().email("Email invalido"),
+  password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres").max(200),
+  role: z.string().min(1, "Cargo e obrigatorio"),
+}).strict();
+
+// ============================================
+// REFRESH ROLE BODY SCHEMA (empty object, rejects unknown)
+// ============================================
+
+export const refreshRoleBodySchema = z.object({}).strict();
+
+// ============================================
+// MARK ANNOUNCEMENT READ PARAMS SCHEMA
+// ============================================
+
+export const markReadParamsSchema = z.object({
+  id: z.string().min(1, "ID do anuncio e obrigatorio"),
+});
+
 // ============================================
 // AUDIT LOG SCHEMAS
 // ============================================

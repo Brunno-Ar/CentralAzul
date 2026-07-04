@@ -16,7 +16,7 @@ async function getClientKey(request: NextRequest): Promise<string> {
     if (session?.user?.id) {
       return `user:${session.user.id}`;
     }
-  } catch (e) {
+  } catch {
     // Ignore auth error, fallback to IP
   }
 
