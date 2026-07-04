@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { motion } from "framer-motion";
 import { SessionUser } from "@/types/auth";
@@ -23,6 +23,7 @@ import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
 export default function DashboardNav() {
   const { data: session } = useSession();
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -180,7 +181,7 @@ export default function DashboardNav() {
           <button
             onClick={async () => {
               await signOut({ redirect: false });
-              window.location.href = "/";
+              router.push("/");
             }}
             className={`flex items-center text-sm text-red-650 hover:text-red-700 hover:bg-red-50/50 transition-all cursor-pointer group font-medium overflow-hidden rounded-xl transform-gpu ${
               open

@@ -25,6 +25,19 @@ export default function LoginPage() {
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Honeypot check: if the hidden website_url field has any value, a bot filled it
+    const formData = new FormData(e.currentTarget as HTMLFormElement);
+    const honeypotValue = formData.get("website_url");
+    if (honeypotValue && String(honeypotValue).trim() !== "") {
+      console.warn("[SECURITY] Honeypot triggered on login form - bot detected", {
+        honeypotValue: String(honeypotValue).substring(0, 100),
+      });
+      // Silently appear successful to the bot but do nothing
+      setLoading(true);
+      return;
+    }
+
     if (!email || !password) {
       setError("Por favor, preencha todos os campos.");
       return;
@@ -94,6 +107,14 @@ export default function LoginPage() {
 
         {/* Corporate Form */}
         <form onSubmit={handleLoginSubmit} className="space-y-4">
+          {/* Honeypot field - hidden from humans, filled by bots */}
+          <input
+            type="text"
+            name="website_url"
+            style={{ display: "none" }}
+            tabIndex={-1}
+            autoComplete="off"
+          />
           <div className="space-y-1.5">
             <label className="text-[10px] text-brand-terciar/70 font-mono uppercase font-bold block">
               E-mail Corporativo
