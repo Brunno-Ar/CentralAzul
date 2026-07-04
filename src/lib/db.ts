@@ -1,5 +1,6 @@
 import { PrismaClient, Company } from "@prisma/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import DOMPurify from "isomorphic-dompurify";
 
 const parseDbUrl = (urlStr: string) => {
   try {
@@ -34,6 +35,16 @@ declare global {
   var __mockBusinessUnits: MockBusinessUnit[] | undefined;
   var __mockLevels: MockLevelConfig[] | undefined;
   var __mockMenuPermissions: MockMenuPermission[] | undefined;
+  var __mockMfaUsers: MockUserMfa[] | undefined;
+}
+
+export interface MockUserMfa {
+  id: string;
+  userId: string;
+  secret: string;
+  enabled: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 try {
@@ -577,6 +588,8 @@ const mockAnnouncements: MockAnnouncement[] = globalThis.__mockAnnouncements ?? 
 
 const mockAnnouncementReads: MockAnnouncementRead[] = globalThis.__mockAnnouncementReads ?? (globalThis.__mockAnnouncementReads = []);
 
+const mockMfaUsers: MockUserMfa[] = globalThis.__mockMfaUsers ?? (globalThis.__mockMfaUsers = []);
+
 export interface MockCompany {
   id: string;
   name: string;
@@ -636,6 +649,15 @@ const mockCompanies: MockCompany[] = globalThis.__mockCompanies ?? (globalThis._
   },
 ]);
 
+// ============================================
+// ACCOUNT LOCKOUT STATE (In-Memory Map for dev mode)
+// ============================================
+// Stores failed login attempts and lockout timestamps per email
+const lockoutState = new Map<string, { attempts: number; lockedUntil?: Date }>();
+
+const LOCKOUT_THRESHOLD = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+
 // Persistent state handlers in memory (simulating a database server)
 // We will expose database simulation functions so that even if MySQL is not connected,
 // roles, logs, and files are updated in real-time on the server.
@@ -645,12 +667,29 @@ export const dbSim = {
       try {
         return await prismaClient.user.findMany({
           orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            emailVerified: true,
+            image: true,
+            role: true,
+            hierarchyLevel: true,
+            company: true,
+            status: true,
+            createdAt: true,
+            updatedAt: true,
+          },
         });
       } catch (e) {
         console.error("Prisma error, falling back", e);
       }
     }
-    return mockUsers;
+    return mockUsers.map((u) => {
+      const { password: _password, ...rest } = u;
+      void _password;
+      return rest;
+    });
   },
 
   getUserByEmail: async (email: string) => {
@@ -790,17 +829,35 @@ export const dbSim = {
     return mockPanels;
   },
 
-  getDocuments: async () => {
+  getDocuments: async (
+    userLevel?: number,
+    userCompany?: Company,
+  ) => {
+    // Applicative RLS via Prisma where clause.
+    // Level 1 (Direcao Geral) sees ALL docs.
+    // Level 2+ sees only docs where minHierarchyLevel >= userLevel
+    //   AND (category == userCompany OR category == CENTRAL).
+    const whereFilter =
+      userLevel !== undefined && userLevel !== 1 && userCompany
+        ? {
+            minHierarchyLevel: { gte: userLevel },
+            OR: [{ category: userCompany }, { category: Company.CENTRAL }],
+          }
+        : userLevel !== undefined && userLevel !== 1 && !userCompany
+          ? { minHierarchyLevel: { gte: userLevel } }
+          : undefined;
+
     if (prismaClient && isDbConnected) {
       try {
         const dbDocs = await prismaClient.document.findMany({
+          where: whereFilter as never,
           include: { uploadedBy: true },
           orderBy: { createdAt: "desc" },
         });
         return dbDocs.map((d) => ({
           id: d.id,
           title: d.title,
-          description: d.description || "",
+          description: DOMPurify.sanitize(d.description || ""),
           fileUrl: d.fileUrl,
           fileSize: d.fileSize || 0,
           fileType: d.fileType || "",
@@ -814,7 +871,21 @@ export const dbSim = {
         console.error("Prisma error, falling back", e);
       }
     }
-    return mockDocuments;
+    // Mock fallback: apply same RLS filter
+    let mockResult = mockDocuments.map((doc) => ({
+      ...doc,
+      description: DOMPurify.sanitize(doc.description),
+    }));
+    if (userLevel !== undefined && userLevel !== 1) {
+      mockResult = mockResult.filter(
+        (doc) =>
+          doc.minHierarchyLevel >= userLevel &&
+          (!userCompany ||
+            doc.category === userCompany ||
+            doc.category === Company.CENTRAL),
+      );
+    }
+    return mockResult;
   },
 
   addDocument: async (
@@ -883,10 +954,21 @@ export const dbSim = {
     return newDoc;
   },
 
-  getLogs: async () => {
+  getLogs: async (
+    userLevel?: number,
+    userCompany?: Company,
+  ) => {
+    // Applicative RLS for audit logs.
+    // Level 1 sees ALL logs. Level 2 sees only logs from users in their company.
+    const whereFilter =
+      userLevel !== undefined && userLevel === 2 && userCompany
+        ? { user: { company: userCompany } }
+        : undefined;
+
     if (prismaClient && isDbConnected) {
       try {
         const dbLogs = await prismaClient.auditLog.findMany({
+          where: whereFilter as never,
           include: { user: true },
           orderBy: { createdAt: "desc" },
           take: 50,
@@ -905,7 +987,17 @@ export const dbSim = {
         console.error("Prisma error, falling back", e);
       }
     }
-    return mockLogs;
+    // Mock fallback: apply same RLS filter by matching user company
+    let mockResult = mockLogs;
+    if (userLevel !== undefined && userLevel === 2 && userCompany) {
+      const companyUserIds = mockUsers
+        .filter((u) => u.company === userCompany)
+        .map((u) => u.id);
+      mockResult = mockLogs.filter((log) =>
+        companyUserIds.includes(log.userId),
+      );
+    }
+    return mockResult;
   },
 
   addLog: async (
@@ -1061,31 +1153,34 @@ export const dbSim = {
         const origRole = await prismaClient.roleConfig.findUnique({
           where: { id },
         });
-        const updated = await prismaClient.roleConfig.update({
-          where: { id },
-          data: {
-            ...(nameUpper ? { name: nameUpper } : {}),
-            ...(updates.displayName
-              ? { displayName: updates.displayName }
-              : {}),
-            ...(updates.hierarchyLevel !== undefined
-              ? { hierarchyLevel: updates.hierarchyLevel }
-              : {}),
-          },
-        });
+        const updated = await prismaClient.$transaction(async (tx) => {
+          const updatedRole = await tx.roleConfig.update({
+            where: { id },
+            data: {
+              ...(nameUpper ? { name: nameUpper } : {}),
+              ...(updates.displayName
+                ? { displayName: updates.displayName }
+                : {}),
+              ...(updates.hierarchyLevel !== undefined
+                ? { hierarchyLevel: updates.hierarchyLevel }
+                : {}),
+            },
+          });
 
-        if (origRole && nameUpper && origRole.name !== nameUpper) {
-          // Update users
-          await prismaClient.user.updateMany({
-            where: { role: origRole.name },
-            data: { role: nameUpper },
-          });
-          // Update system panels
-          await prismaClient.systemPanel.updateMany({
-            where: { minRole: origRole.name },
-            data: { minRole: nameUpper },
-          });
-        }
+          if (origRole && nameUpper && origRole.name !== nameUpper) {
+            // Update users
+            await tx.user.updateMany({
+              where: { role: origRole.name },
+              data: { role: nameUpper },
+            });
+            // Update system panels
+            await tx.systemPanel.updateMany({
+              where: { minRole: origRole.name },
+              data: { minRole: nameUpper },
+            });
+          }
+          return updatedRole;
+        });
         return {
           id: updated.id,
           name: updated.name,
@@ -1101,23 +1196,29 @@ export const dbSim = {
     const role = mockRoles.find((r) => r.id === id);
     if (role) {
       const oldName = role.name;
-      if (nameUpper) role.name = nameUpper;
-      if (updates.displayName) role.displayName = updates.displayName;
-      if (updates.hierarchyLevel !== undefined)
-        role.hierarchyLevel = updates.hierarchyLevel;
-      role.updatedAt = new Date();
+      const oldRole = { ...role };
+      try {
+        if (nameUpper) role.name = nameUpper;
+        if (updates.displayName) role.displayName = updates.displayName;
+        if (updates.hierarchyLevel !== undefined)
+          role.hierarchyLevel = updates.hierarchyLevel;
+        role.updatedAt = new Date();
 
-      if (nameUpper && oldName !== nameUpper) {
-        // Update mock users role
-        for (const u of mockUsers) {
-          if (u.role === oldName) u.role = nameUpper;
+        if (nameUpper && oldName !== nameUpper) {
+          // Update mock users role
+          for (const u of mockUsers) {
+            if (u.role === oldName) u.role = nameUpper;
+          }
+          // Update mock panels minRole
+          for (const p of mockPanels) {
+            if (p.minRole === oldName) p.minRole = nameUpper;
+          }
         }
-        // Update mock panels minRole
-        for (const p of mockPanels) {
-          if (p.minRole === oldName) p.minRole = nameUpper;
-        }
+        return role;
+      } catch (e) {
+        Object.assign(role, oldRole);
+        throw e;
       }
-      return role;
     }
     return null;
   },
@@ -1129,18 +1230,20 @@ export const dbSim = {
           where: { id },
         });
         if (origRole) {
-          // Reassign users of this role to VIEWER (or another base role) before deletion
-          await prismaClient.user.updateMany({
-            where: { role: origRole.name },
-            data: { role: "VIEWER" },
-          });
-          // Reassign system panels
-          await prismaClient.systemPanel.updateMany({
-            where: { minRole: origRole.name },
-            data: { minRole: "VIEWER" },
-          });
+          await prismaClient.$transaction(async (tx) => {
+            // Reassign users of this role to VIEWER (or another base role) before deletion
+            await tx.user.updateMany({
+              where: { role: origRole.name },
+              data: { role: "VIEWER" },
+            });
+            // Reassign system panels
+            await tx.systemPanel.updateMany({
+              where: { minRole: origRole.name },
+              data: { minRole: "VIEWER" },
+            });
 
-          await prismaClient.roleConfig.delete({ where: { id } });
+            await tx.roleConfig.delete({ where: { id } });
+          });
           return true;
         }
       } catch (e) {
@@ -1150,16 +1253,36 @@ export const dbSim = {
     const index = mockRoles.findIndex((r) => r.id === id);
     if (index !== -1) {
       const deletedName = mockRoles[index].name;
-      mockRoles.splice(index, 1);
-      // Reassign mock users
-      for (const u of mockUsers) {
-        if (u.role === deletedName) u.role = "VIEWER";
+      const deletedRole = mockRoles[index];
+      const affectedUsers: typeof mockUsers = [];
+      const affectedPanels: typeof mockPanels = [];
+      try {
+        mockRoles.splice(index, 1);
+        // Reassign mock users
+        for (const u of mockUsers) {
+          if (u.role === deletedName) {
+            u.role = "VIEWER";
+            affectedUsers.push(u);
+          }
+        }
+        // Reassign mock panels
+        for (const p of mockPanels) {
+          if (p.minRole === deletedName) {
+            p.minRole = "VIEWER";
+            affectedPanels.push(p);
+          }
+        }
+        return true;
+      } catch (e) {
+        mockRoles.splice(index, 0, deletedRole);
+        for (const u of affectedUsers) {
+          u.role = deletedName;
+        }
+        for (const p of affectedPanels) {
+          p.minRole = deletedName;
+        }
+        throw e;
       }
-      // Reassign mock panels
-      for (const p of mockPanels) {
-        if (p.minRole === deletedName) p.minRole = "VIEWER";
-      }
-      return true;
     }
     return false;
   },
@@ -1168,14 +1291,21 @@ export const dbSim = {
   getAnnouncements: async () => {
     if (prismaClient && isDbConnected) {
       try {
-        return await prismaClient.announcement.findMany({
+        const announcements = await prismaClient.announcement.findMany({
           orderBy: { createdAt: "desc" },
         });
+        return announcements.map((announcement) => ({
+          ...announcement,
+          content: DOMPurify.sanitize(announcement.content),
+        }));
       } catch (e) {
         console.error("Prisma error fetching announcements, falling back", e);
       }
     }
-    return mockAnnouncements;
+    return mockAnnouncements.map((announcement) => ({
+      ...announcement,
+      content: DOMPurify.sanitize(announcement.content),
+    }));
   },
 
   getAnnouncementReadsByUser: async (userId: string) => {
@@ -2051,6 +2181,63 @@ export const dbSim = {
     return false;
   },
 
+  /**
+   * Fetches the businessUnitId of an item by its ID and type.
+   * Returns null when the item does not exist.
+   * Used to verify ownership before deletion (IDOR prevention).
+   */
+  getBusinessUnitItemOwner: async (
+    itemId: string,
+    type: "tool" | "social" | "analytics" | "revenue",
+  ): Promise<string | null> => {
+    if (prismaClient && isDbConnected) {
+      try {
+        let record: { businessUnitId: string } | null = null;
+        if (type === "tool") {
+          record = await prismaClient.businessUnitTool.findUnique({
+            where: { id: itemId },
+            select: { businessUnitId: true },
+          });
+        } else if (type === "social") {
+          record = await prismaClient.businessUnitSocialLink.findUnique({
+            where: { id: itemId },
+            select: { businessUnitId: true },
+          });
+        } else if (type === "analytics") {
+          record = await prismaClient.businessUnitAnalytics.findUnique({
+            where: { id: itemId },
+            select: { businessUnitId: true },
+          });
+        } else if (type === "revenue") {
+          record = await prismaClient.businessUnitRevenue.findUnique({
+            where: { id: itemId },
+            select: { businessUnitId: true },
+          });
+        }
+        return record?.businessUnitId ?? null;
+      } catch (e) {
+        console.error("Prisma error fetching item owner", e);
+      }
+    }
+    // Mock fallback: search all mock business units for the item
+    for (const bu of mockBusinessUnits) {
+      if (type === "tool" && bu.tools) {
+        const found = bu.tools.find((t) => t.id === itemId);
+        if (found) return bu.id;
+      } else if (type === "social" && bu.socialLinks) {
+        const found = bu.socialLinks.find((s) => s.id === itemId);
+        if (found) return bu.id;
+      } else if (type === "analytics" && bu.analytics) {
+        const found = bu.analytics.find((a) => a.id === itemId);
+        if (found) return bu.id;
+      } else if (type === "revenue" && bu.revenueData) {
+        const found = bu.revenueData.find((r) => r.id === itemId);
+        if (found) return bu.id;
+      }
+    }
+    return null;
+  },
+
   getBusinessUnitTools: async (unitId: string) => {
     if (prismaClient && isDbConnected) {
       try {
@@ -2695,8 +2882,11 @@ export const dbSim = {
     return dbSim.markAnnouncementRead(announcementId, userId);
   },
 
-  getAuditLogs: async () => {
-    return dbSim.getLogs();
+  getAuditLogs: async (
+    userLevel?: number,
+    userCompany?: Company,
+  ) => {
+    return dbSim.getLogs(userLevel, userCompany);
   },
 
   createBusinessUnit: async (
@@ -2740,6 +2930,188 @@ export const dbSim = {
       return permission;
     }
     return null;
+  },
+
+  // Account Lockout
+  checkAccountLockout: async (email: string): Promise<{ locked: boolean; lockedUntil?: Date }> => {
+    if (prismaClient && isDbConnected) {
+      try {
+        const user = await prismaClient.user.findUnique({
+          where: { email },
+          select: { failedLoginAttempts: true, lockedUntil: true },
+        });
+        if (user) {
+          const now = new Date();
+          if (user.lockedUntil && user.lockedUntil > now) {
+            return { locked: true, lockedUntil: user.lockedUntil };
+          }
+        }
+        return { locked: false };
+      } catch (e) {
+        console.error("Prisma error checking lockout, falling back", e);
+      }
+    }
+    const state = lockoutState.get(email.toLowerCase());
+    const now = new Date();
+    if (state && state.lockedUntil && state.lockedUntil > now) {
+      return { locked: true, lockedUntil: state.lockedUntil };
+    }
+    return { locked: false };
+  },
+
+  recordFailedLoginAttempt: async (email: string): Promise<{ locked: boolean; lockedUntil?: Date }> => {
+    const normalizedEmail = email.toLowerCase();
+    if (prismaClient && isDbConnected) {
+      try {
+        const user = await prismaClient.user.findUnique({
+          where: { email: normalizedEmail },
+          select: { failedLoginAttempts: true, lockedUntil: true },
+        });
+        if (user) {
+          const newAttempts = user.failedLoginAttempts + 1;
+          let lockedUntil: Date | null = null;
+          if (newAttempts >= LOCKOUT_THRESHOLD) {
+            lockedUntil = new Date(Date.now() + LOCKOUT_DURATION_MS);
+          }
+          await prismaClient.user.update({
+            where: { email: normalizedEmail },
+            data: {
+              failedLoginAttempts: newAttempts,
+              ...(lockedUntil ? { lockedUntil } : {}),
+            },
+          });
+          return { locked: !!lockedUntil, lockedUntil: lockedUntil || undefined };
+        }
+      } catch (e) {
+        console.error("Prisma error recording failed attempt, falling back", e);
+      }
+    }
+    const state = lockoutState.get(normalizedEmail) || { attempts: 0 };
+    state.attempts += 1;
+    if (state.attempts >= LOCKOUT_THRESHOLD) {
+      state.lockedUntil = new Date(Date.now() + LOCKOUT_DURATION_MS);
+    }
+    lockoutState.set(normalizedEmail, state);
+    return { locked: !!state.lockedUntil, lockedUntil: state.lockedUntil };
+  },
+
+  resetFailedLoginAttempts: async (email: string): Promise<void> => {
+    const normalizedEmail = email.toLowerCase();
+    if (prismaClient && isDbConnected) {
+      try {
+        await prismaClient.user.update({
+          where: { email: normalizedEmail },
+          data: {
+            failedLoginAttempts: 0,
+            lockedUntil: null,
+          },
+        });
+        return;
+      } catch (e) {
+        console.error("Prisma error resetting failed attempts, falling back", e);
+      }
+    }
+    lockoutState.delete(normalizedEmail);
+  },
+
+  // System Config (key-value store)
+  getSystemConfig: async (key: string): Promise<string | null> => {
+    if (prismaClient && isDbConnected) {
+      try {
+        const config = await prismaClient.systemConfig.findUnique({
+          where: { key },
+        });
+        return config?.value ?? null;
+      } catch (e) {
+        console.error("Prisma error fetching system config, falling back", e);
+      }
+    }
+    const mockConfigStore = globalThis.__mockSystemConfig ?? {};
+    return mockConfigStore[key] ?? null;
+  },
+
+  isMfaEnabled: async (): Promise<boolean> => {
+    const value = await dbSim.getSystemConfig("mfaEnabled");
+    return value === "true";
+  },
+
+  // User MFA
+  getUserMfa: async (userId: string): Promise<MockUserMfa | null> => {
+    if (prismaClient && isDbConnected) {
+      try {
+        const mfa = await prismaClient.userMfa.findUnique({
+          where: { userId },
+        });
+        if (mfa) {
+          return {
+            id: mfa.id,
+            userId: mfa.userId,
+            secret: mfa.secret,
+            enabled: mfa.enabled,
+            createdAt: mfa.createdAt,
+            updatedAt: mfa.updatedAt,
+          };
+        }
+        return null;
+      } catch (e) {
+        console.error("Prisma error fetching user MFA, falling back", e);
+      }
+    }
+    return mockMfaUsers.find((m) => m.userId === userId) ?? null;
+  },
+
+  setUserMfa: async (userId: string, secret: string, enabled: boolean): Promise<MockUserMfa> => {
+    if (prismaClient && isDbConnected) {
+      try {
+        const existing = await prismaClient.userMfa.findUnique({
+          where: { userId },
+        });
+        if (existing) {
+          const updated = await prismaClient.userMfa.update({
+            where: { userId },
+            data: { secret, enabled },
+          });
+          return {
+            id: updated.id,
+            userId: updated.userId,
+            secret: updated.secret,
+            enabled: updated.enabled,
+            createdAt: updated.createdAt,
+            updatedAt: updated.updatedAt,
+          };
+        }
+        const created = await prismaClient.userMfa.create({
+          data: { userId, secret, enabled },
+        });
+        return {
+          id: created.id,
+          userId: created.userId,
+          secret: created.secret,
+          enabled: created.enabled,
+          createdAt: created.createdAt,
+          updatedAt: created.updatedAt,
+        };
+      } catch (e) {
+        console.error("Prisma error setting user MFA, falling back", e);
+      }
+    }
+    const existing = mockMfaUsers.find((m) => m.userId === userId);
+    if (existing) {
+      existing.secret = secret;
+      existing.enabled = enabled;
+      existing.updatedAt = new Date();
+      return existing;
+    }
+    const newMfa: MockUserMfa = {
+      id: "mfa-" + Math.random().toString(36).substr(2, 9),
+      userId,
+      secret,
+      enabled,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    mockMfaUsers.push(newMfa);
+    return newMfa;
   },
 };
 
@@ -3000,6 +3372,7 @@ export const db = {
   // Business Units
   getBusinessUnits: dbSim.getBusinessUnits,
   getBusinessUnitBySlug: dbSim.getBusinessUnitBySlug,
+  getBusinessUnitItemOwner: dbSim.getBusinessUnitItemOwner,
   createBusinessUnit: dbSim.createBusinessUnit,
   updateBusinessUnit: dbSim.updateBusinessUnit,
   deleteBusinessUnit: dbSim.deleteBusinessUnit,
@@ -3052,6 +3425,19 @@ export const db = {
   // Menu Permissions
   getMenuPermissions: dbSim.getMenuPermissions,
   updateMenuPermission: dbSim.updateMenuPermission,
+
+  // Account Lockout
+  checkAccountLockout: dbSim.checkAccountLockout,
+  recordFailedLoginAttempt: dbSim.recordFailedLoginAttempt,
+  resetFailedLoginAttempts: dbSim.resetFailedLoginAttempts,
+
+  // System Config
+  getSystemConfig: dbSim.getSystemConfig,
+  isMfaEnabled: dbSim.isMfaEnabled,
+
+  // User MFA
+  getUserMfa: dbSim.getUserMfa,
+  setUserMfa: dbSim.setUserMfa,
 };
 
 // Type export for consumers

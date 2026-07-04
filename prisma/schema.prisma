@@ -33,12 +33,15 @@ model User {
   hierarchyLevel Int        @default(3)
   company        Company    @default(CENTRAL)
   status         String     @default("ACTIVE") // ACTIVE, BLOCKED
+  failedLoginAttempts Int   @default(0)
+  lockedUntil    DateTime?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   logs           AuditLog[]
   documents      Document[]
   createdAnnouncements Announcement[] @relation("AnnouncementCreator")
   announcementReads   AnnouncementRead[] @relation("AnnouncementReadUser")
+  mfa            UserMfa?
 }
 
 model SystemPanel {
@@ -208,6 +211,16 @@ model SystemConfig {
   id        String   @id @default(cuid())
   key       String   @unique
   value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
+model UserMfa {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  secret    String   @db.Text
+  enabled   Boolean  @default(false)
+  createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
