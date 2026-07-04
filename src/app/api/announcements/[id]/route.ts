@@ -3,11 +3,20 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { SessionUser } from "@/types/auth";
 import { validateRequest, validateParams, updateAnnouncementSchema, deleteAnnouncementSchema } from "@/lib/validation";
+import { rateLimit } from "@/lib/rate-limit";
+import { validateCsrf } from "@/lib/csrf";
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const limiterResponse = await rateLimit(request, "mutation");
+  if (limiterResponse) return limiterResponse;
+
+  if (!validateCsrf(request)) {
+    return NextResponse.json({ error: "CSRF token invalido" }, { status: 403 });
+  }
+
   try {
     const session = await auth();
     if (!session || !session.user) {
@@ -94,6 +103,13 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const limiterResponse = await rateLimit(request, "mutation");
+  if (limiterResponse) return limiterResponse;
+
+  if (!validateCsrf(request)) {
+    return NextResponse.json({ error: "CSRF token invalido" }, { status: 403 });
+  }
+
   try {
     const session = await auth();
     if (!session || !session.user) {

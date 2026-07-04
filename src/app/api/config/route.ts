@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { SessionUser } from "@/types/auth";
 import { prisma, isDatabaseConnected } from "@/lib/db";
+import { rateLimit } from "@/lib/rate-limit";
+import { configUpdateSchema } from "@/lib/validation";
+import { validateCsrf } from "@/lib/csrf";
 
 // Fallback mock store
 declare global {
@@ -14,6 +17,9 @@ const mockConfig = globalThis.__mockSystemConfig ?? (globalThis.__mockSystemConf
 });
 
 export async function GET(request: NextRequest) {
+  const limiterResponse = await rateLimit(request, "api");
+  if (limiterResponse) return limiterResponse;
+
   try {
     const session = await auth();
     if (!session?.user || (session.user as SessionUser).hierarchyLevel !== 1) {
@@ -41,6 +47,13 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const limiterResponse = await rateLimit(request, "mutation");
+  if (limiterResponse) return limiterResponse;
+
+  if (!validateCsrf(request)) {
+    return NextResponse.json({ error: "CSRF token invalido" }, { status: 403 });
+  }
+
   try {
     const session = await auth();
     if (!session?.user || (session.user as SessionUser).hierarchyLevel !== 1) {
@@ -49,13 +62,24 @@ export async function PUT(request: NextRequest) {
 
     const data = await request.json();
 
+    const validation = configUpdateSchema.safeParse(data);
+    if (!validation.success) {
+      const errorMessages = validation.error.issues.map(
+        (issue) => `${issue.path.join(".")}: ${issue.message}`
+      ).join("; ");
+      return NextResponse.json({ error: "Dados invalidos", details: errorMessages }, { status: 400 });
+    }
+
+    const validatedData = validation.data;
+
     if (prisma && isDatabaseConnected()) {
-      for (const [key, value] of Object.entries(data)) {
-        if (typeof value === "string") {
+      for (const [key, value] of Object.entries(validatedData)) {
+        const strValue = typeof value === "boolean" ? String(value) : typeof value === "number" ? String(value) : value;
+        if (typeof strValue === "string") {
           await prisma.systemConfig.upsert({
             where: { key },
-            update: { value },
-            create: { key, value }
+            update: { value: strValue },
+            create: { key, value: strValue }
           });
         }
       }
@@ -63,9 +87,10 @@ export async function PUT(request: NextRequest) {
     }
 
     // Mock
-    for (const [key, value] of Object.entries(data)) {
-      if (typeof value === "string") {
-        mockConfig[key] = value;
+    for (const [key, value] of Object.entries(validatedData)) {
+      const strValue = typeof value === "boolean" ? String(value) : typeof value === "number" ? String(value) : value;
+      if (typeof strValue === "string") {
+        mockConfig[key] = strValue;
       }
     }
     return NextResponse.json({ success: true });

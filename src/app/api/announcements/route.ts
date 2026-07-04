@@ -9,6 +9,7 @@ import {
   createAnnouncementSchema 
 } from "@/lib/validation";
 import { rateLimit } from "@/lib/rate-limit";
+import { validateCsrf } from "@/lib/csrf";
 
 async function handleGet(request: NextRequest) {
   try {
@@ -18,7 +19,7 @@ async function handleGet(request: NextRequest) {
     }
 
     const user = session.user as SessionUser;
-    const userCompany = user.company;
+    void user.company;
 
     // Validate pagination
     const paginationValidation = validateSearchParams(
@@ -150,5 +151,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const limiterResponse = await rateLimit(request, "mutation");
   if (limiterResponse) return limiterResponse;
+
+  if (!validateCsrf(request)) {
+    return NextResponse.json({ error: "CSRF token invalido" }, { status: 403 });
+  }
+
   return handlePost(request);
 }
