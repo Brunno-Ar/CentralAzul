@@ -3,8 +3,9 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { SessionUser } from "@/types/auth";
 import { rateLimit } from "@/lib/rate-limit";
+import { validateParams, createLevelSchema, deleteLevelSchema } from "@/lib/validation";
 
-async function handleGet(request: NextRequest) {
+async function handleGet() {
   try {
     const session = await auth();
     if (!session || !session.user) {
@@ -34,12 +35,18 @@ async function handlePost(request: NextRequest) {
       return NextResponse.json({ error: "Nivel e nome sao obrigatorios" }, { status: 400 });
     }
 
-    const newLevel = await db.createLevel({ level: parseInt(level, 10), name });
+    const validation = createLevelSchema.safeParse({ level: typeof level === "string" ? parseInt(level, 10) : level, name });
+    if (!validation.success) {
+      const errorMessages = validation.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; ");
+      return NextResponse.json({ error: "Dados invalidos", details: errorMessages }, { status: 400 });
+    }
+
+    const newLevel = await db.createLevel({ level: validation.data.level, name: validation.data.name });
     
     // Log
     const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
     const userAgent = request.headers.get("user-agent") || "Browser";
-    await db.addLog(user.id, "CRIAR_NIVEL", `Criou o nivel de hierarquia ${level} (${name})`, ip, userAgent);
+    await db.addLog(user.id, "CRIAR_NIVEL", `Criou o nivel de hierarquia ${validation.data.level} (${validation.data.name})`, ip, userAgent);
 
     return NextResponse.json(newLevel, { status: 201 });
   } catch (error) {
@@ -61,11 +68,12 @@ async function handleDelete(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
-    if (!id) {
-      return NextResponse.json({ error: "ID e obrigatorio" }, { status: 400 });
+    const paramsValidation = validateParams({ id: id || undefined }, deleteLevelSchema);
+    if (!paramsValidation.success) {
+      return paramsValidation.error;
     }
 
-    const success = await db.deleteLevel(id);
+    const success = await db.deleteLevel(paramsValidation.data.id);
     if (!success) {
       return NextResponse.json({ error: "Nivel nao encontrado" }, { status: 404 });
     }
@@ -73,7 +81,7 @@ async function handleDelete(request: NextRequest) {
     // Log
     const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
     const userAgent = request.headers.get("user-agent") || "Browser";
-    await db.addLog(user.id, "EXCLUIR_NIVEL", `Removeu o nivel de hierarquia ID: ${id}`, ip, userAgent);
+    await db.addLog(user.id, "EXCLUIR_NIVEL", `Removeu o nivel de hierarquia ID: ${paramsValidation.data.id}`, ip, userAgent);
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -85,7 +93,7 @@ async function handleDelete(request: NextRequest) {
 export async function GET(request: NextRequest) {
   const limiterResponse = await rateLimit(request, "api");
   if (limiterResponse) return limiterResponse;
-  return handleGet(request);
+  return handleGet();
 }
 
 export async function POST(request: NextRequest) {

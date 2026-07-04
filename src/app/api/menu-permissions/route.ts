@@ -3,8 +3,9 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { SessionUser } from "@/types/auth";
 import { rateLimit } from "@/lib/rate-limit";
+import { validateRequest, updateMenuPermissionSchema } from "@/lib/validation";
 
-async function handleGet(request: NextRequest) {
+async function handleGet() {
   try {
     const session = await auth();
     if (!session || !session.user) {
@@ -29,12 +30,14 @@ async function handlePut(request: NextRequest) {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
     }
 
-    const { href, minLevel } = await request.json();
-    if (!href || minLevel === undefined) {
-      return NextResponse.json({ error: "Caminho e nivel sao obrigatorios" }, { status: 400 });
+    const validation = await validateRequest(request, updateMenuPermissionSchema);
+    if (!validation.success) {
+      return validation.error;
     }
 
-    const updated = await db.updateMenuPermission(href, parseInt(minLevel, 10));
+    const { href, minLevel } = validation.data;
+
+    const updated = await db.updateMenuPermission(href, minLevel);
     if (!updated) {
       return NextResponse.json({ error: "Permissao nao encontrada" }, { status: 404 });
     }
@@ -54,7 +57,7 @@ async function handlePut(request: NextRequest) {
 export async function GET(request: NextRequest) {
   const limiterResponse = await rateLimit(request, "api");
   if (limiterResponse) return limiterResponse;
-  return handleGet(request);
+  return handleGet();
 }
 
 export async function PUT(request: NextRequest) {

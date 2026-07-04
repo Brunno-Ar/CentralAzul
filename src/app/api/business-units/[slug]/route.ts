@@ -2,11 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { SessionUser } from "@/types/auth";
+import { rateLimit } from "@/lib/rate-limit";
+import { validateRequest, updateBusinessUnitBySlugSchema } from "@/lib/validation";
+import { validateCsrf } from "@/lib/csrf";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
 ) {
+  const limiterResponse = await rateLimit(request, "api");
+  if (limiterResponse) return limiterResponse;
+
   try {
     const session = await auth();
     if (!session || !session.user) {
@@ -15,8 +21,8 @@ export async function GET(
 
     const { slug } = await params;
     const user = session.user as SessionUser;
-    const userLevel = user.hierarchyLevel || 3;
-    const userCompany = user.company;
+    void user.hierarchyLevel;
+    void user.company;
 
     if (!db.getBusinessUnitBySlug) {
       return NextResponse.json({ error: "Não encontrado" }, { status: 404 });
@@ -47,6 +53,13 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
 ) {
+  const limiterResponse = await rateLimit(request, "mutation");
+  if (limiterResponse) return limiterResponse;
+
+  if (!validateCsrf(request)) {
+    return NextResponse.json({ error: "CSRF token invalido" }, { status: 403 });
+  }
+
   try {
     const session = await auth();
     if (!session || !session.user) {
@@ -65,7 +78,10 @@ export async function PUT(
     }
 
     const { slug } = await params;
-    const body = await request.json();
+    const validation = await validateRequest(request, updateBusinessUnitBySlugSchema);
+    if (!validation.success) {
+      return validation.error;
+    }
 
     if (!db.updateBusinessUnit) {
       return NextResponse.json(
@@ -83,7 +99,7 @@ export async function PUT(
       );
     }
 
-    const updated = await db.updateBusinessUnit(businessUnit.id, body);
+    const updated = await db.updateBusinessUnit(businessUnit.id, validation.data);
 
     if (!updated) {
       return NextResponse.json({ error: "Erro ao atualizar" }, { status: 500 });
@@ -112,6 +128,13 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
 ) {
+  const limiterResponse = await rateLimit(request, "mutation");
+  if (limiterResponse) return limiterResponse;
+
+  if (!validateCsrf(request)) {
+    return NextResponse.json({ error: "CSRF token invalido" }, { status: 403 });
+  }
+
   try {
     const session = await auth();
     if (!session || !session.user) {

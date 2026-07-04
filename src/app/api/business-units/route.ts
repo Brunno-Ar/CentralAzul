@@ -9,6 +9,7 @@ import {
   createBusinessUnitSchema 
 } from "@/lib/validation";
 import { rateLimit } from "@/lib/rate-limit";
+import { validateCsrf } from "@/lib/csrf";
 
 async function handleGet(request: NextRequest) {
   try {
@@ -17,7 +18,8 @@ async function handleGet(request: NextRequest) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
-    const user = session.user as SessionUser;
+    const _user = session.user as SessionUser;
+    void _user;
 
     // Validate pagination
     const paginationValidation = validateSearchParams(
@@ -45,6 +47,10 @@ async function handleGet(request: NextRequest) {
 }
 
 async function handlePost(request: NextRequest) {
+  if (!validateCsrf(request)) {
+    return NextResponse.json({ error: "CSRF token invalido" }, { status: 403 });
+  }
+
   try {
     const session = await auth();
     if (!session || !session.user) {
