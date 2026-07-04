@@ -6,7 +6,8 @@ import {
   validateRequest, 
   validateSearchParams, 
   paginationSchema, 
-  updateUserSchema 
+  updateUserSchema,
+  createUserWithPasswordSchema
 } from "@/lib/validation";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -152,15 +153,12 @@ async function handlePost(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
-    const { name, email, password, role } = body;
-
-    if (!name || !email || !password || !role) {
-      return NextResponse.json(
-        { error: "Preencha todos os campos obrigatórios." },
-        { status: 400 },
-      );
+    const validation = await validateRequest(request, createUserWithPasswordSchema);
+    if (!validation.success) {
+      return validation.error;
     }
+
+    const { name, email, password, role } = validation.data;
 
     // Resolve hierarchyLevel matching the selected role config
     const rolesList = await db.getRoles();

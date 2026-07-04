@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { SessionUser } from "@/types/auth";
 import { rateLimit } from "@/lib/rate-limit";
+import { validateRequest, updateProfileSchema } from "@/lib/validation";
 
 async function handlePut(request: NextRequest) {
   try {
@@ -12,7 +14,12 @@ async function handlePut(request: NextRequest) {
     }
     const currentUser = session.user as SessionUser;
 
-    const { name, image, currentPassword, newPassword } = await request.json();
+    const validation = await validateRequest(request, updateProfileSchema);
+    if (!validation.success) {
+      return validation.error;
+    }
+
+    const { name, image, currentPassword, newPassword } = validation.data;
 
     // Fetch full user details to check the password
     const userFromDb = await db.getUserById(currentUser.id);
@@ -29,13 +36,13 @@ async function handlePut(request: NextRequest) {
       if (!currentPassword) {
         return NextResponse.json({ error: "A senha atual e necessaria para alterar a senha" }, { status: 400 });
       }
-      if (userFromDb.password !== currentPassword) {
+      if (!userFromDb.password || !(await bcrypt.compare(currentPassword, userFromDb.password))) {
         return NextResponse.json({ error: "A senha atual informada esta incorreta" }, { status: 400 });
       }
       if (newPassword.length < 6) {
         return NextResponse.json({ error: "A nova senha deve ter pelo menos 6 caracteres" }, { status: 400 });
       }
-      updates.password = newPassword;
+      updates.password = await bcrypt.hash(newPassword, 12);
     }
 
     if (Object.keys(updates).length === 0) {

@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { uploadToB2 } from "@/lib/b2";
 import { SessionUser } from "@/types/auth";
 import { rateLimit } from "@/lib/rate-limit";
+import { uploadAvatarSchema } from "@/lib/validation";
 
 async function handlePost(request: NextRequest) {
   try {
@@ -20,7 +21,20 @@ async function handlePost(request: NextRequest) {
       return NextResponse.json({ error: "Nenhum arquivo enviado" }, { status: 400 });
     }
 
-    // Limit avatar size to 5MB
+    // Validate file metadata with Zod schema
+    const avatarValidation = uploadAvatarSchema.safeParse({
+      fileSize: file.size,
+      fileType: file.type,
+      fileName: file.name,
+    });
+    if (!avatarValidation.success) {
+      const errorMessages = avatarValidation.error.issues.map(
+        (issue) => `${issue.path.join(".")}: ${issue.message}`
+      ).join("; ");
+      return NextResponse.json({ error: "Arquivo invalido", details: errorMessages }, { status: 400 });
+    }
+
+    // Limit avatar size to 5MB (redundant check, schema validates too)
     if (file.size > 5 * 1024 * 1024) {
       return NextResponse.json({ error: "A foto de perfil deve ter no maximo 5MB" }, { status: 400 });
     }

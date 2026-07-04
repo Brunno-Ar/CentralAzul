@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db, MockDocument, MockSystemPanel, MockUser } from "@/lib/db";
 import { SessionUser } from "@/types/auth";
+import { rateLimit } from "@/lib/rate-limit";
+import { validateSearchParams, searchQuerySchema } from "@/lib/validation";
 
 interface SearchResult {
   id: string;
@@ -17,6 +19,9 @@ interface SearchResult {
 }
 
 export async function GET(request: NextRequest) {
+  const limiterResponse = await rateLimit(request, "api");
+  if (limiterResponse) return limiterResponse;
+
   try {
     const session = await auth();
     if (!session || !session.user) {
@@ -24,8 +29,13 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const query = searchParams.get("q")?.toLowerCase().trim() || "";
-    const limit = parseInt(searchParams.get("limit") || "10");
+    const searchValidation = validateSearchParams(searchParams, searchQuerySchema);
+    if (!searchValidation.success) {
+      return searchValidation.error;
+    }
+
+    const query = searchValidation.data.q.toLowerCase().trim();
+    const limit = searchValidation.data.limit;
 
     if (!query || query.length < 2) {
       return NextResponse.json({ results: [] });
@@ -33,10 +43,11 @@ export async function GET(request: NextRequest) {
 
     const user = session.user as SessionUser;
     const userLevel = user.hierarchyLevel || 3;
+    const userCompany = user.company;
 
     // Buscar em paralelo (sem quicklinks)
     const [documents, panels, users] = await Promise.all([
-      db.getDocuments?.() || [],
+      db.getDocuments?.(userLevel, userCompany) || [],
       db.getPanels?.() || [],
       db.getUsers?.() || [],
     ]);
