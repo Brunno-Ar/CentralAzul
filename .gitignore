@@ -45,3 +45,6 @@ next-env.d.ts
 # agent rules
 AGENTS.md
 worklog.md
+
+# omo framework/evidence
+.omo/
