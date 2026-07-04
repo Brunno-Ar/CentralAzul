@@ -2,15 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { decode, encode } from "next-auth/jwt";
 import { db } from "@/lib/db";
 import { cookies } from "next/headers";
+import { auth } from "@/auth";
+import { validateRequest, refreshRoleBodySchema } from "@/lib/validation";
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { userId } = body;
-
-    if (!userId) {
-      return NextResponse.json({ error: "userId obrigatorio" }, { status: 400 });
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Nao autenticado" }, { status: 401 });
     }
+
+    const validation = await validateRequest(request, refreshRoleBodySchema);
+    if (!validation.success) {
+      return validation.error;
+    }
+
+    const userId = session.user.id;
 
     const dbUser = await db.getUserById(userId);
     if (!dbUser) {
@@ -68,7 +75,18 @@ export async function POST(request: NextRequest) {
       salt: foundCookieName,
     });
 
-    const response = NextResponse.json({ success: true, user: dbUser });
+    const response = NextResponse.json({
+      success: true,
+      user: {
+        id: dbUser.id,
+        name: dbUser.name,
+        email: dbUser.email,
+        role: dbUser.role,
+        hierarchyLevel: dbUser.hierarchyLevel,
+        company: dbUser.company,
+        status: dbUser.status,
+      },
+    });
     response.cookies.set(foundCookieName, encodedToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

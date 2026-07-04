@@ -1,6 +1,8 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import { SessionUser } from "@/types/auth";
+import { randomUUID } from "crypto";
+import { generateCsrfToken } from "@/lib/csrf";
 
 // In-memory rate limit store
 const limiterStore = new Map<string, { count: number; resetTime: number }>();
@@ -109,7 +111,16 @@ export default auth((req) => {
   }
 
   // Security headers
+  const nonce = randomUUID();
+  const isDev = process.env.NODE_ENV !== "production";
+  const scriptSrc = isDev
+    ? `script-src 'self' 'nonce-${nonce}' 'unsafe-eval' 'strict-dynamic'`
+    : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`;
+  const styleSrc = `style-src 'self' 'unsafe-inline'`;
+  const cspHeader = `default-src 'self'; ${scriptSrc}; ${styleSrc}; img-src 'self' blob: data: https:; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests`;
+
   const response = NextResponse.next();
+  response.headers.set("Content-Security-Policy", cspHeader);
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
@@ -117,6 +128,20 @@ export default auth((req) => {
     "Permissions-Policy",
     "camera=(), microphone=(), geolocation=()"
   );
+
+  req.headers.set("x-nonce", nonce);
+
+  // Double-submit CSRF cookie: set on GET responses so the client has a token
+  // to echo back via X-CSRF-Token header on POST/PUT/DELETE requests.
+  if (req.method === "GET") {
+    const csrfToken = generateCsrfToken();
+    response.cookies.set("csrfToken", csrfToken, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+    });
+  }
 
   return response;
 });
