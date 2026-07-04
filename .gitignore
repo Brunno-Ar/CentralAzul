@@ -48,3 +48,6 @@ worklog.md
 
 # omo framework/evidence
 .omo/
+
+# playwright test results
+e2e-results/
