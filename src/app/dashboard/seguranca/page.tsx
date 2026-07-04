@@ -23,6 +23,7 @@ import {
 import { SessionUser } from "@/types/auth";
 import { PageWrapper } from "@/components/PageWrapper";
 
+
 interface UserItem {
   id: string;
   name: string;
@@ -474,7 +475,10 @@ export default function SegurancaPage() {
                   Permite login profissional apenas para contas @grupoazul.com.br.
                 </p>
               </div>
-              <button 
+              <button
+                role="switch"
+                aria-checked={restrictDomain}
+                aria-label="Restringir Dominio Outlook"
                 onClick={() => {
                   const newVal = !restrictDomain;
                   setRestrictDomain(newVal);
@@ -494,7 +498,10 @@ export default function SegurancaPage() {
                   Verifica se o usuario completou a autenticacao multifator no Entra ID.
                 </p>
               </div>
-              <button 
+              <button
+                role="switch"
+                aria-checked={mfaRequired}
+                aria-label="Exigir MFA Corporativo"
                 onClick={() => {
                   const newVal = !mfaRequired;
                   setMfaRequired(newVal);
@@ -514,7 +521,10 @@ export default function SegurancaPage() {
                   Desconecta o usuario apos 15 minutos de inatividade.
                 </p>
               </div>
-              <button 
+              <button
+                role="switch"
+                aria-checked={sessionTimeout}
+                aria-label="Expiracao Rapida de Sessao"
                 onClick={() => {
                   const newVal = !sessionTimeout;
                   setSessionTimeout(newVal);
@@ -539,13 +549,16 @@ export default function SegurancaPage() {
               <Users className="w-3.5 h-3.5 text-brand-terciar" />
               Controle de Hierarquia & Contas
             </h2>
-            <button
-              onClick={() => {
-                setUserMessage(null);
-                setIsCreatingUser(!isCreatingUser);
-              }}
-              className="flex items-center justify-center gap-1.5 self-start sm:self-center px-3 py-1.5 bg-brand-secundar text-white font-bold rounded-lg text-xs hover:bg-brand-secundar/90 transition-colors cursor-pointer transform-gpu"
-            >
+              <button
+                onClick={() => {
+                  setUserMessage(null);
+                  setIsCreatingUser(!isCreatingUser);
+                }}
+                aria-expanded={isCreatingUser}
+                aria-controls="new-user-form"
+                aria-label={isCreatingUser ? "Fechar formulario de colaborador" : "Abrir formulario de novo colaborador"}
+                className="flex items-center justify-center gap-1.5 self-start sm:self-center px-3 py-1.5 bg-brand-secundar text-white font-bold rounded-lg text-xs hover:bg-brand-secundar/90 transition-colors cursor-pointer transform-gpu"
+              >
               {isCreatingUser ? (
                 <>
                   <X className="w-3.5 h-3.5" />
@@ -573,6 +586,7 @@ export default function SegurancaPage() {
           <AnimatePresence>
             {isCreatingUser && (
               <motion.form
+                id="new-user-form"
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
@@ -673,14 +687,15 @@ export default function SegurancaPage() {
                       </td>
                       <td className="py-3 px-2">
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1.5">
-                          <select
-                            value={u.role}
-                            disabled={updatingUserId === u.id || u.id === currentUser?.id}
-                            onChange={(e) => {
-                              handleUpdateUser(u.id, { role: e.target.value });
-                            }}
-                            className="bg-brand-principal/40 border border-brand-terciar/15 text-[10px] rounded px-1.5 py-0.5 text-brand-terciar focus:outline-none cursor-pointer focus:bg-white"
-                          >
+                    <select
+                      value={u.role}
+                      disabled={updatingUserId === u.id || u.id === currentUser?.id}
+                      onChange={(e) => {
+                        handleUpdateUser(u.id, { role: e.target.value });
+                      }}
+                      aria-label={`Cargo do usuario ${u.name}`}
+                      className="bg-brand-principal/40 border border-brand-terciar/15 text-[10px] rounded px-1.5 py-0.5 text-brand-terciar focus:outline-none cursor-pointer focus:bg-white"
+                    >
                             {roles.map((r) => (
                               <option key={r.id} value={r.name}>
                                 {r.displayName}
@@ -697,6 +712,7 @@ export default function SegurancaPage() {
                           value={u.status}
                           disabled={updatingUserId === u.id || u.id === currentUser?.id}
                           onChange={(e) => handleUpdateUser(u.id, { status: e.target.value })}
+                          aria-label={`Status do usuario ${u.name}`}
                           className={`bg-brand-principal/40 border border-brand-terciar/15 text-[10px] rounded px-1.5 py-0.5 focus:outline-none cursor-pointer focus:bg-white ${
                             u.status === "ACTIVE" ? "text-emerald-700 font-bold" : "text-red-700 font-bold"
                           }`}
@@ -734,6 +750,9 @@ export default function SegurancaPage() {
               setRoleMessage(null);
               setIsCreatingRole(!isCreatingRole);
             }}
+            aria-expanded={isCreatingRole}
+            aria-controls="new-role-form"
+            aria-label={isCreatingRole ? "Fechar formulario de cargo" : "Abrir formulario de novo cargo"}
             className="flex items-center justify-center gap-1.5 self-start sm:self-center px-3 py-1.5 bg-brand-extra2 text-white font-bold rounded-lg text-xs hover:bg-brand-extra2/90 transition-colors cursor-pointer"
           >
             {isCreatingRole ? (
@@ -764,6 +783,7 @@ export default function SegurancaPage() {
         <AnimatePresence>
           {isCreatingRole && (
             <motion.div
+              id="new-role-form"
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
@@ -897,6 +917,7 @@ export default function SegurancaPage() {
                             onClick={() => handleUpdateRoleSubmit(r.id)}
                             className="p-1 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded border border-emerald-200 cursor-pointer"
                             title="Salvar Alteracoes"
+                            aria-label={`Salvar alteracoes do cargo ${r.name}`}
                           >
                             <Save className="w-3.5 h-3.5" />
                           </button>
@@ -904,6 +925,7 @@ export default function SegurancaPage() {
                             onClick={() => setEditingRoleId(null)}
                             className="p-1 text-brand-terciar/70 bg-brand-principal hover:bg-brand-terciar/10 rounded border border-brand-terciar/15 cursor-pointer"
                             title="Cancelar"
+                            aria-label={`Cancelar edicao do cargo ${r.name}`}
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -914,6 +936,7 @@ export default function SegurancaPage() {
                             onClick={() => handleStartEditRole(r)}
                             className="p-1 text-brand-secundar bg-brand-principal hover:bg-brand-principal/70 rounded border border-brand-terciar/15 cursor-pointer"
                             title="Editar Cargo"
+                            aria-label={`Editar cargo ${r.name}`}
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
@@ -922,6 +945,7 @@ export default function SegurancaPage() {
                               onClick={() => handleDeleteRole(r.id, r.name)}
                               className="p-1 text-red-650 bg-red-50 hover:bg-red-100 rounded border border-red-200 cursor-pointer"
                               title="Excluir Cargo"
+                              aria-label={`Excluir cargo ${r.name}`}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -978,12 +1002,13 @@ export default function SegurancaPage() {
                       {item.href}
                     </td>
                     <td className="py-3 px-3">
-                      <select
-                        value={item.minLevel}
-                        onChange={(e) => handleUpdateMenuPermission(item.href, parseInt(e.target.value, 10))}
-                        disabled={updatingMenuHref === item.href}
-                        className="px-2.5 py-1 bg-white border border-brand-terciar/20 rounded-lg text-xs text-brand-terciar focus:outline-none cursor-pointer focus:border-brand-secundar"
-                      >
+                    <select
+                      value={item.minLevel}
+                      onChange={(e) => handleUpdateMenuPermission(item.href, parseInt(e.target.value, 10))}
+                      disabled={updatingMenuHref === item.href}
+                      aria-label={`Nivel minimo para ${item.name}`}
+                      className="px-2.5 py-1 bg-white border border-brand-terciar/20 rounded-lg text-xs text-brand-terciar focus:outline-none cursor-pointer focus:border-brand-secundar"
+                    >
                         {uniqueLevels.map((lvl) => (
                           <option key={lvl} value={lvl}>
                             Nivel {lvl} ({getLevelLabel(lvl)})
@@ -1018,6 +1043,7 @@ export default function SegurancaPage() {
             <select
               value={actionFilter}
               onChange={(e) => setActionFilter(e.target.value)}
+              aria-label="Filtrar acoes de auditoria"
               className="bg-brand-principal/40 border border-brand-terciar/15 text-xs rounded-lg px-2.5 py-1 text-brand-terciar focus:outline-none cursor-pointer focus:bg-white"
             >
               <option value="ALL">Todas as Acoes</option>
@@ -1028,11 +1054,13 @@ export default function SegurancaPage() {
               <option value="CONFIGURAR_CARGO">CONFIGURAR_CARGO</option>
             </select>
 
-            <button
-              onClick={loadLogs}
-              disabled={loadingLogs}
-              className="p-1.5 rounded-lg border border-brand-terciar/15 bg-brand-principal/40 hover:bg-brand-principal/80 text-brand-terciar hover:text-brand-secundar cursor-pointer disabled:opacity-50"
-            >
+          <button
+            onClick={loadLogs}
+            disabled={loadingLogs}
+            aria-label="Atualizar logs de auditoria"
+            aria-pressed={loadingLogs}
+            className="p-1.5 rounded-lg border border-brand-terciar/15 bg-brand-principal/40 hover:bg-brand-principal/80 text-brand-terciar hover:text-brand-secundar cursor-pointer disabled:opacity-50"
+          >
               <RefreshCw className={`w-3.5 h-3.5 ${loadingLogs ? "animate-spin" : ""}`} />
             </button>
           </div>

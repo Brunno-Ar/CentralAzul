@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useState, useRef } from "react";
+import { useParams, useRouter } from "next/navigation";
 import NextImage from "next/image";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -30,6 +30,7 @@ import {
   Plus,
 } from "lucide-react";
 import { SessionUser } from "@/types/auth";
+import FocusLock from "react-focus-lock";
 
 interface BusinessUnit {
   id: string;
@@ -153,6 +154,7 @@ const formatDate = (dateStr: string) => {
 
 export default function BusinessUnitDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const slug = params.slug as string;
   const { data: session } = useSession();
   const [businessUnit, setBusinessUnit] = useState<BusinessUnit | null>(null);
@@ -174,6 +176,9 @@ export default function BusinessUnitDetailPage() {
   const [showAddSocialModal, setShowAddSocialModal] = useState(false);
   const [showAddAnalyticsModal, setShowAddAnalyticsModal] = useState(false);
   const [showAddRevenueModal, setShowAddRevenueModal] = useState(false);
+
+  const editModalTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const addToolTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   const handleAddItem = async (type: string, data: unknown) => {
     try {
@@ -254,9 +259,7 @@ export default function BusinessUnitDetailPage() {
         setMessage({ type: "success", text: "Unidade de negócio atualizada com sucesso" });
         
         if (updates.slug !== slug) {
-          setTimeout(() => {
-            window.location.href = `/dashboard/unidades/${updates.slug}`;
-          }, 1000);
+          router.push(`/dashboard/unidades/${updates.slug}`);
         }
       } else {
         const err = await res.json();
@@ -286,11 +289,6 @@ export default function BusinessUnitDetailPage() {
     const syncPromise = fetch(`/api/business-units/${slug}/sync`, {
       method: "POST",
     });
-
-    for (let i = 1; i < syncSteps.length; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 700));
-      setSyncStep(i);
-    }
 
     try {
       const res = await syncPromise;
@@ -343,7 +341,7 @@ export default function BusinessUnitDetailPage() {
       });
       if (res.ok) {
         setMessage({ type: "success", text: "Unidade removida com sucesso" });
-        setTimeout(() => (window.location.href = "/dashboard"), 1500);
+        router.push("/dashboard");
       } else {
         setMessage({ type: "error", text: "Erro ao remover unidade" });
       }
@@ -407,6 +405,7 @@ export default function BusinessUnitDetailPage() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => (window.location.href = "/dashboard")}
+            aria-label="Voltar para o dashboard"
             className="p-2 rounded-lg hover:bg-brand-terciar/10 text-brand-terciar/60 transition-colors md:hidden"
           >
             <ChevronLeft className="w-5 h-5" />
@@ -423,11 +422,12 @@ export default function BusinessUnitDetailPage() {
 
         <div className="flex items-center gap-2">
           {userLevel <= 2 && (
-            <button
-              onClick={handleSync}
-              disabled={isSyncing}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-secundar/10 text-brand-secundar hover:bg-brand-secundar/20 rounded-lg text-xs font-medium transition-all active:scale-[0.98] disabled:opacity-50"
-            >
+              <button
+                onClick={handleSync}
+                disabled={isSyncing}
+                aria-label="Sincronizar Metricas"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-secundar/10 text-brand-secundar hover:bg-brand-secundar/20 rounded-lg text-xs font-medium transition-all active:scale-[0.98] disabled:opacity-50"
+              >
               <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
               Sincronizar Métricas
             </button>
@@ -435,17 +435,19 @@ export default function BusinessUnitDetailPage() {
 
           {isAdmin && (
             <>
-              <button className="p-2 rounded-lg hover:bg-brand-terciar/10 text-brand-terciar/60 transition-colors">
+              <button aria-label="Visualizar unidade" className="p-2 rounded-lg hover:bg-brand-terciar/10 text-brand-terciar/60 transition-colors">
                 <Eye className="w-5 h-5" />
               </button>
               <button
                 onClick={() => setShowEditModal(true)}
+                aria-label="Editar unidade de negocio"
                 className="p-2 rounded-lg hover:bg-brand-terciar/10 text-brand-terciar/60 transition-colors"
               >
                 <Edit2 className="w-5 h-5" />
               </button>
               <button
                 onClick={handleDelete}
+                aria-label="Excluir unidade de negocio"
                 className="p-2 rounded-lg hover:bg-red-50 text-red-600 transition-colors"
               >
                 <Trash2 className="w-5 h-5" />
@@ -533,7 +535,7 @@ export default function BusinessUnitDetailPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-white rounded-xl p-1 border border-brand-terciar/10 overflow-x-auto scrollbar-hide pb-1">
+      <div className="flex gap-1 bg-white rounded-xl p-1 border border-brand-terciar/10 overflow-x-auto scrollbar-hide pb-1" role="tablist" aria-label="Secoes da unidade">
         {[
           { id: "overview", label: "Visão Geral", icon: Building2 },
           { id: "tools", label: "Ferramentas", icon: Settings },
@@ -543,6 +545,11 @@ export default function BusinessUnitDetailPage() {
         ].map((tab) => (
           <button
             key={tab.id}
+            id={`${tab.id}-tab`}
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            aria-controls={`${tab.id}-panel`}
+            tabIndex={activeTab === tab.id ? 0 : -1}
             onClick={() => setActiveTab(tab.id as typeof activeTab)}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
               activeTab === tab.id
@@ -568,7 +575,7 @@ export default function BusinessUnitDetailPage() {
         >
           {/* Overview Tab */}
           {activeTab === "overview" && (
-            <div className="p-6 space-y-6">
+            <div role="tabpanel" id="overview-panel" aria-labelledby="overview-tab" className="p-6 space-y-6">
               {/* Stats Grid */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <StatCard
@@ -675,10 +682,12 @@ export default function BusinessUnitDetailPage() {
 
           {/* Tools Tab */}
           {activeTab === "tools" && (
-            <div className="p-6">
+            <div role="tabpanel" id="tools-panel" aria-labelledby="tools-tab" className="p-6">
               {userLevel <= 2 && (
                 <button
                   onClick={() => setShowAddToolModal(true)}
+                  aria-haspopup="dialog"
+                  aria-expanded={showAddToolModal}
                   className="mb-4 flex items-center gap-1.5 px-3 py-1.5 bg-brand-secundar text-white rounded-lg text-xs font-medium hover:bg-brand-secundar/90 transition-colors"
                 >
                   <Plus className="w-3.5 h-3.5" />
@@ -707,10 +716,12 @@ export default function BusinessUnitDetailPage() {
 
           {/* Social Tab */}
           {activeTab === "social" && (
-            <div className="p-6">
+            <div role="tabpanel" id="social-panel" aria-labelledby="social-tab" className="p-6">
               {userLevel <= 2 && (
                 <button
                   onClick={() => setShowAddSocialModal(true)}
+                  aria-haspopup="dialog"
+                  aria-expanded={showAddSocialModal}
                   className="mb-4 flex items-center gap-1.5 px-3 py-1.5 bg-brand-secundar text-white rounded-lg text-xs font-medium hover:bg-brand-secundar/90 transition-colors"
                 >
                   <Plus className="w-3.5 h-3.5" />
@@ -739,7 +750,7 @@ export default function BusinessUnitDetailPage() {
 
           {/* Analytics Tab */}
           {activeTab === "analytics" && (
-            <div className="p-6 space-y-6">
+            <div role="tabpanel" id="analytics-panel" aria-labelledby="analytics-tab" className="p-6 space-y-6">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <StatCard
                   icon={BarChart3}
@@ -788,6 +799,8 @@ export default function BusinessUnitDetailPage() {
                 {userLevel <= 2 && (
                   <button
                     onClick={() => setShowAddAnalyticsModal(true)}
+                    aria-haspopup="dialog"
+                    aria-expanded={showAddAnalyticsModal}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-secundar text-white rounded-lg text-xs font-medium hover:bg-brand-secundar/90 transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5" />
@@ -840,6 +853,7 @@ export default function BusinessUnitDetailPage() {
                                 onClick={() => handleDeleteItem("analytics", a.id)}
                                 className="p-1 text-red-500 hover:bg-red-50 rounded"
                                 title="Remover registro"
+                                aria-label={`Remover registro de analytics de ${formatDate(a.date)}`}
                               >
                                 <Trash2 className="w-3.5 h-3.5 inline" />
                               </button>
@@ -856,7 +870,7 @@ export default function BusinessUnitDetailPage() {
 
           {/* Revenue Tab */}
           {activeTab === "revenue" && (
-            <div className="p-6 space-y-6">
+            <div role="tabpanel" id="revenue-panel" aria-labelledby="revenue-tab" className="p-6 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <StatCard
                   icon={DollarSign}
@@ -885,6 +899,8 @@ export default function BusinessUnitDetailPage() {
                 {userLevel <= 2 && (
                   <button
                     onClick={() => setShowAddRevenueModal(true)}
+                    aria-haspopup="dialog"
+                    aria-expanded={showAddRevenueModal}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-secundar text-white rounded-lg text-xs font-medium hover:bg-brand-secundar/90 transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5" />
@@ -933,6 +949,7 @@ export default function BusinessUnitDetailPage() {
                                 onClick={() => handleDeleteItem("revenue", r.id)}
                                 className="p-1 text-red-500 hover:bg-red-50 rounded"
                                 title="Remover faturamento"
+                                aria-label={`Remover faturamento de ${r.period}`}
                               >
                                 <Trash2 className="w-3.5 h-3.5 inline" />
                               </button>
@@ -1003,7 +1020,14 @@ export default function BusinessUnitDetailPage() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
             onMouseDown={() => setShowEditModal(false)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setShowEditModal(false);
+                editModalTriggerRef.current?.focus();
+              }
+            }}
           >
+            <FocusLock returnFocus>
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1019,6 +1043,7 @@ export default function BusinessUnitDetailPage() {
                 </h2>
                 <button
                   onClick={() => setShowEditModal(false)}
+                  aria-label="Fechar modal de edicao"
                   className="p-1.5 rounded-lg hover:bg-brand-terciar/10 text-brand-terciar/50 hover:text-brand-terciar transition-colors"
                 >
                   <X className="w-4 h-4" />
@@ -1183,6 +1208,7 @@ export default function BusinessUnitDetailPage() {
                 </div>
               </form>
             </motion.div>
+            </FocusLock>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1196,21 +1222,28 @@ export default function BusinessUnitDetailPage() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
             onMouseDown={() => setShowAddToolModal(false)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setShowAddToolModal(false);
+                addToolTriggerRef.current?.focus();
+              }
+            }}
           >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ type: "tween", duration: 0.2 }}
-              className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-brand-terciar/10 overflow-hidden max-h-[90vh] flex flex-col transform-gpu"
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between p-4 border-b border-brand-terciar/10">
-                <h2 className="text-sm font-bold text-brand-extra1 flex items-center gap-2">
-                  <Plus className="w-4 h-4" />
-                  Adicionar Ferramenta
+            <FocusLock returnFocus>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={{ type: "tween", duration: 0.2 }}
+                className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-brand-terciar/10 overflow-hidden max-h-[90vh] flex flex-col transform-gpu"
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between p-4 border-b border-brand-terciar/10">
+                  <h2 className="text-sm font-bold text-brand-extra1 flex items-center gap-2">
+                    <Plus className="w-4 h-4" />
+                    Adicionar Ferramenta
                 </h2>
-                <button onClick={() => setShowAddToolModal(false)} className="p-1.5 rounded-lg hover:bg-brand-terciar/10 text-brand-terciar/50 transition-colors">
+                <button onClick={() => setShowAddToolModal(false)} aria-label="Fechar modal de ferramenta" className="p-1.5 rounded-lg hover:bg-brand-terciar/10 text-brand-terciar/50 transition-colors">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -1263,7 +1296,8 @@ export default function BusinessUnitDetailPage() {
                   <button type="submit" className="px-4 py-2 bg-brand-extra2 text-white font-bold rounded-lg text-xs shadow-sm">Adicionar</button>
                 </div>
               </form>
-            </motion.div>
+              </motion.div>
+            </FocusLock>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1291,7 +1325,7 @@ export default function BusinessUnitDetailPage() {
                   <Plus className="w-4 h-4" />
                   Vincular Rede Social
                 </h2>
-                <button onClick={() => setShowAddSocialModal(false)} className="p-1.5 rounded-lg hover:bg-brand-terciar/10 text-brand-terciar/50 transition-colors">
+                <button onClick={() => setShowAddSocialModal(false)} aria-label="Fechar modal de rede social" className="p-1.5 rounded-lg hover:bg-brand-terciar/10 text-brand-terciar/50 transition-colors">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -1370,7 +1404,7 @@ export default function BusinessUnitDetailPage() {
                   <Plus className="w-4 h-4" />
                   Registrar Acessos (Google Analytics)
                 </h2>
-                <button onClick={() => setShowAddAnalyticsModal(false)} className="p-1.5 rounded-lg hover:bg-brand-terciar/10 text-brand-terciar/50 transition-colors">
+                <button onClick={() => setShowAddAnalyticsModal(false)} aria-label="Fechar modal de acessos" className="p-1.5 rounded-lg hover:bg-brand-terciar/10 text-brand-terciar/50 transition-colors">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -1457,7 +1491,7 @@ export default function BusinessUnitDetailPage() {
                   <Plus className="w-4 h-4" />
                   Registrar Faturamento
                 </h2>
-                <button onClick={() => setShowAddRevenueModal(false)} className="p-1.5 rounded-lg hover:bg-brand-terciar/10 text-brand-terciar/50 transition-colors">
+                <button onClick={() => setShowAddRevenueModal(false)} aria-label="Fechar modal de faturamento" className="p-1.5 rounded-lg hover:bg-brand-terciar/10 text-brand-terciar/50 transition-colors">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -1614,6 +1648,7 @@ function ToolCard({ tool, onDelete }: { tool: BusinessUnitTool; onDelete?: () =>
           }}
           className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover/tool:opacity-100 transition-opacity"
           title="Remover ferramenta"
+          aria-label={`Remover ferramenta ${tool.name}`}
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>
@@ -1675,6 +1710,7 @@ function SocialCard({ social, onDelete }: { social: BusinessUnitSocialLink; onDe
           }}
           className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover/social:opacity-100 transition-opacity"
           title="Remover rede social"
+          aria-label={`Remover rede social ${social.platform}`}
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>
