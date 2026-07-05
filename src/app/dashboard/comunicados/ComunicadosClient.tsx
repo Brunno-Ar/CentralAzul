@@ -1,13 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Plus,
-  Search,
   Edit2,
   Trash2,
-  X,
   Save,
   Loader2,
   Bell,
@@ -25,6 +23,10 @@ import { useForm, Resolver, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { PageWrapper } from "@/components/PageWrapper";
+import { SearchInput } from "@/components/ui/SearchInput";
+import { FilterPill } from "@/components/ui/FilterPill";
+import { Modal } from "@/components/ui/Modal";
+import { MessageBox } from "@/components/ui/MessageBox";
 
 interface Announcement {
   id: string;
@@ -346,94 +348,56 @@ export default function ComunicadosClient({
 
       {/* Search & Filters */}
       <div className="flex flex-col gap-4 py-2 border-y border-brand-terciar/10 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-brand-terciar/50" />
-          <input
-            type="text"
-            placeholder="Buscar comunicado..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-white border border-brand-terciar/10 rounded-xl text-xs text-brand-terciar placeholder-brand-terciar/40 focus:outline-none focus:border-brand-secundar transition-colors shadow-sm"
-          />
-        </div>
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Buscar comunicado..."
+        />
 
         <div className="flex items-center gap-1.5 overflow-x-auto pb-2 sm:pb-0 scrollbar-none w-full sm:w-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-          <button
+          <FilterPill
+            label="Todos"
+            active={activeFilter === "ALL"}
             onClick={() => setActiveFilter("ALL")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border whitespace-nowrap transition-all cursor-pointer ${
-              activeFilter === "ALL"
-                ? "bg-brand-secundar text-white border-brand-secundar shadow-sm"
-                : "bg-white border-brand-terciar/10 text-brand-terciar/60 hover:text-brand-secundar hover:bg-brand-principal/20"
-            }`}
-          >
-            Todos
-          </button>
+          />
           {priorityOptions.map((opt) => (
-            <button
+            <FilterPill
               key={opt.value}
+              label={
+                <>
+                  <opt.icon className="w-3.5 h-3.5 inline-block mr-1" />
+                  {opt.label}
+                </>
+              }
+              active={activeFilter === opt.value}
               onClick={() => setActiveFilter(opt.value)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border whitespace-nowrap transition-all cursor-pointer ${
-                activeFilter === opt.value
-                  ? "bg-brand-secundar text-white border-brand-secundar shadow-sm"
-                  : "bg-white border-brand-terciar/10 text-brand-terciar/60 hover:text-brand-secundar hover:bg-brand-principal/20"
-              }`}
-            >
-              <opt.icon className="w-3.5 h-3.5 inline-block mr-1" />
-              {opt.label}
-            </button>
+            />
           ))}
         </div>
       </div>
 
       {/* Form Modal */}
-      <AnimatePresence>
-        {formOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm"
-            onClick={() => setFormOpen(false)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-brand-terciar/10 overflow-hidden max-h-[90vh] flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between p-4 border-b border-brand-terciar/10">
-                <h2 className="text-sm font-bold text-brand-extra1 flex items-center gap-2">
-                  <Bell className="w-4 h-4" />
-                  {editingAnn ? "Editar Comunicado" : "Novo Comunicado"}
-                </h2>
-                <button
-                  onClick={() => setFormOpen(false)}
-                  aria-label="Fechar formulario de comunicado"
-                  className="p-1.5 rounded-lg hover:bg-brand-terciar/10 text-brand-terciar/50 hover:text-brand-terciar transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Form */}
-              <form
-                onSubmit={handleSubmit(handleSubmitForm)}
-                className="flex-1 overflow-y-auto p-4 space-y-4"
-              >
-                {message && (
-                  <div
-                    className={`p-3 rounded-lg text-xs border ${
-                      message.type === "success"
-                        ? "border-emerald-200 bg-emerald-50 text-emerald-800 font-semibold"
-                        : "border-red-200 bg-red-50 text-red-800"
-                    }`}
-                  >
-                    {message.text}
-                  </div>
-                )}
+      <Modal
+        isOpen={formOpen}
+        onClose={() => setFormOpen(false)}
+        size="xl"
+        title={
+          <span className="flex items-center gap-2">
+            <Bell className="w-4 h-4" />
+            {editingAnn ? "Editar Comunicado" : "Novo Comunicado"}
+          </span>
+        }
+      >
+        <form
+          onSubmit={handleSubmit(handleSubmitForm)}
+          className="flex-1 overflow-y-auto p-4 space-y-4"
+        >
+          {message && (
+            <MessageBox
+              type={message.type}
+              message={message.text}
+            />
+          )}
 
                 <div className="space-y-4">
                   <div className="space-y-1.5">
@@ -649,10 +613,7 @@ export default function ComunicadosClient({
                   </button>
                 </div>
               </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </Modal>
 
       {/* Announcements List */}
       {filteredAnnouncements.length === 0 ? (

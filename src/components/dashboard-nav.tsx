@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { SessionUser } from "@/types/auth";
 import { useSession, signOut } from "next-auth/react";
@@ -50,41 +50,51 @@ function DesktopSidebar({
 }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
 
+  const isOpen = collapsed ? isHovering : true;
   const filteredItems = navItems.filter((item) => userLevel <= item.minLevel);
 
   return (
-    <aside
-      className={cn(
-        "hidden md:flex flex-col h-screen bg-white border-r border-brand-terciar/10 sticky top-0 transition-all duration-300",
-        collapsed ? "w-16" : "w-64"
-      )}
+    <motion.aside
+      className="hidden md:flex flex-col h-screen bg-white border-r border-brand-terciar/10 sticky top-0 will-change-[width] transform-gpu"
+      style={{ width: isOpen ? 256 : 64 }}
+      animate={{ width: isOpen ? 256 : 64 }}
+      transition={{ duration: 0.2, ease: "easeInOut" }}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
     >
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 py-4">
         <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-brand-primary shrink-0">
           <Shield className="w-5 h-5 text-white" />
         </div>
-        {!collapsed && (
-          <div className="overflow-hidden">
-            <span className="text-sm font-bold text-brand-foreground block truncate">
-              Central Azul
-            </span>
-            <span className="text-[10px] text-brand-foreground-subtle uppercase tracking-wider block">
-              Grupo Azul
-            </span>
-          </div>
-        )}
+        <motion.div
+          className="overflow-hidden"
+          initial={{ maxWidth: "0px", opacity: 0 }}
+          animate={{
+            maxWidth: isOpen ? "200px" : "0px",
+            opacity: isOpen ? 1 : 0,
+          }}
+          transition={{ duration: 0.2, ease: "easeInOut" }}
+        >
+          <span className="text-sm font-bold text-brand-foreground block truncate whitespace-nowrap">
+            Central Azul
+          </span>
+          <span className="text-[10px] text-brand-foreground-subtle uppercase tracking-wider block whitespace-nowrap">
+            Grupo Azul
+          </span>
+        </motion.div>
       </div>
 
       {/* Toggle collapse */}
       <button
         onClick={() => setCollapsed(!collapsed)}
         className="mx-4 mb-2 flex items-center justify-center w-8 h-8 rounded-lg hover:bg-brand-surface-alt transition-colors self-end"
-        title={collapsed ? "Expandir" : "Recolher"}
+        title={isOpen ? "Recolher" : "Expandir"}
       >
         <ChevronRight
-          className={cn("w-4 h-4 text-brand-foreground-subtle transition-transform", !collapsed && "rotate-180")}
+          className={cn("w-4 h-4 text-brand-foreground-subtle transition-transform", isOpen && "rotate-180")}
         />
       </button>
 
@@ -112,8 +122,18 @@ function DesktopSidebar({
                   </span>
                 )}
               </div>
-              {!collapsed && <span className="truncate">{item.name}</span>}
-              {!collapsed && isActive && (
+              <motion.span
+                className="truncate whitespace-nowrap inline-block"
+                initial={{ maxWidth: "0px", opacity: 0 }}
+                animate={{
+                  maxWidth: isOpen ? "200px" : "0px",
+                  opacity: isOpen ? 1 : 0,
+                }}
+                transition={{ duration: 0.2, ease: "easeInOut" }}
+              >
+                {item.name}
+              </motion.span>
+              {isOpen && isActive && (
                 <motion.div layoutId="sidebarActive" className="ml-auto w-1.5 h-1.5 rounded-full bg-brand-primary" />
               )}
             </Link>
@@ -122,8 +142,8 @@ function DesktopSidebar({
       </nav>
 
       {/* User Card */}
-      <div className={cn("p-3 border-t border-brand-terciar/10", collapsed && "px-2")}>
-        <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
+      <div className={cn("p-3 border-t border-brand-terciar/10", !isOpen && "px-2")}>
+        <div className={cn("flex items-center gap-3", !isOpen && "justify-center")}>
           {user?.image ? (
             <img src={user.image} alt={user.name || "User"} className="w-8 h-8 rounded-full object-cover border border-brand-terciar/10 shrink-0" />
           ) : (
@@ -131,20 +151,26 @@ function DesktopSidebar({
               <User className="w-4 h-4 text-brand-foreground-subtle" />
             </div>
           )}
-          {!collapsed && (
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-brand-foreground truncate">{user?.name || "Colaborador"}</p>
-              <p className="text-[10px] text-brand-foreground-subtle truncate">{user?.email}</p>
-              <div className="flex items-center gap-1.5 mt-1">
-                <span className="text-[9px] px-1.5 py-0.5 rounded bg-brand-primary/10 text-brand-primary font-mono font-bold">
-                  {userRole}
-                </span>
-                <span className="text-[9px] px-1.5 py-0.5 rounded bg-brand-surface-alt text-brand-foreground-subtle font-mono">
-                  N{userLevel}
-                </span>
-              </div>
+          <motion.div
+            className="flex-1 min-w-0 overflow-hidden"
+            initial={{ maxWidth: "0px", opacity: 0 }}
+            animate={{
+              maxWidth: isOpen ? "200px" : "0px",
+              opacity: isOpen ? 1 : 0,
+            }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+          >
+            <p className="text-xs font-semibold text-brand-foreground truncate whitespace-nowrap">{user?.name || "Colaborador"}</p>
+            <p className="text-[10px] text-brand-foreground-subtle truncate whitespace-nowrap">{user?.email}</p>
+            <div className="flex items-center gap-1.5 mt-1">
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-brand-primary/10 text-brand-primary font-mono font-bold whitespace-nowrap">
+                {userRole}
+              </span>
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-brand-surface-alt text-brand-foreground-subtle font-mono whitespace-nowrap">
+                N{userLevel}
+              </span>
             </div>
-          )}
+          </motion.div>
         </div>
 
         {/* Logout */}
@@ -152,14 +178,24 @@ function DesktopSidebar({
           onClick={() => signOut({ callbackUrl: "/" })}
           className={cn(
             "mt-2 flex items-center gap-2 text-xs font-medium text-error hover:bg-error-light rounded-xl transition-colors",
-            collapsed ? "justify-center w-10 h-10 mx-auto" : "w-full px-3 py-2"
+            !isOpen ? "justify-center w-10 h-10 mx-auto" : "w-full px-3 py-2"
           )}
         >
-          <LogOut className="w-4 h-4" />
-          {!collapsed && <span>Sair</span>}
+          <LogOut className="w-4 h-4 shrink-0" />
+          <motion.span
+            className="whitespace-nowrap inline-block"
+            initial={{ maxWidth: "0px", opacity: 0 }}
+            animate={{
+              maxWidth: isOpen ? "200px" : "0px",
+              opacity: isOpen ? 1 : 0,
+            }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+          >
+            Sair
+          </motion.span>
         </button>
       </div>
-    </aside>
+    </motion.aside>
   );
 }
 

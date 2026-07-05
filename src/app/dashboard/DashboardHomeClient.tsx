@@ -8,6 +8,12 @@ import {
   FileText, Activity, Users, ChevronRight, TrendingUp
 } from "lucide-react";
 import { PageWrapper } from "@/components/PageWrapper";
+import {
+  getCompanyStyle,
+  type DashboardCompany,
+} from "@/lib/company-styles";
+import { StatCard } from "@/components/ui/StatCard";
+import { Badge } from "@/components/ui/Badge";
 
 /* ============================================================
    TYPES
@@ -27,21 +33,6 @@ interface AuditLog {
   createdAt: string;
 }
 
-interface DashboardCompany {
-  id?: string;
-  name: string;
-  slug?: string;
-  color?: string;
-  desc?: string;
-  iconName?: string;
-  colorClass?: string;
-  accentClass?: string;
-  url?: string;
-  isActive?: boolean;
-  showOnHome?: boolean;
-  order?: number;
-}
-
 interface DashboardHomeClientProps {
   userName?: string | null;
   userRole: string;
@@ -50,36 +41,6 @@ interface DashboardHomeClientProps {
   recentLogs: AuditLog[];
   companies: DashboardCompany[];
 }
-
-/* ============================================================
-   COMPANY STYLE HELPER
-   ============================================================ */
-const getCompanyStyle = (c: DashboardCompany) => {
-  if (c.colorClass) {
-    return {
-      icon: c.iconName === "Wine" ? Wine : c.iconName === "GraduationCap" ? GraduationCap : Building2,
-      color: c.colorClass,
-      accent: c.accentClass || "text-brand-secundar",
-      url: c.url || "/dashboard/ferramentas",
-      desc: c.desc || "",
-    };
-  }
-
-  const type = (c.color || "AZUL").toUpperCase();
-  const url = `/dashboard/ferramentas?company=${c.slug}`;
-  const desc = `Painel corporativo e ferramentas integradas da divisao ${c.name}.`;
-
-  switch (type) {
-    case "BORGO":
-      return { icon: Wine, color: "from-amber-50 to-amber-100 border-amber-200", accent: "text-amber-700", url, desc };
-    case "MAPLE_BEAR":
-      return { icon: GraduationCap, color: "from-emerald-50 to-emerald-100 border-emerald-200", accent: "text-emerald-700", url, desc };
-    case "AZUL":
-      return { icon: Building2, color: "from-sky-50 to-sky-100 border-sky-200", accent: "text-sky-700", url, desc };
-    default:
-      return { icon: Building2, color: "from-gray-50 to-gray-100 border-gray-200", accent: "text-gray-700", url, desc };
-  }
-};
 
 /* ============================================================
    ANIMATION VARIANTS
@@ -93,52 +54,6 @@ const itemVariants = {
   hidden: { opacity: 0, y: 12 },
   show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 120, damping: 20 } },
 };
-
-/* ============================================================
-   STAT CARD COMPONENT
-   ============================================================ */
-function StatCard({ title, value, subtitle, icon, colorClass }: {
-  title: string;
-  value: number;
-  subtitle: string;
-  icon: React.ReactNode;
-  colorClass: string;
-}) {
-  return (
-    <motion.div
-      variants={itemVariants}
-      className="p-4 rounded-xl border border-brand-terciar/10 bg-white shadow-sm hover:shadow-md transition-shadow"
-    >
-      <div className="flex justify-between items-start">
-        <div className="flex-1 min-w-0">
-          <span className="text-[10px] font-medium text-brand-terciar/60 uppercase tracking-wider block">
-            {title}
-          </span>
-          <p className="text-2xl font-bold text-brand-extra1 mt-1 tabular-nums">{value}</p>
-          <p className="text-[11px] text-brand-terciar/50 mt-1">{subtitle}</p>
-        </div>
-        <div className={`p-2 rounded-lg ${colorClass}`}>{icon}</div>
-      </div>
-    </motion.div>
-  );
-}
-
-/* ============================================================
-   BADGE COMPONENT
-   ============================================================ */
-function Badge({ children, variant = "neutral" }: { children: React.ReactNode; variant?: "primary" | "success" | "warning" | "neutral" }) {
-  const variants = {
-    primary: "bg-brand-primary/10 text-brand-primary",
-    success: "bg-emerald-50 text-emerald-700",
-    warning: "bg-amber-50 text-amber-700",
-    neutral: "bg-gray-50 text-gray-600",
-  };
-  return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full ${variants[variant]}`}>
-      {children}
-    </span>
-  );
-}
 
 /* ============================================================
    MAIN COMPONENT
@@ -188,6 +103,7 @@ export default function DashboardHomeClient({
             subtitle="Ativas no sistema"
             icon={<Building2 className="w-5 h-5 text-sky-600" />}
             colorClass="bg-sky-50"
+            motionVariants={itemVariants}
           />
           <StatCard
             title="Documentos"
@@ -195,6 +111,7 @@ export default function DashboardHomeClient({
             subtitle="Armazenados com seguran"
             icon={<FileText className="w-5 h-5 text-amber-600" />}
             colorClass="bg-amber-50"
+            motionVariants={itemVariants}
           />
           <StatCard
             title="Logs"
@@ -202,6 +119,7 @@ export default function DashboardHomeClient({
             subtitle="Registros de auditoria"
             icon={<Activity className="w-5 h-5 text-brand-primary" />}
             colorClass="bg-brand-primary/10"
+            motionVariants={itemVariants}
           />
           <StatCard
             title="Usuarios"
@@ -209,6 +127,7 @@ export default function DashboardHomeClient({
             subtitle="Contas configuradas"
             icon={<Users className="w-5 h-5 text-emerald-600" />}
             colorClass="bg-emerald-50"
+            motionVariants={itemVariants}
           />
         </motion.div>
 

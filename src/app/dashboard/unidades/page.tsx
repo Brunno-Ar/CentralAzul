@@ -5,99 +5,18 @@ import { useSession } from "next-auth/react";
 import NextImage from "next/image";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Building2, MapPin, Phone, Mail, Plus, Search, X } from "lucide-react";
+import { Building2, MapPin, Phone, Mail, Plus } from "lucide-react";
 import { SessionUser } from "@/types/auth";
+import {
+  type BusinessUnit,
+  formatNumber,
+  getLatestMeta,
+  getLatestAnalytics,
+  getLatestRevenue,
+} from "@/types/business-unit";
 import { PageWrapper } from "@/components/PageWrapper";
-
-interface BusinessUnitTool {
-  id: string;
-  businessUnitId: string;
-  name: string;
-  url: string;
-  icon: string;
-  description: string;
-  category: string;
-  isExternal: boolean;
-  order: number;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface BusinessUnitSocialLink {
-  id: string;
-  businessUnitId: string;
-  platform: string;
-  url: string;
-  handle: string;
-  followersCount: number;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface BusinessUnitAnalytics {
-  id: string;
-  businessUnitId: string;
-  date: string;
-  pageViews: number;
-  uniqueVisitors: number;
-  sessions: number;
-  bounceRate: number;
-  avgSessionDuration: number;
-  source: string;
-  createdAt: string;
-}
-
-interface BusinessUnitMetaData {
-  id: string;
-  businessUnitId: string;
-  date: string;
-  platform: string;
-  followersCount: number;
-  followingCount: number;
-  postsCount: number;
-  engagementRate: number;
-  reach: number;
-  impressions: number;
-  createdAt: string;
-}
-
-interface BusinessUnitRevenue {
-  id: string;
-  businessUnitId: string;
-  period: string;
-  amount: number;
-  currency: string;
-  type: string;
-  source: string;
-  notes: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface BusinessUnit {
-  id: string;
-  name: string;
-  slug: string;
-  company: string;
-  description: string;
-  logo: string;
-  coverImage: string;
-  address: string;
-  phone: string;
-  email: string;
-  website: string;
-  isActive: boolean;
-  order: number;
-  createdAt: string;
-  updatedAt: string;
-  tools: BusinessUnitTool[];
-  socialLinks: BusinessUnitSocialLink[];
-  analytics: BusinessUnitAnalytics[];
-  metaData: BusinessUnitMetaData[];
-  revenueData: BusinessUnitRevenue[];
-}
+import { SearchInput } from "@/components/ui/SearchInput";
+import { Modal } from "@/components/ui/Modal";
 
 const companyColors: Record<string, string> = {
   BORGO: "text-brand-terciar bg-brand-terciar/10 border-brand-terciar/30",
@@ -112,12 +31,6 @@ const companyLabels: Record<string, string> = {
   MAPLE_BEAR: "Maple Bear",
   AZUL: "Azul Incorporações",
   CENTRAL: "Central / Geral",
-};
-
-const formatNumber = (num: number) => {
-  if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
-  if (num >= 1000) return (num / 1000).toFixed(1) + "K";
-  return num.toString();
 };
 
 export default function BusinessUnitsListPage() {
@@ -162,23 +75,6 @@ export default function BusinessUnitsListPage() {
       companyFilter === "ALL" || bu.company === companyFilter;
     return matchesSearch && matchesCompany;
   });
-
-  const getLatestMeta = (bu: BusinessUnit) => {
-    if (!bu.metaData || !bu.metaData.length) return null;
-    return bu.metaData.reduce((latest, current) =>
-      new Date(current.date) > new Date(latest.date) ? current : latest,
-    );
-  };
-
-  const getLatestAnalytics = (bu: BusinessUnit) => {
-    if (!bu.analytics || !bu.analytics.length) return null;
-    return bu.analytics[0];
-  };
-
-  const getLatestRevenue = (bu: BusinessUnit) => {
-    if (!bu.revenueData || !bu.revenueData.length) return null;
-    return bu.revenueData[0];
-  };
 
   const handleCreate = async (formData: FormData) => {
     const data = {
@@ -252,16 +148,11 @@ export default function BusinessUnitsListPage() {
 
       {/* Search & Filters */}
       <div className="flex flex-col gap-4 py-2 border-y border-brand-terciar/10 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-brand-terciar/50" />
-          <input
-            type="text"
-            placeholder="Buscar unidade..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-white border border-brand-terciar/10 rounded-xl text-xs text-brand-terciar placeholder-brand-terciar/40 focus:outline-none focus:border-brand-secundar transition-colors shadow-sm"
-          />
-        </div>
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Buscar unidade..."
+        />
 
         <div className="flex items-center gap-2">
           <select
@@ -280,35 +171,17 @@ export default function BusinessUnitsListPage() {
       </div>
 
       {/* Create Modal */}
-      {showCreateModal && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm"
-          onMouseDown={() => setShowCreateModal(false)}
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-brand-terciar/10 overflow-hidden max-h-[90vh] flex flex-col"
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between p-4 border-b border-brand-terciar/10">
-              <h2 className="text-sm font-bold text-brand-extra1 flex items-center gap-2">
-                <Building2 className="w-4 h-4" />
-                Nova Unidade de Negócio
-              </h2>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="p-1.5 rounded-lg hover:bg-brand-terciar/10 text-brand-terciar/50 hover:text-brand-terciar transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title={
+          <span className="flex items-center gap-2">
+            <Building2 className="w-4 h-4" />
+            Nova Unidade de Negócio
+          </span>
+        }
+        size="md"
+      >
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -447,9 +320,7 @@ export default function BusinessUnitsListPage() {
                 </button>
               </div>
             </form>
-          </motion.div>
-        </motion.div>
-      )}
+      </Modal>
 
       {/* Message */}
       {message && (

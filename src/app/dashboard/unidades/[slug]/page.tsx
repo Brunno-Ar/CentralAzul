@@ -26,101 +26,20 @@ import {
   Trash2,
   Eye,
   RefreshCw,
-  X,
   Plus,
 } from "lucide-react";
 import { SessionUser } from "@/types/auth";
-import FocusLock from "react-focus-lock";
-
-interface BusinessUnit {
-  id: string;
-  name: string;
-  slug: string;
-  company: string;
-  description: string;
-  logo: string;
-  coverImage: string;
-  address: string;
-  phone: string;
-  email: string;
-  website: string;
-  isActive: boolean;
-  order: number;
-  createdAt: string;
-  updatedAt: string;
-  tools: BusinessUnitTool[];
-  socialLinks: BusinessUnitSocialLink[];
-  analytics: BusinessUnitAnalytics[];
-  metaData: BusinessUnitMetaData[];
-  revenueData: BusinessUnitRevenue[];
-}
-
-interface BusinessUnitTool {
-  id: string;
-  businessUnitId: string;
-  name: string;
-  url: string;
-  icon: string;
-  description: string;
-  category: string;
-  isExternal: boolean;
-  order: number;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface BusinessUnitSocialLink {
-  id: string;
-  businessUnitId: string;
-  platform: string;
-  url: string;
-  handle: string;
-  followersCount: number;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface BusinessUnitAnalytics {
-  id: string;
-  businessUnitId: string;
-  date: string;
-  pageViews: number;
-  uniqueVisitors: number;
-  sessions: number;
-  bounceRate: number;
-  avgSessionDuration: number;
-  source: string;
-  createdAt: string;
-}
-
-interface BusinessUnitMetaData {
-  id: string;
-  businessUnitId: string;
-  date: string;
-  platform: string;
-  followersCount: number;
-  followingCount: number;
-  postsCount: number;
-  engagementRate: number;
-  reach: number;
-  impressions: number;
-  createdAt: string;
-}
-
-interface BusinessUnitRevenue {
-  id: string;
-  businessUnitId: string;
-  period: string;
-  amount: number;
-  currency: string;
-  type: string;
-  source: string;
-  notes: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import {
+  type BusinessUnit,
+  type BusinessUnitTool,
+  type BusinessUnitSocialLink,
+  formatNumber,
+  getLatestMeta,
+  getLatestAnalytics,
+  getLatestRevenue,
+} from "@/types/business-unit";
+import { Modal } from "@/components/ui/Modal";
+import { StatCard } from "@/components/ui/StatCard";
 
 const platformIcons: Record<
   string,
@@ -131,12 +50,6 @@ const platformIcons: Record<
   linkedin: Link,
   youtube: Video,
   tiktok: Music,
-};
-
-const formatNumber = (num: number) => {
-  if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
-  if (num >= 1000) return (num / 1000).toFixed(1) + "K";
-  return num.toString();
 };
 
 const formatCurrency = (amount: number) => {
@@ -377,26 +290,9 @@ export default function BusinessUnitDetailPage() {
     );
   }
 
-  const getLatestAnalytics = () => {
-    if (!businessUnit.analytics || !businessUnit.analytics.length) return null;
-    return businessUnit.analytics[0];
-  };
-
-  const getLatestMeta = () => {
-    if (!businessUnit.metaData || !businessUnit.metaData.length) return null;
-    return businessUnit.metaData.reduce((latest, current) =>
-      new Date(current.date) > new Date(latest.date) ? current : latest,
-    );
-  };
-
-  const getLatestRevenue = () => {
-    if (!businessUnit.revenueData || !businessUnit.revenueData.length) return null;
-    return businessUnit.revenueData[0];
-  };
-
-  const latestAnalytics = getLatestAnalytics();
-  const latestMeta = getLatestMeta();
-  const latestRevenue = getLatestRevenue();
+  const latestAnalytics = getLatestAnalytics(businessUnit);
+  const latestMeta = getLatestMeta(businessUnit);
+  const latestRevenue = getLatestRevenue(businessUnit);
 
   return (
     <div className="space-y-6">
@@ -579,7 +475,7 @@ export default function BusinessUnitDetailPage() {
               {/* Stats Grid */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <StatCard
-                  icon={Users}
+                  iconComponent={Users}
                   label="Seguidores (Meta)"
                   value={
                     latestMeta ? formatNumber(latestMeta.followersCount) : "—"
@@ -587,7 +483,7 @@ export default function BusinessUnitDetailPage() {
                   iconColor="text-pink-600 bg-pink-50"
                 />
                 <StatCard
-                  icon={BarChart3}
+                  iconComponent={BarChart3}
                   label="Page Views (30d)"
                   value={
                     latestAnalytics
@@ -597,7 +493,7 @@ export default function BusinessUnitDetailPage() {
                   iconColor="text-blue-600 bg-blue-50"
                 />
                 <StatCard
-                  icon={TrendingUp}
+                  iconComponent={TrendingUp}
                   label="Engajamento"
                   value={
                     latestMeta
@@ -607,7 +503,7 @@ export default function BusinessUnitDetailPage() {
                   iconColor="text-emerald-600 bg-emerald-50"
                 />
                 <StatCard
-                  icon={DollarSign}
+                  iconComponent={DollarSign}
                   label="Faturamento"
                   value={
                     latestRevenue ? formatCurrency(latestRevenue.amount) : "—"
@@ -753,7 +649,7 @@ export default function BusinessUnitDetailPage() {
             <div role="tabpanel" id="analytics-panel" aria-labelledby="analytics-tab" className="p-6 space-y-6">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <StatCard
-                  icon={BarChart3}
+                  iconComponent={BarChart3}
                   label="Page Views"
                   value={
                     latestAnalytics
@@ -763,7 +659,7 @@ export default function BusinessUnitDetailPage() {
                   iconColor="text-blue-600 bg-blue-50"
                 />
                 <StatCard
-                  icon={Users}
+                  iconComponent={Users}
                   label="Visitantes Únicos"
                   value={
                     latestAnalytics
@@ -773,7 +669,7 @@ export default function BusinessUnitDetailPage() {
                   iconColor="text-purple-600 bg-purple-50"
                 />
                 <StatCard
-                  icon={TrendingUp}
+                  iconComponent={TrendingUp}
                   label="Sessões"
                   value={
                     latestAnalytics
@@ -783,7 +679,7 @@ export default function BusinessUnitDetailPage() {
                   iconColor="text-emerald-600 bg-emerald-50"
                 />
                 <StatCard
-                  icon={ExternalLink}
+                  iconComponent={ExternalLink}
                   label="Taxa de Rejeição"
                   value={
                     latestAnalytics
@@ -873,7 +769,7 @@ export default function BusinessUnitDetailPage() {
             <div role="tabpanel" id="revenue-panel" aria-labelledby="revenue-tab" className="p-6 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <StatCard
-                  icon={DollarSign}
+                  iconComponent={DollarSign}
                   label="Último Período"
                   value={
                     latestRevenue ? formatCurrency(latestRevenue.amount) : "—"
@@ -881,13 +777,13 @@ export default function BusinessUnitDetailPage() {
                   iconColor="text-amber-600 bg-amber-50"
                 />
                 <StatCard
-                  icon={TrendingUp}
+                  iconComponent={TrendingUp}
                   label="Tipo"
                   value={latestRevenue ? latestRevenue.type : "—"}
                   iconColor="text-blue-600 bg-blue-50"
                 />
                 <StatCard
-                  icon={Settings}
+                  iconComponent={Settings}
                   label="Fonte"
                   value={latestRevenue ? latestRevenue.source : "—"}
                   iconColor="text-emerald-600 bg-emerald-50"
@@ -967,96 +863,54 @@ export default function BusinessUnitDetailPage() {
       </AnimatePresence>
 
       {/* Modal de Sincronização */}
-      <AnimatePresence>
-        {isSyncing && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.95, y: 10 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 10 }}
-              transition={{ type: "tween", duration: 0.2 }}
-              className="w-full max-w-sm bg-white rounded-2xl border border-brand-terciar/10 p-6 shadow-xl relative overflow-hidden transform-gpu"
-            >
-              <div className="flex flex-col items-center text-center space-y-4">
-                <div className="relative w-12 h-12 flex items-center justify-center">
-                  <div className="absolute inset-0 rounded-full border-4 border-brand-principal/20" />
-                  <div className="absolute inset-0 rounded-full border-4 border-t-brand-secundar animate-spin" />
-                </div>
-                
-                <div className="space-y-1 w-full">
-                  <h3 className="text-sm font-bold text-brand-extra1">
-                    Sincronizando Dados
-                  </h3>
-                  <p className="text-xs text-brand-terciar/70 min-h-[32px] flex items-center justify-center px-2">
-                    {syncSteps[syncStep]}
-                  </p>
-                </div>
+      <Modal isOpen={isSyncing} onClose={() => {}} title={null} size="sm">
+        <div className="p-6 overflow-hidden">
+          <div className="flex flex-col items-center text-center space-y-4">
+            <div className="relative w-12 h-12 flex items-center justify-center">
+              <div className="absolute inset-0 rounded-full border-4 border-brand-principal/20" />
+              <div className="absolute inset-0 rounded-full border-4 border-t-brand-secundar animate-spin" />
+            </div>
 
-                <div className="w-full h-1.5 bg-brand-principal/20 rounded-full overflow-hidden relative">
-                  <motion.div
-                    className="h-full bg-brand-secundar absolute left-0 top-0 transform-gpu"
-                    initial={{ width: "0%" }}
-                    animate={{ width: `${((syncStep + 1) / syncSteps.length) * 100}%` }}
-                    transition={{ ease: "linear", duration: 0.3 }}
-                  />
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <div className="space-y-1 w-full">
+              <h3 className="text-sm font-bold text-brand-extra1">
+                Sincronizando Dados
+              </h3>
+              <p className="text-xs text-brand-terciar/70 min-h-[32px] flex items-center justify-center px-2">
+                {syncSteps[syncStep]}
+              </p>
+            </div>
+
+            <div className="w-full h-1.5 bg-brand-principal/20 rounded-full overflow-hidden relative">
+              <motion.div
+                className="h-full bg-brand-secundar absolute left-0 top-0 transform-gpu"
+                initial={{ width: "0%" }}
+                animate={{ width: `${((syncStep + 1) / syncSteps.length) * 100}%` }}
+                transition={{ ease: "linear", duration: 0.3 }}
+              />
+            </div>
+          </div>
+        </div>
+      </Modal>
 
       {/* Modal de Edição */}
-      <AnimatePresence>
-        {showEditModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-            onMouseDown={() => setShowEditModal(false)}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                setShowEditModal(false);
-                editModalTriggerRef.current?.focus();
-              }
-            }}
-          >
-            <FocusLock returnFocus>
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ type: "tween", duration: 0.2 }}
-              className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-brand-terciar/10 overflow-hidden max-h-[90vh] flex flex-col transform-gpu"
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between p-4 border-b border-brand-terciar/10">
-                <h2 className="text-sm font-bold text-brand-extra1 flex items-center gap-2">
-                  <Building2 className="w-4 h-4" />
-                  Editar Unidade de Negócio
-                </h2>
-                <button
-                  onClick={() => setShowEditModal(false)}
-                  aria-label="Fechar modal de edicao"
-                  className="p-1.5 rounded-lg hover:bg-brand-terciar/10 text-brand-terciar/50 hover:text-brand-terciar transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleUpdate(new FormData(e.currentTarget));
-                }}
-                className="flex-1 overflow-y-auto p-4 space-y-4"
-              >
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title={
+          <span className="flex items-center gap-2">
+            <Building2 className="w-4 h-4" />
+            Editar Unidade de Negócio
+          </span>
+        }
+        size="md"
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleUpdate(new FormData(e.currentTarget));
+          }}
+          className="flex-1 overflow-y-auto p-4 space-y-4"
+        >
                 <div className="space-y-4">
                   <div className="space-y-1.5">
                     <label className="text-[10px] text-brand-terciar/70 font-mono uppercase">
@@ -1206,69 +1060,42 @@ export default function BusinessUnitDetailPage() {
                     Salvar Alterações
                   </button>
                 </div>
-              </form>
-            </motion.div>
-            </FocusLock>
-          </motion.div>
-        )}
-      </AnimatePresence>
+               </form>
+      </Modal>
 
       {/* Modal Adicionar Ferramenta */}
-      <AnimatePresence>
-        {showAddToolModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-            onMouseDown={() => setShowAddToolModal(false)}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                setShowAddToolModal(false);
-                addToolTriggerRef.current?.focus();
-              }
-            }}
-          >
-            <FocusLock returnFocus>
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                transition={{ type: "tween", duration: 0.2 }}
-                className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-brand-terciar/10 overflow-hidden max-h-[90vh] flex flex-col transform-gpu"
-                onMouseDown={(e) => e.stopPropagation()}
-              >
-                <div className="flex items-center justify-between p-4 border-b border-brand-terciar/10">
-                  <h2 className="text-sm font-bold text-brand-extra1 flex items-center gap-2">
-                    <Plus className="w-4 h-4" />
-                    Adicionar Ferramenta
-                </h2>
-                <button onClick={() => setShowAddToolModal(false)} aria-label="Fechar modal de ferramenta" className="p-1.5 rounded-lg hover:bg-brand-terciar/10 text-brand-terciar/50 transition-colors">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <form
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  const form = e.currentTarget;
-                  const fd = new FormData(form);
-                  const success = await handleAddItem("tool", {
-                    name: fd.get("name"),
-                    url: fd.get("url"),
-                    category: fd.get("category"),
-                    description: fd.get("description"),
-                    isActive: true,
-                    isExternal: true,
-                    order: 0,
-                  });
-                  if (success) {
-                    setShowAddToolModal(false);
-                    form.reset();
-                  }
-                }}
-                className="p-4 space-y-4"
-              >
+      <Modal
+        isOpen={showAddToolModal}
+        onClose={() => setShowAddToolModal(false)}
+        title={
+          <span className="flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            Adicionar Ferramenta
+          </span>
+        }
+        size="md"
+      >
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const form = e.currentTarget;
+                const fd = new FormData(form);
+                const success = await handleAddItem("tool", {
+                  name: fd.get("name"),
+                  url: fd.get("url"),
+                  category: fd.get("category"),
+                  description: fd.get("description"),
+                  isActive: true,
+                  isExternal: true,
+                  order: 0,
+                });
+                if (success) {
+                  setShowAddToolModal(false);
+                  form.reset();
+                }
+              }}
+              className="p-4 space-y-4"
+            >
                 <div className="space-y-1.5">
                   <label className="text-[10px] text-brand-terciar/70 font-mono uppercase">Nome *</label>
                   <input name="name" required placeholder="Ex: CRM Vendas" className="w-full px-3 py-2 bg-brand-principal/30 border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar placeholder-brand-terciar/45 focus:outline-none focus:border-brand-secundar focus:bg-white transition-colors" />
@@ -1296,40 +1123,20 @@ export default function BusinessUnitDetailPage() {
                   <button type="submit" className="px-4 py-2 bg-brand-extra2 text-white font-bold rounded-lg text-xs shadow-sm">Adicionar</button>
                 </div>
               </form>
-              </motion.div>
-            </FocusLock>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      </Modal>
 
       {/* Modal Vincular Rede Social */}
-      <AnimatePresence>
-        {showAddSocialModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-            onMouseDown={() => setShowAddSocialModal(false)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ type: "tween", duration: 0.2 }}
-              className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-brand-terciar/10 overflow-hidden max-h-[90vh] flex flex-col transform-gpu"
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between p-4 border-b border-brand-terciar/10">
-                <h2 className="text-sm font-bold text-brand-extra1 flex items-center gap-2">
-                  <Plus className="w-4 h-4" />
-                  Vincular Rede Social
-                </h2>
-                <button onClick={() => setShowAddSocialModal(false)} aria-label="Fechar modal de rede social" className="p-1.5 rounded-lg hover:bg-brand-terciar/10 text-brand-terciar/50 transition-colors">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
+      <Modal
+        isOpen={showAddSocialModal}
+        onClose={() => setShowAddSocialModal(false)}
+        title={
+          <span className="flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            Vincular Rede Social
+          </span>
+        }
+        size="md"
+      >
               <form
                 onSubmit={async (e) => {
                   e.preventDefault();
@@ -1368,7 +1175,7 @@ export default function BusinessUnitDetailPage() {
                   <input name="handle" required placeholder="Ex: borgodelvino" className="w-full px-3 py-2 bg-brand-principal/30 border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar placeholder-brand-terciar/45 focus:outline-none focus:border-brand-secundar focus:bg-white transition-colors" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] text-brand-terciar/70 font-mono uppercase">Seguidores / Inscritos *</label>
+                  <label className="text-[10px] text-brand-terciar/70 font-mono uppercase">Seguidores / Inscrito *</label>
                   <input name="followersCount" type="number" required placeholder="Ex: 12500" className="w-full px-3 py-2 bg-brand-principal/30 border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar placeholder-brand-terciar/45 focus:outline-none focus:border-brand-secundar focus:bg-white transition-colors" />
                 </div>
                 <div className="flex justify-end gap-2 pt-2 border-t border-brand-terciar/10">
@@ -1376,39 +1183,20 @@ export default function BusinessUnitDetailPage() {
                   <button type="submit" className="px-4 py-2 bg-brand-extra2 text-white font-bold rounded-lg text-xs shadow-sm">Vincular</button>
                 </div>
               </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      </Modal>
 
       {/* Modal Registrar Acessos */}
-      <AnimatePresence>
-        {showAddAnalyticsModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-            onMouseDown={() => setShowAddAnalyticsModal(false)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ type: "tween", duration: 0.2 }}
-              className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-brand-terciar/10 overflow-hidden max-h-[90vh] flex flex-col transform-gpu"
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between p-4 border-b border-brand-terciar/10">
-                <h2 className="text-sm font-bold text-brand-extra1 flex items-center gap-2">
-                  <Plus className="w-4 h-4" />
-                  Registrar Acessos (Google Analytics)
-                </h2>
-                <button onClick={() => setShowAddAnalyticsModal(false)} aria-label="Fechar modal de acessos" className="p-1.5 rounded-lg hover:bg-brand-terciar/10 text-brand-terciar/50 transition-colors">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
+      <Modal
+        isOpen={showAddAnalyticsModal}
+        onClose={() => setShowAddAnalyticsModal(false)}
+        title={
+          <span className="flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            Registrar Acessos (Google Analytics)
+          </span>
+        }
+        size="md"
+      >
               <form
                 onSubmit={async (e) => {
                   e.preventDefault();
@@ -1463,39 +1251,20 @@ export default function BusinessUnitDetailPage() {
                   <button type="submit" className="px-4 py-2 bg-brand-extra2 text-white font-bold rounded-lg text-xs shadow-sm">Registrar</button>
                 </div>
               </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      </Modal>
 
       {/* Modal Registrar Faturamento */}
-      <AnimatePresence>
-        {showAddRevenueModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-            onMouseDown={() => setShowAddRevenueModal(false)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ type: "tween", duration: 0.2 }}
-              className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-brand-terciar/10 overflow-hidden max-h-[90vh] flex flex-col transform-gpu"
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between p-4 border-b border-brand-terciar/10">
-                <h2 className="text-sm font-bold text-brand-extra1 flex items-center gap-2">
-                  <Plus className="w-4 h-4" />
-                  Registrar Faturamento
-                </h2>
-                <button onClick={() => setShowAddRevenueModal(false)} aria-label="Fechar modal de faturamento" className="p-1.5 rounded-lg hover:bg-brand-terciar/10 text-brand-terciar/50 transition-colors">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
+      <Modal
+        isOpen={showAddRevenueModal}
+        onClose={() => setShowAddRevenueModal(false)}
+        title={
+          <span className="flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            Registrar Faturamento
+          </span>
+        }
+        size="md"
+      >
               <form
                 onSubmit={async (e) => {
                   e.preventDefault();
@@ -1553,43 +1322,12 @@ export default function BusinessUnitDetailPage() {
                   <button type="submit" className="px-4 py-2 bg-brand-extra2 text-white font-bold rounded-lg text-xs shadow-sm">Registrar</button>
                 </div>
               </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      </Modal>
     </div>
   );
 }
 
 // Components
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  iconColor,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: string;
-  iconColor: string;
-}) {
-  return (
-    <div className="p-4 rounded-xl border border-brand-terciar/10 bg-white">
-      <div className="flex items-center justify-between">
-        <div className={`p-2 rounded-lg ${iconColor}`}>
-          <Icon className="w-5 h-5" />
-        </div>
-      </div>
-      <div className="mt-3">
-        <p className="text-2xl font-bold text-brand-extra1">{value}</p>
-        <p className="text-[10px] text-brand-terciar/60 uppercase tracking-wider font-mono">
-          {label}
-        </p>
-      </div>
-    </div>
-  );
-}
-
 function ContactItem({
   icon: Icon,
   label,

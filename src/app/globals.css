@@ -20,6 +20,14 @@
   /* Accents */
   --brand-accent-warm: #CC9F6F;
   --brand-accent-brown: #5C4C44;
+
+  /* Portuguese aliases (compat bridge - raw CSS vars for inline style usage) */
+  --brand-principal: #E9E9E9;
+  --brand-secundar: #105D8F;
+  --brand-terciar: #262626;
+  --brand-extra1: #CC9F6F;
+  --brand-extra2: #5C4C44;
+  --brand-extra3: #604F45;
   
   /* Semantic */
   --success: #059669;
@@ -61,6 +69,14 @@
   --color-error-light: var(--error-light);
   --color-info: var(--info);
   --color-info-light: var(--info-light);
+
+  /* Portuguese aliases (compat bridge - enables bg-brand-principal, text-brand-secundar, etc.) */
+  --color-brand-principal: var(--brand-principal);
+  --color-brand-secundar: var(--brand-secundar);
+  --color-brand-terciar: var(--brand-terciar);
+  --color-brand-extra1: var(--brand-extra1);
+  --color-brand-extra2: var(--brand-extra2);
+  --color-brand-extra3: var(--brand-extra3);
 
   /* === TYPOGRAPHY === */
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;

@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import { SessionUser } from "@/types/auth";
 import { PageWrapper } from "@/components/PageWrapper";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { FilterPill } from "@/components/ui/FilterPill";
 
 /* ============================================================
    TYPES
@@ -85,25 +87,6 @@ function ToolCardSkeleton() {
         <div className="h-4 w-24 bg-brand-terciar/10 rounded" />
         <div className="h-8 w-20 bg-brand-terciar/10 rounded-lg" />
       </div>
-    </div>
-  );
-}
-
-/* ============================================================
-   EMPTY STATE
-   ============================================================ */
-function EmptyState({ onClear }: { onClear: () => void }) {
-  return (
-    <div className="col-span-full text-center py-12 border border-dashed border-brand-terciar/20 bg-white rounded-xl">
-      <Sliders className="w-10 h-10 text-brand-terciar/20 mx-auto mb-3" />
-      <p className="text-sm font-medium text-brand-terciar/60">Nenhuma ferramenta encontrada</p>
-      <p className="text-xs text-brand-terciar/40 mt-1">Tente ajustar os filtros ou a busca</p>
-      <button
-        onClick={onClear}
-        className="mt-3 text-xs font-medium text-brand-primary hover:text-brand-primary-light underline underline-offset-2"
-      >
-        Limpar filtros
-      </button>
     </div>
   );
 }
@@ -233,17 +216,12 @@ export default function FerramentasPage() {
           {/* Filter tabs */}
           <div className={`flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin ${showFilters ? "flex" : "hidden md:flex"}`}>
             {categories.map((cat) => (
-              <button
+              <FilterPill
                 key={cat.value}
+                label={cat.label}
+                active={activeFilter === cat.value}
                 onClick={() => setActiveFilter(cat.value)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border whitespace-nowrap transition-all cursor-pointer ${
-                  activeFilter === cat.value
-                    ? "bg-brand-primary text-white border-brand-primary shadow-sm"
-                    : "bg-white border-brand-terciar/10 text-brand-terciar/60 hover:text-brand-primary hover:bg-brand-primary/5"
-                }`}
-              >
-                {cat.label}
-              </button>
+              />
             ))}
           </div>
         </div>
@@ -256,9 +234,20 @@ export default function FerramentasPage() {
             ))}
           </div>
         ) : filteredPanels.length === 0 ? (
-          <div className="grid grid-cols-1 gap-4">
-            <EmptyState onClear={clearFilters} />
-          </div>
+          <EmptyState
+            icon={<Sliders className="w-10 h-10 text-brand-terciar/20" />}
+            title="Nenhuma ferramenta encontrada"
+            description="Tente ajustar os filtros ou a busca"
+            action={
+              <button
+                onClick={clearFilters}
+                className="mt-3 text-xs font-medium text-brand-primary hover:text-brand-primary-light underline underline-offset-2"
+              >
+                Limpar filtros
+              </button>
+            }
+            className="col-span-full py-12 border border-dashed border-brand-terciar/20 bg-white rounded-xl"
+          />
         ) : (
           <motion.div
             layout
