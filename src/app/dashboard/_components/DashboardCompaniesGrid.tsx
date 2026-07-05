@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * @deprecated Since T3 (empresas removal). This component is orphaned after
+ * the "Empresas & Ferramentas" tab was removed. Kept for potential reuse in
+ * the "Unidades de Negocio" page. If you use this, remove this deprecation
+ * notice. Last used by: src/app/dashboard/empresas/EmpresasClient.tsx (deleted).
+ */
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Building2, Wine, GraduationCap } from "lucide-react";

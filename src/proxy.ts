@@ -74,12 +74,11 @@ export default auth((req) => {
       );
     }
     
-    // Add rate limit headers and continue
-    const response = NextResponse.next();
-    response.headers.set("X-RateLimit-Limit", String(limit));
-    response.headers.set("X-RateLimit-Remaining", String(remaining));
-    response.headers.set("X-RateLimit-Reset", String(Math.ceil(resetTime / 1000)));
-    return response;
+    // Add rate limit headers to the request so they can be passed along,
+    // but do not return a NextResponse here to avoid overriding NextAuth's own handlers.
+    req.headers.set("X-RateLimit-Limit", String(limit));
+    req.headers.set("X-RateLimit-Remaining", String(remaining));
+    req.headers.set("X-RateLimit-Reset", String(Math.ceil(resetTime / 1000)));
   }
 
 
@@ -87,9 +86,8 @@ export default auth((req) => {
   const isDashboardPath = nextUrl.pathname.startsWith("/dashboard");
 
   // Admin routes (need level 1)
-  const isAdminPath = 
-    nextUrl.pathname.startsWith("/dashboard/seguranca") ||
-    nextUrl.pathname.startsWith("/dashboard/empresas");
+  const isAdminPath =
+    nextUrl.pathname.startsWith("/dashboard/seguranca");
 
   const user = req.auth?.user as SessionUser | undefined;
   const userLevel = user?.hierarchyLevel;

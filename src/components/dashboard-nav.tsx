@@ -16,7 +16,6 @@ import {
   Sliders,
   Bell,
   Building2,
-  LayoutGrid,
 } from "lucide-react";
 import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
 
@@ -105,13 +104,6 @@ export default function DashboardNav() {
       icon: FileText,
       allowedRoles: ["ADMIN", "COORDINATOR", "VIEWER"],
       minLevel: 3,
-    },
-    {
-      name: "Empresas & Ferramentas",
-      href: "/dashboard/empresas",
-      icon: LayoutGrid,
-      allowedRoles: ["ADMIN"],
-      minLevel: 1,
     },
     {
       name: "Seguranca & Niveis",

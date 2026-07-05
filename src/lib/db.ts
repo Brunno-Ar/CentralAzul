@@ -207,6 +207,7 @@ export interface MockBusinessUnit {
   website: string;
   isActive: boolean;
   order: number;
+  showOnHome: boolean;
   createdAt: Date;
   updatedAt: Date;
   tools?: MockBusinessUnitTool[];
@@ -308,7 +309,6 @@ const mockMenuPermissions: MockMenuPermission[] = globalThis.__mockMenuPermissio
   { href: "/dashboard/comunicados", name: "Comunicados", minLevel: 3 },
   { href: "/dashboard/unidades", name: "Unidades de Negocio", minLevel: 3 },
   { href: "/dashboard/documentos", name: "Drive de Arquivos", minLevel: 3 },
-  { href: "/dashboard/empresas", name: "Empresas & Ferramentas", minLevel: 1 },
   { href: "/dashboard/seguranca", name: "Seguranca & Niveis", minLevel: 1 },
   { href: "/dashboard/configuracoes", name: "Configuracoes", minLevel: 99 },
 ]);
@@ -602,7 +602,7 @@ export interface MockCompany {
   updatedAt: Date;
 }
 
-const mockCompanies: MockCompany[] = globalThis.__mockCompanies ?? (globalThis.__mockCompanies = [
+export const mockCompanies: MockCompany[] = globalThis.__mockCompanies ?? (globalThis.__mockCompanies = [
   {
     id: "comp-1",
     name: "Borgo del Vino",
@@ -1532,6 +1532,7 @@ export const dbSim = {
             website: newBU.website,
             isActive: newBU.isActive,
             order: newBU.order,
+            showOnHome: newBU.showOnHome,
           },
         });
         return {
@@ -1548,6 +1549,7 @@ export const dbSim = {
           website: created.website,
           isActive: created.isActive,
           order: created.order,
+          showOnHome: created.showOnHome,
           createdAt: created.createdAt,
           updatedAt: created.updatedAt,
         };
@@ -1590,6 +1592,9 @@ export const dbSim = {
               ? { isActive: updates.isActive }
               : {}),
             ...(updates.order !== undefined ? { order: updates.order } : {}),
+            ...(updates.showOnHome !== undefined
+              ? { showOnHome: updates.showOnHome }
+              : {}),
           },
         });
         return updated;
@@ -3132,6 +3137,7 @@ const mockBusinessUnits: MockBusinessUnit[] = globalThis.__mockBusinessUnits ?? 
     website: "https://borgodelvino.com.br",
     isActive: true,
     order: 1,
+    showOnHome: true,
     createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
     updatedAt: new Date(),
     tools: [
@@ -3186,6 +3192,7 @@ const mockBusinessUnits: MockBusinessUnit[] = globalThis.__mockBusinessUnits ?? 
     website: "https://azulincorporacoes.com.br",
     isActive: true,
     order: 2,
+    showOnHome: true,
     createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
     updatedAt: new Date(),
     tools: [
@@ -3240,6 +3247,7 @@ const mockBusinessUnits: MockBusinessUnit[] = globalThis.__mockBusinessUnits ?? 
     website: "https://maplebear.com.br",
     isActive: true,
     order: 3,
+    showOnHome: true,
     createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
     updatedAt: new Date(),
     tools: [
@@ -3279,6 +3287,7 @@ const mockBusinessUnits: MockBusinessUnit[] = globalThis.__mockBusinessUnits ?? 
     website: "https://azulincorporacoes.com.br",
     isActive: true,
     order: 4,
+    showOnHome: true,
     createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
     updatedAt: new Date(),
     tools: [
