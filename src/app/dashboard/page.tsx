@@ -72,12 +72,12 @@ export default async function DashboardHome() {
   const userCompany = user?.company;
 
   // Fetch all dashboard data server-side in parallel
-  const [logs, users, panels, docs, companiesData] = await Promise.all([
+  const [logs, users, panels, docs, businessUnitsData] = await Promise.all([
     db.getAuditLogs(userLevel, userCompany).catch(() => []),
     db.getUsers().catch(() => []),
     db.getPanels().catch(() => []),
     db.getDocuments(userLevel, userCompany).catch(() => []),
-    db.getCompanies().catch(() => []),
+    db.getBusinessUnitsForHome().catch(() => []),
   ]);
 
   const recentLogs = (
@@ -90,12 +90,52 @@ export default async function DashboardHome() {
   const totalDocs = (docs as unknown[]).length;
 
   let activeCompanies: DashboardCompany[] = fallbackCompanies;
-  if (Array.isArray(companiesData) && companiesData.length > 0) {
-    const filtered = (companiesData as DashboardCompany[])
-      .filter((c) => c.isActive && c.showOnHome)
-      .sort((a, b) => (a.order || 0) - (b.order || 0));
-    if (filtered.length > 0) {
-      activeCompanies = filtered;
+  if (Array.isArray(businessUnitsData) && businessUnitsData.length > 0) {
+    const mappedCompanies: DashboardCompany[] = (businessUnitsData as Array<{
+      id: string;
+      name: string;
+      slug: string;
+      company: string;
+      description: string | null;
+      order: number;
+      isActive: boolean;
+      showOnHome: boolean;
+    }>).map((bu) => {
+      const iconMap: Record<string, string> = {
+        BORGO: "Wine",
+        MAPLE_BEAR: "GraduationCap",
+        AZUL: "Building2",
+        CENTRAL: "Building2",
+      };
+      const colorClassMap: Record<string, string> = {
+        BORGO: "from-brand-terciar/5 to-brand-terciar/15 border-brand-terciar/20",
+        MAPLE_BEAR: "from-brand-secundar/5 to-brand-secundar/15 border-brand-secundar/20",
+        AZUL: "from-brand-extra2/5 to-brand-extra2/15 border-brand-extra2/20",
+        CENTRAL: "from-brand-terciar/5 to-brand-terciar/15 border-brand-terciar/20",
+      };
+      const accentClassMap: Record<string, string> = {
+        BORGO: "text-brand-terciar",
+        MAPLE_BEAR: "text-brand-secundar",
+        AZUL: "text-brand-extra2",
+        CENTRAL: "text-brand-terciar",
+      };
+      return {
+        id: bu.id,
+        name: bu.name,
+        slug: bu.slug,
+        color: bu.company,
+        desc: bu.description || undefined,
+        iconName: iconMap[bu.company] || "Building2",
+        colorClass: colorClassMap[bu.company] || "from-brand-principal/20 to-brand-principal/40 border-brand-secundar/20",
+        accentClass: accentClassMap[bu.company] || "text-brand-secundar",
+        url: `/dashboard/unidades/${bu.slug}`,
+        isActive: bu.isActive,
+        showOnHome: bu.showOnHome,
+        order: bu.order,
+      };
+    });
+    if (mappedCompanies.length > 0) {
+      activeCompanies = mappedCompanies;
     }
   }
 

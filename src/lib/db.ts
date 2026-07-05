@@ -1465,6 +1465,34 @@ export const dbSim = {
   },
 
   // Business Units logic
+  getBusinessUnitsForHome: async () => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.businessUnit.findMany({
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            company: true,
+            description: true,
+            order: true,
+            isActive: true,
+            showOnHome: true,
+          },
+          where: {
+            showOnHome: true,
+            isActive: true,
+          },
+          orderBy: { order: "asc" },
+        });
+      } catch (e) {
+        console.error("Prisma error fetching business units for home, returning empty", e);
+        return [];
+      }
+    }
+    return [];
+  },
+
   getBusinessUnits: async () => {
     if (prismaClient && isDbConnected) {
       try {
@@ -3403,6 +3431,7 @@ export const db = {
   addLog: dbSim.addLog,
 
   // Business Units
+  getBusinessUnitsForHome: dbSim.getBusinessUnitsForHome,
   getBusinessUnits: dbSim.getBusinessUnits,
   getBusinessUnitBySlug: dbSim.getBusinessUnitBySlug,
   getBusinessUnitItemOwner: dbSim.getBusinessUnitItemOwner,

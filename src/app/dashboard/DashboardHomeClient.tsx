@@ -94,6 +94,14 @@ const getCompanyStyle = (c: DashboardCompany) => {
         url,
         desc,
       };
+    case "CENTRAL":
+      return {
+        icon: Building2,
+        color: "from-brand-terciar/5 to-brand-terciar/15 border-brand-terciar/20",
+        accent: "text-brand-terciar",
+        url,
+        desc,
+      };
     default:
       return {
         icon: Building2,

@@ -100,7 +100,7 @@ export const createPanelSchema = z.object({
   minHierarchy: hierarchyLevelSchema.default(3),
   isActive: z.boolean().default(true),
   companySlug: z.string().nullable().optional(),
-});
+}).strict();
 
 export const updatePanelSchema = z.object({
   id: z.string().min(1, "ID é obrigatório"),
@@ -113,7 +113,7 @@ export const updatePanelSchema = z.object({
   minHierarchy: hierarchyLevelSchema.optional(),
   isActive: z.boolean().optional(),
   companySlug: z.string().nullable().optional(),
-});
+}).strict();
 
 export const deletePanelSchema = z.object({
   id: z.string().min(1, "ID é obrigatório"),

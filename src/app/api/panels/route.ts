@@ -34,13 +34,26 @@ export async function GET(request: NextRequest) {
 
     const panels = await db.getPanels();
 
-    // Filter tools/panels based on user's hierarchy
-    const filtered = panels.filter(p => {
-      // Check hierarchy: userLevel (e.g. 2) must be >= p.minHierarchy (e.g. 2 or 3)
-      return userLevel >= p.minHierarchy;
+    // Return ALL panels with locked flag based on user's hierarchy
+    // Mask sensitive data (url, description) for locked panels
+    const responsePanels = panels.map(p => {
+      const locked = userLevel < p.minHierarchy;
+      return {
+        id: p.id,
+        name: p.name,
+        icon: p.icon,
+        category: p.category,
+        minRole: p.minRole,
+        minHierarchy: p.minHierarchy,
+        companySlug: p.companySlug,
+        isActive: p.isActive,
+        locked,
+        url: locked ? null : p.url,
+        description: locked ? null : p.description,
+      };
     });
 
-    return NextResponse.json(filtered);
+    return NextResponse.json(responsePanels);
   } catch (error) {
     console.error("[GET /api/panels] Erro:", error);
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });
