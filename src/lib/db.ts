@@ -3327,6 +3327,30 @@ const mockBusinessUnits: MockBusinessUnit[] = globalThis.__mockBusinessUnits ?? 
     metaData: [],
     revenueData: [],
   },
+  {
+    id: "bu-5",
+    name: "Unidade Agregadora Central Azul",
+    slug: "central-azul",
+    company: Company.CENTRAL,
+    description:
+      "Unidade agregadora Central Azul responsavel pela gestao integrada do grupo.",
+    logo: "",
+    coverImage: "",
+    address: "",
+    phone: "",
+    email: "",
+    website: "",
+    isActive: true,
+    order: 5,
+    showOnHome: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    tools: [],
+    socialLinks: [],
+    analytics: [],
+    metaData: [],
+    revenueData: [],
+  },
 ]);
 
 // ============================================

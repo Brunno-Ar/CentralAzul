@@ -76,7 +76,7 @@ async function handlePost(request: NextRequest) {
 
     const { 
       name, slug, company, description, logo, coverImage, 
-      address, phone, email, website, isActive, order 
+      address, phone, email, website, isActive, order, showOnHome 
     } = validation.data;
 
     if (!db.createBusinessUnit) {
@@ -99,6 +99,7 @@ async function handlePost(request: NextRequest) {
       website: website || "",
       isActive: isActive !== undefined ? isActive : true,
       order: order || 0,
+      showOnHome: showOnHome !== undefined ? showOnHome : true,
     });
 
     // Log de auditoria

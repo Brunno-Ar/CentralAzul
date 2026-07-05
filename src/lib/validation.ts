@@ -203,6 +203,7 @@ export const createBusinessUnitSchema = z.object({
   website: z.string().url().optional().or(z.literal("")),
   isActive: z.boolean().default(true),
   order: z.number().int().min(0).default(0),
+  showOnHome: z.boolean().default(true),
 });
 
 export const updateBusinessUnitSchema = z.object({
@@ -219,6 +220,7 @@ export const updateBusinessUnitSchema = z.object({
   website: z.string().url().optional().or(z.literal("")),
   isActive: z.boolean().optional(),
   order: z.number().int().min(0).optional(),
+  showOnHome: z.boolean().optional(),
 });
 
 export const deleteBusinessUnitSchema = z.object({
@@ -413,6 +415,7 @@ export const updateBusinessUnitBySlugSchema = z.object({
   website: z.string().url().optional().or(z.literal("")),
   isActive: z.boolean().optional(),
   order: z.number().int().min(0).optional(),
+  showOnHome: z.boolean().optional(),
 }).strict();
 
 // ============================================
