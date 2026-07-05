@@ -3,33 +3,17 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Wine, 
-  GraduationCap, 
-  Building2, 
-  ShieldAlert, 
-  Notebook, 
-  DollarSign, 
-  CalendarRange, 
-  Lock, 
-  ExternalLink,
-  Search,
-  ShieldAlert as ShieldIcon
+import {
+  Wine, GraduationCap, Building2, ShieldAlert, Notebook,
+  DollarSign, CalendarRange, Lock, ExternalLink, Search,
+  ShieldAlert as ShieldIcon, Sliders, Filter, X
 } from "lucide-react";
 import { SessionUser } from "@/types/auth";
 import { PageWrapper } from "@/components/PageWrapper";
 
-const iconMap: { [key: string]: React.ComponentType<{ className?: string }> } = {
-  Wine,
-  GraduationCap,
-  Building2,
-  ShieldAlert,
-  Notebook,
-  DollarSign,
-  CalendarRange,
-  ShieldIcon
-};
-
+/* ============================================================
+   TYPES
+   ============================================================ */
 interface SystemPanel {
   id: string;
   name: string;
@@ -50,6 +34,83 @@ interface CompanyConfig {
   color: string;
 }
 
+/* ============================================================
+   ICON MAP
+   ============================================================ */
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  Wine, GraduationCap, Building2, ShieldAlert, Notebook,
+  DollarSign, CalendarRange, ShieldIcon
+};
+
+/* ============================================================
+   CATEGORY STYLES
+   ============================================================ */
+const categoryStyles: Record<string, { bg: string; text: string; border: string }> = {
+  BORGO: { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" },
+  MAPLE_BEAR: { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" },
+  AZUL: { bg: "bg-sky-50", text: "text-sky-700", border: "border-sky-200" },
+};
+
+const getCategoryStyle = (cat: string, companySlug?: string | null) => {
+  const key = (companySlug || cat).toUpperCase();
+  return categoryStyles[key] || { bg: "bg-gray-50", text: "text-gray-700", border: "border-gray-200" };
+};
+
+const getCompanyLabel = (cat: string, companySlug?: string | null, companies: CompanyConfig[] = []) => {
+  const slugUpper = (companySlug || cat).toUpperCase();
+  const matched = companies.find(c => c.slug.toUpperCase() === slugUpper);
+  if (matched) return matched.name;
+
+  switch (slugUpper) {
+    case "BORGO": return "Borgo del Vino";
+    case "MAPLE_BEAR": return "Maple Bear";
+    case "AZUL": return "Azul Incorporacoes";
+    default: return companySlug || cat || "Grupo Azul";
+  }
+};
+
+/* ============================================================
+   SKELETON LOADING
+   ============================================================ */
+function ToolCardSkeleton() {
+  return (
+    <div className="p-5 rounded-xl border border-brand-terciar/10 bg-white animate-pulse">
+      <div className="flex justify-between items-start mb-4">
+        <div className="h-5 w-20 bg-brand-terciar/10 rounded" />
+        <div className="h-8 w-8 bg-brand-terciar/10 rounded-lg" />
+      </div>
+      <div className="h-4 w-3/4 bg-brand-terciar/10 rounded mb-2" />
+      <div className="h-4 w-1/2 bg-brand-terciar/10 rounded" />
+      <div className="mt-6 pt-4 border-t border-brand-terciar/10 flex items-center justify-between">
+        <div className="h-4 w-24 bg-brand-terciar/10 rounded" />
+        <div className="h-8 w-20 bg-brand-terciar/10 rounded-lg" />
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   EMPTY STATE
+   ============================================================ */
+function EmptyState({ onClear }: { onClear: () => void }) {
+  return (
+    <div className="col-span-full text-center py-12 border border-dashed border-brand-terciar/20 bg-white rounded-xl">
+      <Sliders className="w-10 h-10 text-brand-terciar/20 mx-auto mb-3" />
+      <p className="text-sm font-medium text-brand-terciar/60">Nenhuma ferramenta encontrada</p>
+      <p className="text-xs text-brand-terciar/40 mt-1">Tente ajustar os filtros ou a busca</p>
+      <button
+        onClick={onClear}
+        className="mt-3 text-xs font-medium text-brand-primary hover:text-brand-primary-light underline underline-offset-2"
+      >
+        Limpar filtros
+      </button>
+    </div>
+  );
+}
+
+/* ============================================================
+   MAIN COMPONENT
+   ============================================================ */
 export default function FerramentasPage() {
   const { data: session } = useSession();
   const [panels, setPanels] = useState<SystemPanel[]>([]);
@@ -57,22 +118,23 @@ export default function FerramentasPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<string>("ALL");
+  const [showFilters, setShowFilters] = useState(false);
 
   const user = session?.user as SessionUser | undefined;
   const userLevel = user?.hierarchyLevel || 3;
 
+  // Load data from URL params
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const companyParam = params.get("company");
       if (companyParam) {
-        setTimeout(() => {
-          setActiveFilter(companyParam.toUpperCase());
-        }, 0);
+        setActiveFilter(companyParam.toUpperCase());
       }
     }
   }, []);
 
+  // Fetch panels and companies
   useEffect(() => {
     async function loadData() {
       try {
@@ -97,205 +159,190 @@ export default function FerramentasPage() {
     loadData();
   }, []);
 
+  // Build filter categories
   const uniquePanelSlugs = Array.from(
-    new Set(
-      panels
-        .map((p) => p.companySlug?.toUpperCase())
-        .filter((slug): slug is string => !!slug)
-    )
+    new Set(panels.map((p) => p.companySlug?.toUpperCase()).filter((s): s is string => !!s))
   ).filter((slug) => !companies.some((c) => c.slug.toUpperCase() === slug));
 
   const categories = [
     { label: "Todos", value: "ALL" },
-    ...companies.map(c => ({
-      label: c.name,
-      value: c.slug.toUpperCase()
-    })),
-    ...uniquePanelSlugs.map(slug => ({
-      label: slug,
-      value: slug
-    }))
+    ...companies.map(c => ({ label: c.name, value: c.slug.toUpperCase() })),
+    ...uniquePanelSlugs.map(slug => ({ label: slug, value: slug }))
   ];
 
+  // Filter panels
   const filteredPanels = panels.filter(panel => {
-    const matchesSearch = panel.name.toLowerCase().includes(search.toLowerCase()) || 
+    const matchesSearch = panel.name.toLowerCase().includes(search.toLowerCase()) ||
                           panel.description.toLowerCase().includes(search.toLowerCase());
-    const matchesFilter = activeFilter === "ALL" || 
+    const matchesFilter = activeFilter === "ALL" ||
                           panel.category?.toUpperCase() === activeFilter ||
                           panel.companySlug?.toUpperCase() === activeFilter;
     return matchesSearch && matchesFilter;
   });
 
-  const getCategoryColor = (cat: string, companySlug?: string | null) => {
-    const activeCat = (companySlug || cat).toUpperCase();
-    switch (activeCat) {
-      case "BORGO": return "text-brand-terciar bg-brand-terciar/10 border-brand-terciar/20";
-      case "MAPLE_BEAR": return "text-brand-secundar bg-brand-secundar/10 border-brand-secundar/20";
-      case "AZUL": return "text-brand-extra2 bg-brand-extra2/10 border-brand-extra2/20";
-      default: return "text-brand-extra1 bg-brand-principal border-brand-secundar/20";
-    }
-  };
-
-  const getCompanyLabel = (cat: string, companySlug?: string | null) => {
-    const slugUpper = (companySlug || cat).toUpperCase();
-    const matched = companies.find(c => c.slug.toUpperCase() === slugUpper);
-    if (matched) return matched.name;
-
-    switch (slugUpper) {
-      case "BORGO": return "Borgo del Vino";
-      case "MAPLE_BEAR": return "Maple Bear";
-      case "AZUL": return "Azul Incorporacoes";
-      default: return companySlug || cat || "Grupo Azul Central";
-    }
+  const clearFilters = () => {
+    setSearch("");
+    setActiveFilter("ALL");
   };
 
   return (
     <PageWrapper title="Ferramentas">
-      <div className="space-y-6 text-brand-terciar">
-      {/* Title block */}
-      <div>
-        <h1 className="text-xl font-bold tracking-tight text-brand-extra1 sm:text-2xl">
-          Ferramentas
-        </h1>
-        <p className="text-xs text-brand-terciar/70 mt-1">
-          Acesse as ferramentas administrativas integradas do grupo. As ferramentas sao liberadas conforme seu nivel de acesso.
-        </p>
-      </div>
-
-      {/* Search & Tabs - Mobile First */}
-      <div className="flex flex-col gap-4 py-2 border-y border-brand-terciar/10 sm:flex-row sm:items-center sm:justify-between">
-        {/* Search */}
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-brand-terciar/50" />
-          <input
-            type="text"
-            placeholder="Buscar ferramenta..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-white border border-brand-terciar/10 rounded-xl text-xs text-brand-terciar placeholder-brand-terciar/40 focus:outline-none focus:border-brand-secundar transition-colors shadow-sm"
-          />
+      <div className="space-y-6">
+        {/* === HEADER === */}
+        <div>
+          <h1 className="text-xl font-bold text-brand-extra1 tracking-tight">
+            Ferramentas
+          </h1>
+          <p className="text-xs text-brand-terciar/60 mt-1">
+            Acesse as ferramentas administrativas integradas do grupo. Liberadas conforme seu nivel de acesso.
+          </p>
         </div>
 
-        {/* Filter Tabs - horizontal scroll on mobile */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 sm:pb-0 scrollbar-none w-full sm:w-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-          {categories.map((cat) => (
-            <button
-              key={cat.value}
-              onClick={() => setActiveFilter(cat.value)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border whitespace-nowrap transition-all cursor-pointer ${
-                activeFilter === cat.value
-                  ? "bg-brand-secundar text-white border-brand-secundar shadow-sm"
-                  : "bg-white border-brand-terciar/10 text-brand-terciar/60 hover:text-brand-secundar hover:bg-brand-principal/20"
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Grid List */}
-      {loading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-44 bg-white animate-pulse rounded-2xl border border-brand-terciar/10" />
-          ))}
-        </div>
-      ) : filteredPanels.length === 0 ? (
-        <div className="text-center py-12 border border-dashed border-brand-terciar/20 bg-white rounded-2xl shadow-sm">
-          <p className="text-sm text-brand-terciar/50">Nenhuma ferramenta encontrada com os filtros aplicados.</p>
-        </div>
-      ) : (
-        <motion.div 
-          layout
-          className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
-        >
-          <AnimatePresence mode="popLayout">
-            {filteredPanels.map((panel) => {
-              const hasAccess = userLevel >= panel.minHierarchy;
-              const PanelIcon = iconMap[panel.icon] || ShieldAlert;
-
-              return (
-                <motion.div
-                  key={panel.id}
-                  layout
-                  initial={{ opacity: 0, scale: 0.98 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.98 }}
-                  transition={{ duration: 0.2 }}
-                  className={`relative flex flex-col justify-between p-5 rounded-2xl border transition-all overflow-hidden ${
-                    hasAccess 
-                      ? "border-brand-terciar/10 bg-white hover:border-brand-secundar shadow-sm hover:shadow-md" 
-                      : "border-brand-terciar/5 bg-brand-principal/40"
-                  }`}
+        {/* === SEARCH & FILTERS === */}
+        <div className="flex flex-col gap-3">
+          { /* Search */ }
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-brand-terciar/40" />
+              <input
+                type="text"
+                placeholder="Buscar ferramenta..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2.5 bg-white border border-brand-terciar/10 rounded-xl text-sm text-brand-terciar placeholder:text-brand-terciar/40 focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 transition-all"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-terciar/40 hover:text-brand-terciar"
                 >
-                  {/* Decorative glowing gradient for unlocked systems */}
-                  {hasAccess && (
-                    <div className="absolute top-0 right-0 w-24 h-24 rounded-full bg-brand-secundar/5 blur-[25px] pointer-events-none" />
-                  )}
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
 
-                  {/* Top info */}
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-start w-full">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${getCategoryColor(panel.category, panel.companySlug)}`}>
-                        {getCompanyLabel(panel.category, panel.companySlug)}
-                      </span>
-                      
-                      <div className={`p-2 rounded-xl ${hasAccess ? "bg-brand-principal text-brand-extra1" : "bg-brand-principal/20 text-brand-terciar/30"}`}>
-                        <PanelIcon className="w-4 h-4" />
+            {/* Filter toggle (mobile) */}
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="md:hidden p-2.5 rounded-xl border border-brand-terciar/10 bg-white text-brand-terciar/60 hover:text-brand-terciar transition-colors"
+            >
+              <Filter className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Filter tabs */}
+          <div className={`flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin ${showFilters ? "flex" : "hidden md:flex"}`}>
+            {categories.map((cat) => (
+              <button
+                key={cat.value}
+                onClick={() => setActiveFilter(cat.value)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border whitespace-nowrap transition-all cursor-pointer ${
+                  activeFilter === cat.value
+                    ? "bg-brand-primary text-white border-brand-primary shadow-sm"
+                    : "bg-white border-brand-terciar/10 text-brand-terciar/60 hover:text-brand-primary hover:bg-brand-primary/5"
+                }`}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* === GRID === */}
+        {loading ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <ToolCardSkeleton key={i} />
+            ))}
+          </div>
+        ) : filteredPanels.length === 0 ? (
+          <div className="grid grid-cols-1 gap-4">
+            <EmptyState onClear={clearFilters} />
+          </div>
+        ) : (
+          <motion.div
+            layout
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+          >
+            <AnimatePresence mode="popLayout">
+              {filteredPanels.map((panel) => {
+                const hasAccess = userLevel >= panel.minHierarchy;
+                const PanelIcon = iconMap[panel.icon] || ShieldAlert;
+                const catStyle = getCategoryStyle(panel.category, panel.companySlug);
+
+                return (
+                  <motion.div
+                    key={panel.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.98 }}
+                    transition={{ duration: 0.2 }}
+                    className={`relative flex flex-col justify-between p-5 rounded-xl border transition-all overflow-hidden ${
+                      hasAccess
+                        ? "border-brand-terciar/10 bg-white hover:border-brand-primary/30 shadow-sm hover:shadow-md"
+                        : "border-brand-terciar/5 bg-brand-terciar/5"
+                    }`}
+                  >
+                    {/* Top info */}
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-start">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${catStyle.bg} ${catStyle.text} ${catStyle.border}`}>
+                          {getCompanyLabel(panel.category, panel.companySlug, companies)}
+                        </span>
+                        <div className={`p-2 rounded-lg ${hasAccess ? "bg-brand-terciar/5 text-brand-terciar" : "bg-brand-terciar/5 text-brand-terciar/30"}`}>
+                          <PanelIcon className="w-4 h-4" />
+                        </div>
+                      </div>
+
+                      <div className={hasAccess ? "opacity-100" : "opacity-40"}>
+                        <h3 className="text-sm font-bold text-brand-extra1 leading-tight">
+                          {panel.name}
+                        </h3>
+                        <p className="text-xs text-brand-terciar/70 mt-1.5 leading-relaxed line-clamp-2">
+                          {panel.description}
+                        </p>
                       </div>
                     </div>
 
-                    <div className={hasAccess ? "opacity-100" : "opacity-40"}>
-                      <h3 className="text-sm font-bold text-brand-extra1 leading-tight">
-                        {panel.name}
-                      </h3>
-                      <p className="text-xs text-brand-terciar/80 mt-2 leading-relaxed min-h-[48px]">
-                        {panel.description}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Requirements / Action */}
-                  <div className="mt-6 pt-4 border-t border-brand-terciar/10 flex items-center justify-between">
-                    {/* Security credentials info */}
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-[9px] uppercase font-mono text-brand-terciar/50 tracking-wider">Permissao</span>
-                      <span className={`text-[10px] font-mono font-bold ${hasAccess ? "text-emerald-700" : "text-red-700"}`}>
-                        Nivel {panel.minHierarchy}+ ({panel.minRole})
-                      </span>
-                    </div>
-
-                    {/* Unlocked button or locked message */}
-                    {hasAccess ? (
-                      <a
-                        href={panel.url}
-                        target={panel.url.startsWith("http") ? "_blank" : "_self"}
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-extra2 text-white font-bold rounded-lg text-xs hover:bg-brand-extra2/90 transition-colors shadow-sm cursor-pointer"
-                      >
-                        Acessar
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                    ) : (
-                      <div className="flex items-center gap-1 text-[10px] text-brand-terciar/60 font-mono py-1">
-                        <Lock className="w-3.5 h-3.5 text-brand-terciar/30" />
-                        Bloqueado
+                    {/* Action */}
+                    <div className="mt-5 pt-4 border-t border-brand-terciar/10 flex items-center justify-between">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[9px] uppercase font-mono text-brand-terciar/40 tracking-wider">Permissao</span>
+                        <span className={`text-[10px] font-mono font-bold ${hasAccess ? "text-emerald-600" : "text-red-500"}`}>
+                          N{panel.minHierarchy}+ ({panel.minRole})
+                        </span>
                       </div>
+
+                      {hasAccess ? (
+                        <a
+                          href={panel.url}
+                          target={panel.url.startsWith("http") ? "_blank" : "_self"}
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-primary text-white font-semibold rounded-lg text-xs hover:bg-brand-primary-light transition-colors shadow-sm"
+                        >
+                          Acessar
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      ) : (
+                        <div className="flex items-center gap-1 text-[10px] text-brand-terciar/50 font-mono">
+                          <Lock className="w-3.5 h-3.5" />
+                          Bloqueado
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Locked overlay */}
+                    {!hasAccess && (
+                      <div className="absolute inset-0 bg-brand-terciar/5 backdrop-blur-[1px] pointer-events-none" />
                     )}
-                  </div>
-
-                  {/* Locked overlay screen */}
-                  {!hasAccess && (
-                    <div className="absolute inset-0 bg-brand-principal/30 backdrop-blur-[1.5px] pointer-events-none transition-all" />
-                  )}
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        </motion.div>
-      )}
-    </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </motion.div>
+        )}
+      </div>
     </PageWrapper>
   );
 }
