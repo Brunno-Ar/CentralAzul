@@ -9,6 +9,16 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
 ) {
+  // Credential check: if no external sync API is configured, return 501
+  // so the UI can show "Funcao em desenvolvimento" instead of crashing.
+  if (!process.env.SYNC_API_URL && process.env.EXTERNAL_SYNC_ENABLED !== "true") {
+    console.warn("SUBFLOW_UNAVAILABLE: SYNC_API_URL not configured");
+    return NextResponse.json(
+      { error: "Funcao em desenvolvimento", softError: true },
+      { status: 501 },
+    );
+  }
+
   const limiterResponse = await rateLimit(request, "mutation");
   if (limiterResponse) return limiterResponse;
 

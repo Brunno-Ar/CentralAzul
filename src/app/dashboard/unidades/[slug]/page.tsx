@@ -196,9 +196,26 @@ export default function BusinessUnitDetailPage() {
         }
         setMessage({ type: "success", text: "Item adicionado com sucesso" });
         return true;
+      } else if (res.status === 501) {
+        try {
+          const err = await res.json();
+          if (err.softError) {
+            console.warn("SUBFLOW_UNAVAILABLE: addItem returned softError");
+            setMessage({ type: "error", text: err.error || "Funcao em desenvolvimento" });
+          } else {
+            setMessage({ type: "error", text: err.error || "Erro ao adicionar item" });
+          }
+        } catch {
+          setMessage({ type: "error", text: "Funcao em desenvolvimento" });
+        }
+        return false;
       } else {
-        const err = await res.json();
-        setMessage({ type: "error", text: err.error || "Erro ao adicionar item" });
+        try {
+          const err = await res.json();
+          setMessage({ type: "error", text: err.error || "Erro ao adicionar item" });
+        } catch {
+          setMessage({ type: "error", text: "Erro ao adicionar item" });
+        }
         return false;
       }
     } catch {
@@ -222,9 +239,25 @@ export default function BusinessUnitDetailPage() {
           setBusinessUnit(updatedBu);
         }
         setMessage({ type: "success", text: "Item removido com sucesso" });
+      } else if (res.status === 501) {
+        try {
+          const err = await res.json();
+          if (err.softError) {
+            console.warn("SUBFLOW_UNAVAILABLE: deleteItem returned softError");
+            setMessage({ type: "error", text: err.error || "Funcao em desenvolvimento" });
+          } else {
+            setMessage({ type: "error", text: err.error || "Erro ao remover item" });
+          }
+        } catch {
+          setMessage({ type: "error", text: "Funcao em desenvolvimento" });
+        }
       } else {
-        const err = await res.json();
-        setMessage({ type: "error", text: err.error || "Erro ao remover item" });
+        try {
+          const err = await res.json();
+          setMessage({ type: "error", text: err.error || "Erro ao remover item" });
+        } catch {
+          setMessage({ type: "error", text: "Erro ao remover item" });
+        }
       }
     } catch {
       setMessage({ type: "error", text: "Erro na conexão" });
@@ -261,9 +294,25 @@ export default function BusinessUnitDetailPage() {
         if (updates.slug !== slug) {
           router.push(`/dashboard/unidades/${updates.slug}`);
         }
+      } else if (res.status === 501) {
+        try {
+          const err = await res.json();
+          if (err.softError) {
+            console.warn("SUBFLOW_UNAVAILABLE: update returned softError");
+            setMessage({ type: "error", text: err.error || "Funcao em desenvolvimento" });
+          } else {
+            setMessage({ type: "error", text: err.error || "Erro ao atualizar unidade" });
+          }
+        } catch {
+          setMessage({ type: "error", text: "Funcao em desenvolvimento" });
+        }
       } else {
-        const err = await res.json();
-        setMessage({ type: "error", text: err.error || "Erro ao atualizar unidade" });
+        try {
+          const err = await res.json();
+          setMessage({ type: "error", text: err.error || "Erro ao atualizar unidade" });
+        } catch {
+          setMessage({ type: "error", text: "Erro ao atualizar unidade" });
+        }
       }
     } catch {
       setMessage({ type: "error", text: "Erro na conexão" });
@@ -299,8 +348,25 @@ export default function BusinessUnitDetailPage() {
           setBusinessUnit(data);
         }
         setMessage({ type: "success", text: "Métricas sincronizadas com sucesso" });
+      } else if (res.status === 501) {
+        try {
+          const err = await res.json();
+          if (err.softError) {
+            console.warn("SUBFLOW_UNAVAILABLE: sync returned softError");
+            setMessage({ type: "error", text: err.error || "Funcao em desenvolvimento" });
+          } else {
+            setMessage({ type: "error", text: err.error || "Erro ao sincronizar dados" });
+          }
+        } catch {
+          setMessage({ type: "error", text: "Funcao em desenvolvimento" });
+        }
       } else {
-        setMessage({ type: "error", text: "Erro ao sincronizar dados" });
+        try {
+          const err = await res.json();
+          setMessage({ type: "error", text: err.error || "Erro ao sincronizar dados" });
+        } catch {
+          setMessage({ type: "error", text: "Erro ao sincronizar dados" });
+        }
       }
     } catch {
       setMessage({ type: "error", text: "Erro na conexão de sincronização" });
@@ -342,8 +408,25 @@ export default function BusinessUnitDetailPage() {
       if (res.ok) {
         setMessage({ type: "success", text: "Unidade removida com sucesso" });
         router.push("/dashboard");
+      } else if (res.status === 501) {
+        try {
+          const err = await res.json();
+          if (err.softError) {
+            console.warn("SUBFLOW_UNAVAILABLE: delete returned softError");
+            setMessage({ type: "error", text: err.error || "Funcao em desenvolvimento" });
+          } else {
+            setMessage({ type: "error", text: err.error || "Erro ao remover unidade" });
+          }
+        } catch {
+          setMessage({ type: "error", text: "Funcao em desenvolvimento" });
+        }
       } else {
-        setMessage({ type: "error", text: "Erro ao remover unidade" });
+        try {
+          const err = await res.json();
+          setMessage({ type: "error", text: err.error || "Erro ao remover unidade" });
+        } catch {
+          setMessage({ type: "error", text: "Erro ao remover unidade" });
+        }
       }
     } catch {
       setMessage({ type: "error", text: "Erro de conexão" });

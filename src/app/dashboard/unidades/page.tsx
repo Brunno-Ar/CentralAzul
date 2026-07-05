@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import NextImage from "next/image";
 import { motion } from "framer-motion";
@@ -122,6 +123,7 @@ const formatNumber = (num: number) => {
 
 export default function BusinessUnitsListPage() {
   const { data: session } = useSession();
+  const router = useRouter();
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -192,6 +194,7 @@ export default function BusinessUnitsListPage() {
       website: formData.get("website") || "",
       isActive: true,
       order: 0,
+      showOnHome: true,
     };
 
     try {
@@ -206,6 +209,7 @@ export default function BusinessUnitsListPage() {
         setBusinessUnits((prev) => [newBU, ...prev]);
         setShowCreateModal(false);
         setMessage({ type: "success", text: "Unidade criada com sucesso" });
+        router.push("/dashboard");
       } else {
         const err = await res.json();
         setMessage({
