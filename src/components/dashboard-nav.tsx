@@ -57,7 +57,7 @@ function DesktopSidebar({
 
   return (
     <motion.aside
-      className="hidden md:flex flex-col h-screen bg-white border-r border-brand-terciar/10 sticky top-0 will-change-[width] transform-gpu"
+      className="hidden md:flex flex-col h-screen bg-white border-r border-brand-terciar/10 sticky top-0 will-change-[width] transform-gpu relative"
       style={{ width: isOpen ? 256 : 64 }}
       animate={{ width: isOpen ? 256 : 64 }}
       transition={{ duration: 0.2, ease: "easeInOut" }}
@@ -87,14 +87,18 @@ function DesktopSidebar({
         </motion.div>
       </div>
 
-      {/* Toggle collapse */}
+      {/* Toggle collapse - floating tab at the edge */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="mx-4 mb-2 flex items-center justify-center w-8 h-8 rounded-lg hover:bg-brand-surface-alt transition-colors self-end"
+        className="absolute -right-3 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center w-6 h-10 rounded-r-md bg-white border border-brand-terciar/10 shadow-md hover:shadow-lg hover:bg-brand-surface-alt transition-all duration-200 group"
         title={isOpen ? "Recolher" : "Expandir"}
+        aria-label={isOpen ? "Recolher menu" : "Expandir menu"}
       >
         <ChevronRight
-          className={cn("w-4 h-4 text-brand-foreground-subtle transition-transform", isOpen && "rotate-180")}
+          className={cn(
+            "w-3 h-3 text-brand-foreground-subtle transition-transform duration-200",
+            isOpen ? "rotate-180" : "rotate-0"
+          )}
         />
       </button>
 
