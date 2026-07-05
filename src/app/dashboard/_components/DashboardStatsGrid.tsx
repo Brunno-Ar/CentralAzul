@@ -59,7 +59,7 @@ export function DashboardStatsGrid({ stats }: { stats: Stats }) {
         variants={itemVariants}
         className="p-4 rounded-xl border border-brand-terciar/10 bg-white shadow-sm"
       >
-        <div className="flex justifyago justify-between items-center text-brand-terciar/60">
+        <div className="flex justify-between items-center text-brand-terciar/60">
           <span className="text-[10px] font-mono uppercase tracking-wider">Logs Auditoria</span>
           <Activity className="w-3.5 h-3.5 text-brand-terciar" />
         </div>
