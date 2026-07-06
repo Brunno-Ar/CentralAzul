@@ -32,6 +32,25 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <Providers>{children}</Providers>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                  if (registrations.length > 0) {
+                    for (let registration of registrations) {
+                      registration.unregister();
+                    }
+                    if (!sessionStorage.getItem('sw-cleared')) {
+                      sessionStorage.setItem('sw-cleared', '1');
+                      window.location.reload();
+                    }
+                  }
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );
