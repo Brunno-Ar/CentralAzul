@@ -45,17 +45,18 @@ model User {
 }
 
 model SystemPanel {
-  id            String   @id @default(cuid())
-  name          String
-  description   String
-  url           String
-  icon          String
-  category      String
-  minRole       String   @default("VIEWER")
-  minHierarchy  Int      @default(3)
-  isActive      Boolean  @default(true)
-  companySlug   String?
-  createdAt     DateTime @default(now())
+  id                  String   @id @default(cuid())
+  name                String
+  description         String
+  url                 String
+  icon                String
+  category            String
+  minRole             String   @default("VIEWER")
+  minHierarchy        Int      @default(3)
+  isActive            Boolean  @default(true)
+  companySlug         String?
+  businessUnitToolId  String?  @unique
+  createdAt           DateTime @default(now())
 }
 
 model AuditLog {

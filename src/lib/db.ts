@@ -817,6 +817,25 @@ export const dbSim = {
     return mockPanels;
   },
 
+  getPanelByBusinessUnitToolId: async (businessUnitToolId: string) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.systemPanel.findUnique({
+          where: { businessUnitToolId },
+        });
+      } catch (e) {
+        console.error("Prisma error fetching panel by tool id", e);
+      }
+    }
+    return (
+      mockPanels.find(
+        (p) =>
+          (p as unknown as Record<string, unknown>).businessUnitToolId ===
+          businessUnitToolId,
+      ) || null
+    );
+  },
+
   getDocuments: async (
     userLevel?: number,
     userCompany?: Company,
@@ -2274,6 +2293,24 @@ export const dbSim = {
     return bu?.tools || [];
   },
 
+  getBusinessUnitToolById: async (toolId: string, unitId?: string) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.businessUnitTool.findUnique({
+          where: { id: toolId, ...(unitId ? { businessUnitId: unitId } : {}) },
+        });
+      } catch (e) {
+        console.error("Prisma error fetching single tool", e);
+      }
+    }
+    for (const bu of mockBusinessUnits) {
+      if (unitId && bu.id !== unitId) continue;
+      const tool = (bu.tools || []).find((t) => t.id === toolId);
+      if (tool) return tool;
+    }
+    return null;
+  },
+
   updateBusinessUnitTool: async (
     toolId: string,
     updates: Partial<MockBusinessUnitTool>,
@@ -2773,6 +2810,7 @@ export const dbSim = {
     minHierarchy: number;
     isActive?: boolean;
     companySlug?: string | null;
+    businessUnitToolId?: string | null;
   }) => {
     const newPanel = {
       ...panel,
@@ -2780,6 +2818,7 @@ export const dbSim = {
       description: panel.description || "",
       isActive: panel.isActive !== undefined ? panel.isActive : true,
       companySlug: panel.companySlug || null,
+      businessUnitToolId: panel.businessUnitToolId || null,
     };
     if (prismaClient && isDbConnected) {
       try {
@@ -2795,6 +2834,7 @@ export const dbSim = {
             minHierarchy: newPanel.minHierarchy,
             isActive: newPanel.isActive,
             companySlug: newPanel.companySlug || null,
+            businessUnitToolId: newPanel.businessUnitToolId || null,
           },
         });
       } catch (e) {
@@ -2817,6 +2857,7 @@ export const dbSim = {
       minHierarchy?: number;
       isActive?: boolean;
       companySlug?: string | null;
+      businessUnitToolId?: string | null;
     },
   ) => {
     if (prismaClient && isDbConnected) {
@@ -2845,6 +2886,9 @@ export const dbSim = {
             ...(updates.companySlug !== undefined
               ? { companySlug: updates.companySlug }
               : {}),
+            ...(updates.businessUnitToolId !== undefined
+              ? { businessUnitToolId: updates.businessUnitToolId }
+              : {}),
           },
         });
       } catch (e) {
@@ -2865,6 +2909,9 @@ export const dbSim = {
       if (updates.isActive !== undefined) panel.isActive = updates.isActive;
       if (updates.companySlug !== undefined)
         panel.companySlug = updates.companySlug;
+      if (updates.businessUnitToolId !== undefined)
+        (panel as unknown as Record<string, unknown>).businessUnitToolId =
+          updates.businessUnitToolId;
       return panel;
     }
     return null;
@@ -3353,6 +3400,7 @@ export const db = {
 
   // Panels/Tools
   getPanels: dbSim.getPanels,
+  getPanelByBusinessUnitToolId: dbSim.getPanelByBusinessUnitToolId,
   createPanel: dbSim.createPanel,
   updatePanel: dbSim.updatePanel,
   deletePanel: dbSim.deletePanel,
@@ -3385,6 +3433,7 @@ export const db = {
 
   // Business Unit Tools
   getBusinessUnitTools: dbSim.getBusinessUnitTools,
+  getBusinessUnitToolById: dbSim.getBusinessUnitToolById,
   addBusinessUnitTool: dbSim.addBusinessUnitTool,
   updateBusinessUnitTool: dbSim.updateBusinessUnitTool,
   deleteBusinessUnitTool: dbSim.deleteBusinessUnitTool,

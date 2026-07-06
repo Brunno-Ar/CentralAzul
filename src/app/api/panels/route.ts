@@ -47,6 +47,7 @@ export async function GET(request: NextRequest) {
         minHierarchy: p.minHierarchy,
         companySlug: p.companySlug,
         isActive: p.isActive,
+        businessUnitToolId: (p as unknown as Record<string, unknown>).businessUnitToolId ?? null,
         locked,
         url: locked ? null : p.url,
         description: locked ? null : p.description,

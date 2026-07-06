@@ -46,7 +46,27 @@ interface SystemPanel {
   minHierarchy: number;
   isActive: boolean;
   companySlug?: string | null;
+  businessUnitToolId?: string | null;
   locked?: boolean;
+}
+
+interface BusinessUnitTool {
+  id: string;
+  businessUnitId: string;
+  name: string;
+  url: string;
+  icon: string | null;
+  description: string | null;
+  category: string;
+  isActive: boolean;
+}
+
+interface BusinessUnit {
+  id: string;
+  name: string;
+  slug: string;
+  company: string;
+  tools?: BusinessUnitTool[];
 }
 
 interface CompanyConfig {
@@ -115,14 +135,51 @@ export default function FerramentasPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [panelsRes, companiesRes] = await Promise.all([
+        const [panelsRes, companiesRes, businessUnitsRes] = await Promise.all([
           fetch("/api/panels"),
-          fetch("/api/companies")
+          fetch("/api/companies"),
+          fetch("/api/business-units"),
         ]);
+
+        let allPanels: SystemPanel[] = [];
+
         if (panelsRes.ok) {
-          const data = await panelsRes.json();
-          setPanels(data);
+          allPanels = await panelsRes.json();
         }
+
+        if (businessUnitsRes.ok) {
+          const businessUnits: BusinessUnit[] = await businessUnitsRes.json();
+          const syncedToolIds = new Set(
+            allPanels
+              .map((p) => p.businessUnitToolId)
+              .filter((id): id is string => !!id),
+          );
+
+          for (const bu of businessUnits) {
+            if (!bu.tools) continue;
+            for (const tool of bu.tools) {
+              if (syncedToolIds.has(tool.id)) continue;
+
+              allPanels.push({
+                id: `bu-tool-${tool.id}`,
+                name: tool.name,
+                description: tool.description,
+                url: tool.url,
+                icon: tool.icon || "ShieldAlert",
+                category: bu.company,
+                minRole: "VIEWER",
+                minHierarchy: 3,
+                isActive: tool.isActive,
+                companySlug: bu.slug,
+                businessUnitToolId: tool.id,
+                locked: false,
+              });
+            }
+          }
+        }
+
+        setPanels(allPanels);
+
         if (companiesRes.ok) {
           const data = await companiesRes.json();
           setCompanies(data);
@@ -206,10 +263,41 @@ export default function FerramentasPage() {
 
       setMessage({ type: "success", text: "Ferramenta criada com sucesso!" });
       setShowCreateModal(false);
-      const panelsRes = await fetch("/api/panels");
+      const [panelsRes, businessUnitsRes] = await Promise.all([
+        fetch("/api/panels"),
+        fetch("/api/business-units"),
+      ]);
       if (panelsRes.ok) {
-        const newData = await panelsRes.json();
-        setPanels(newData);
+        const data = await panelsRes.json();
+        if (businessUnitsRes.ok) {
+          const businessUnits: BusinessUnit[] = await businessUnitsRes.json();
+          const syncedToolIds = new Set(
+            data
+              .map((p: SystemPanel) => p.businessUnitToolId)
+              .filter((id: string | null): id is string => !!id),
+          );
+          for (const bu of businessUnits) {
+            if (!bu.tools) continue;
+            for (const tool of bu.tools) {
+              if (syncedToolIds.has(tool.id)) continue;
+              data.push({
+                id: `bu-tool-${tool.id}`,
+                name: tool.name,
+                description: tool.description,
+                url: tool.url,
+                icon: tool.icon || "ShieldAlert",
+                category: bu.company,
+                minRole: "VIEWER",
+                minHierarchy: 3,
+                isActive: tool.isActive,
+                companySlug: bu.slug,
+                businessUnitToolId: tool.id,
+                locked: false,
+              });
+            }
+          }
+        }
+        setPanels(data);
       }
     } catch (err) {
       setMessage({ type: "error", text: "Erro ao criar ferramenta" });
