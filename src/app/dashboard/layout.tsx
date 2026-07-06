@@ -25,6 +25,17 @@ export default function DashboardLayout({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // Initialize CSRF Token Cookie if not set
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      const match = document.cookie.match(/csrfToken=([^;]+)/);
+      if (!match) {
+        const token = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+        document.cookie = `csrfToken=${token}; path=/; SameSite=Lax;`;
+      }
+    }
+  }, []);
+
   return (
     <ErrorBoundary>
       <div className="flex flex-col md:flex-row min-h-screen bg-brand-principal text-brand-principal text-brand-terciar font-sans">
