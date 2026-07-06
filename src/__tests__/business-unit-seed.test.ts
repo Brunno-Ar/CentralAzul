@@ -13,27 +13,33 @@ import { Company } from "@prisma/client";
 // Mirror of the aggregatingUnits array from prisma/seed.ts
 const aggregatingUnits = [
   {
-    slug: "aggregadora-borgo",
-    name: "Unidade Agregadora Borgo",
+    slug: "BORGO",
+    name: "Borgo del Vino",
     company: Company.BORGO,
     showOnHome: true,
   },
   {
-    slug: "aggregadora-maple-bear",
-    name: "Unidade Agregadora Maple Bear",
+    slug: "MAPLE_BEAR",
+    name: "Maple Bear",
     company: Company.MAPLE_BEAR,
     showOnHome: true,
   },
   {
-    slug: "aggregadora-azul",
-    name: "Unidade Agregadora Azul",
+    slug: "AZUL",
+    name: "Grupo Azul",
     company: Company.AZUL,
     showOnHome: true,
   },
   {
-    slug: "central-azul",
-    name: "Unidade Agregadora Central Azul",
+    slug: "CENTRAL",
+    name: "Central",
     company: Company.CENTRAL,
+    showOnHome: true,
+  },
+  {
+    slug: "COMP-GRAN-RESERVA",
+    name: "Gran Reserva",
+    company: Company.BORGO,
     showOnHome: true,
   },
 ] as const;
@@ -51,8 +57,8 @@ describe("T2: Business Unit seed - unidades agregadoras", () => {
       });
     });
 
-    it("tem exatamente 4 unidades agregadoras (uma por enum)", () => {
-      expect(aggregatingUnits.length).toBe(allCompanyValues.length);
+    it("tem exatamente 5 unidades agregadoras", () => {
+      expect(aggregatingUnits.length).toBe(5);
     });
 
     it("todas as unidades agregadoras tem showOnHome=true", () => {
@@ -80,10 +86,10 @@ describe("T2: Business Unit seed - unidades agregadoras", () => {
       });
     });
 
-    it("inclui bu-5 (CENTRAL) com showOnHome=true", async () => {
+    it("inclui bu-4 (CENTRAL) com showOnHome=true", async () => {
       const { db } = await import("@/lib/db");
       const units = await db.getBusinessUnits();
-      const central = units.find((u) => u.slug === "central-azul");
+      const central = units.find((u) => u.slug === "CENTRAL");
       expect(central).toBeDefined();
       expect(central?.company).toBe(Company.CENTRAL);
       expect(central?.showOnHome).toBe(true);

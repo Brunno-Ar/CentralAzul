@@ -6,33 +6,51 @@ type AggregatingUnit = {
   slug: string;
   name: string;
   company: Company;
+  description: string;
   showOnHome: boolean;
+  order: number;
 };
 
 const aggregatingUnits: AggregatingUnit[] = [
   {
-    slug: "aggregadora-borgo",
-    name: "Unidade Agregadora Borgo",
+    slug: "BORGO",
+    name: "Borgo del Vino",
     company: Company.BORGO,
+    description: "Primeiro condomínio vinícola da Região Serrana e Sudeste. Inspirado nas vilas da Toscana, integrando vinhedos próprios, hotel boutique, spa, enoteca e restaurante em um cenário espetacular.",
     showOnHome: true,
+    order: 1,
   },
   {
-    slug: "aggregadora-maple-bear",
-    name: "Unidade Agregadora Maple Bear",
+    slug: "MAPLE_BEAR",
+    name: "Maple Bear",
     company: Company.MAPLE_BEAR,
+    description: "Rede de ensino bilíngue com metodologia canadense focada no desenvolvimento crítico.",
     showOnHome: true,
+    order: 2,
   },
   {
-    slug: "aggregadora-azul",
-    name: "Unidade Agregadora Azul",
+    slug: "AZUL",
+    name: "Grupo Azul",
     company: Company.AZUL,
+    description: "Incorporadora de alto padrão com portfólio de condomínios de luxo e prontos para morar.",
     showOnHome: true,
+    order: 3,
   },
   {
-    slug: "central-azul",
-    name: "Unidade Agregadora Central Azul",
+    slug: "CENTRAL",
+    name: "Central",
     company: Company.CENTRAL,
+    description: "Unidade agregadora Central Azul responsável pela gestão integrada do grupo.",
     showOnHome: true,
+    order: 4,
+  },
+  {
+    slug: "COMP-GRAN-RESERVA",
+    name: "Gran Reserva",
+    company: Company.BORGO,
+    description: "Lançamento de lotes exclusivos de alto padrão inserido no complexo Borgo del Vino.",
+    showOnHome: true,
+    order: 5,
   },
 ];
 
@@ -44,22 +62,23 @@ async function main() {
         update: {
           name: unit.name,
           company: unit.company,
+          description: unit.description,
           showOnHome: unit.showOnHome,
+          order: unit.order,
         },
         create: {
           slug: unit.slug,
           name: unit.name,
           company: unit.company,
+          description: unit.description,
           showOnHome: unit.showOnHome,
-          description:
-            "Unidade agregadora responsavel pela gestao integrada do grupo.",
           isActive: true,
-          order: 0,
+          order: unit.order,
         },
       });
-      console.log(`Seed: upsert OK for ${unit.company} (${unit.slug})`);
+      console.log(`Seed: upsert OK for ${unit.name} (${unit.slug})`);
     } catch (e) {
-      console.error(`Seed: failed for ${unit.company} (${unit.slug})`, e);
+      console.error(`Seed: failed for ${unit.name} (${unit.slug})`, e);
     }
   }
 }
