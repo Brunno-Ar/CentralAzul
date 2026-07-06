@@ -28,6 +28,7 @@ import {
   RefreshCw,
   X,
   Plus,
+  Upload,
 } from "lucide-react";
 import { SessionUser } from "@/types/auth";
 import FocusLock from "react-focus-lock";
@@ -182,6 +183,10 @@ export default function BusinessUnitDetailPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStep, setSyncStep] = useState(0);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [coverUrl, setCoverUrl] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   const [showAddToolModal, setShowAddToolModal] = useState(false);
   const [editingTool, setEditingTool] = useState<BusinessUnitTool | null>(null);
@@ -580,7 +585,11 @@ export default function BusinessUnitDetailPage() {
                 <Eye className="w-5 h-5" />
               </button>
               <button
-                onClick={() => setShowEditModal(true)}
+                onClick={() => {
+                  setCoverUrl(businessUnit.coverImage || "");
+                  setLogoUrl(businessUnit.logo || "");
+                  setShowEditModal(true);
+                }}
                 aria-label="Editar unidade de negocio"
                 className="p-2 rounded-lg hover:bg-brand-terciar/10 text-brand-terciar/60 transition-colors"
               >
@@ -1307,27 +1316,134 @@ export default function BusinessUnitDetailPage() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
+                    {/* Cover Image Upload */}
                     <div className="space-y-1.5">
                       <label className="text-[10px] text-brand-terciar/70 font-mono uppercase">
-                        Link da Imagem de Capa
+                        Imagem de Capa
                       </label>
-                      <input
-                        name="coverImage"
-                        defaultValue={businessUnit.coverImage}
-                        placeholder="https://images..."
-                        className="w-full px-3 py-2 bg-brand-principal/30 border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar placeholder-brand-terciar/45 focus:outline-none focus:border-brand-secundar focus:bg-white transition-colors"
-                      />
+                      <input type="hidden" name="coverImage" value={coverUrl} />
+                      
+                      {uploadingCover ? (
+                        <div className="flex flex-col items-center justify-center border-2 border-dashed border-brand-terciar/20 rounded-xl p-3 bg-brand-principal/10 h-24">
+                          <RefreshCw className="w-5 h-5 text-brand-secundar animate-spin mb-1" />
+                          <span className="text-[10px] text-brand-terciar/60">Enviando...</span>
+                        </div>
+                      ) : coverUrl ? (
+                        <div className="relative w-full h-24 rounded-xl overflow-hidden border border-brand-terciar/10">
+                          <img
+                            src={coverUrl}
+                            alt="Capa preview"
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setCoverUrl("")}
+                            className="absolute top-1 right-1 p-1 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-sm transition-colors"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center border-2 border-dashed border-brand-terciar/20 hover:border-brand-secundar rounded-xl p-3 bg-brand-principal/10 hover:bg-brand-principal/20 transition-all cursor-pointer text-center relative h-24">
+                          <Upload className="w-5 h-5 text-brand-terciar/40 mb-1" />
+                          <span className="text-[10px] text-brand-terciar/60">Arraste ou clique</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              setUploadingCover(true);
+                              const fd = new FormData();
+                              fd.append("file", file);
+                              try {
+                                const res = await fetch("/api/upload/image", {
+                                  method: "POST",
+                                  body: fd,
+                                  headers: { "X-CSRF-Token": getCsrfToken() }
+                                });
+                                if (res.ok) {
+                                  const data = await res.json();
+                                  setCoverUrl(data.imageUrl);
+                                } else {
+                                  const err = await res.json();
+                                  alert(err.error || "Erro no upload");
+                                }
+                              } catch {
+                                alert("Erro de conexão");
+                              } finally {
+                                setUploadingCover(false);
+                              }
+                            }}
+                          />
+                        </div>
+                      )}
                     </div>
+
+                    {/* Logo Upload */}
                     <div className="space-y-1.5">
                       <label className="text-[10px] text-brand-terciar/70 font-mono uppercase">
-                        Link do Logo
+                        Logo da Unidade
                       </label>
-                      <input
-                        name="logo"
-                        defaultValue={businessUnit.logo}
-                        placeholder="https://images..."
-                        className="w-full px-3 py-2 bg-brand-principal/30 border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar placeholder-brand-terciar/45 focus:outline-none focus:border-brand-secundar focus:bg-white transition-colors"
-                      />
+                      <input type="hidden" name="logo" value={logoUrl} />
+
+                      {uploadingLogo ? (
+                        <div className="flex flex-col items-center justify-center border-2 border-dashed border-brand-terciar/20 rounded-xl p-3 bg-brand-principal/10 h-24">
+                          <RefreshCw className="w-5 h-5 text-brand-secundar animate-spin mb-1" />
+                          <span className="text-[10px] text-brand-terciar/60">Enviando...</span>
+                        </div>
+                      ) : logoUrl ? (
+                        <div className="relative w-full h-24 rounded-xl overflow-hidden border border-brand-terciar/10 flex items-center justify-center bg-brand-principal/20">
+                          <img
+                            src={logoUrl}
+                            alt="Logo preview"
+                            className="max-w-full max-h-full object-contain p-2"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setLogoUrl("")}
+                            className="absolute top-1 right-1 p-1 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-sm transition-colors"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center border-2 border-dashed border-brand-terciar/20 hover:border-brand-secundar rounded-xl p-3 bg-brand-principal/10 hover:bg-brand-principal/20 transition-all cursor-pointer text-center relative h-24">
+                          <Upload className="w-5 h-5 text-brand-terciar/40 mb-1" />
+                          <span className="text-[10px] text-brand-terciar/60">Arraste ou clique</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              setUploadingLogo(true);
+                              const fd = new FormData();
+                              fd.append("file", file);
+                              try {
+                                const res = await fetch("/api/upload/image", {
+                                  method: "POST",
+                                  body: fd,
+                                  headers: { "X-CSRF-Token": getCsrfToken() }
+                                });
+                                if (res.ok) {
+                                  const data = await res.json();
+                                  setLogoUrl(data.imageUrl);
+                                } else {
+                                  const err = await res.json();
+                                  alert(err.error || "Erro no upload");
+                                }
+                              } catch {
+                                alert("Erro de conexão");
+                              } finally {
+                                setUploadingLogo(false);
+                              }
+                            }}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
