@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { SessionUser } from "@/types/auth";
 import { rateLimit } from "@/lib/rate-limit";
-import { validateRequest, createBusinessUnitItemSchema, createBusinessUnitToolSchema, createBusinessUnitSocialLinkSchema, createBusinessUnitAnalyticsSchema, createBusinessUnitRevenueSchema } from "@/lib/validation";
+import { validateRequest, createBusinessUnitItemSchema, createBusinessUnitToolSchema, createBusinessUnitSocialLinkSchema, createBusinessUnitAnalyticsSchema, createBusinessUnitRevenueSchema, updateBusinessUnitToolSchema, updateBusinessUnitSocialLinkSchema } from "@/lib/validation";
 import { validateCsrf } from "@/lib/csrf";
 
 export async function POST(
@@ -180,6 +180,102 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Erro ao remover item na unidade:", error);
+    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });
+  }
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ slug: string }> },
+) {
+  const limiterResponse = await rateLimit(request, "mutation");
+  if (limiterResponse) return limiterResponse;
+
+  if (!validateCsrf(request)) {
+    return NextResponse.json({ error: "CSRF token invalido" }, { status: 403 });
+  }
+
+  try {
+    const session = await auth();
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    }
+
+    const user = session.user as SessionUser;
+    const userLevel = user.hierarchyLevel || 3;
+    if (userLevel > 2) {
+      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+    }
+
+    const { slug } = await params;
+    const body = await request.json();
+    const { type, id, data: rawData } = body;
+
+    if (!type || !id || !rawData) {
+      return NextResponse.json({ error: "Parâmetros type, id e data são obrigatórios" }, { status: 400 });
+    }
+
+    const businessUnit = await db.getBusinessUnitBySlug(slug);
+    if (!businessUnit) {
+      return NextResponse.json({ error: "Unidade não encontrada" }, { status: 404 });
+    }
+
+    const itemOwnerId = await db.getBusinessUnitItemOwner(
+      id,
+      type as "tool" | "social" | "analytics" | "revenue",
+    );
+    if (!itemOwnerId || itemOwnerId !== businessUnit.id) {
+      return NextResponse.json(
+        { error: "Item não encontrado ou não pertence a esta unidade" },
+        { status: 403 },
+      );
+    }
+
+    let result = null;
+
+    if (type === "tool") {
+      const sub = updateBusinessUnitToolSchema.omit({ id: true }).safeParse(rawData);
+      if (!sub.success) {
+        return NextResponse.json(
+          {
+            error: "Dados invalidos",
+            details: sub.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; "),
+          },
+          { status: 400 },
+        );
+      }
+      result = await db.updateBusinessUnitTool(id, sub.data);
+    } else if (type === "social") {
+      const sub = updateBusinessUnitSocialLinkSchema.omit({ id: true }).safeParse(rawData);
+      if (!sub.success) {
+        return NextResponse.json(
+          {
+            error: "Dados invalidos",
+            details: sub.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; "),
+          },
+          { status: 400 },
+        );
+      }
+      result = await db.updateBusinessUnitSocialLink(id, sub.data);
+    } else {
+      return NextResponse.json({ error: "Tipo de item inválido para edição" }, { status: 400 });
+    }
+
+    if (!result) {
+      return NextResponse.json({ error: "Erro ao editar item" }, { status: 500 });
+    }
+
+    await db.addLog(
+      user.id,
+      "EDITAR_SUB_ITEM",
+      `Editou item ${type} (ID: ${id}) na unidade: ${businessUnit.name}`,
+      request.headers.get("x-forwarded-for") || "127.0.0.1",
+      request.headers.get("user-agent") || "Browser",
+    );
+
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error("Erro ao editar item na unidade:", error);
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });
   }
 }

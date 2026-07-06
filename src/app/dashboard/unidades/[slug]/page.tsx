@@ -173,12 +173,44 @@ export default function BusinessUnitDetailPage() {
   const [showEditModal, setShowEditModal] = useState(false);
 
   const [showAddToolModal, setShowAddToolModal] = useState(false);
+  const [editingTool, setEditingTool] = useState<BusinessUnitTool | null>(null);
   const [showAddSocialModal, setShowAddSocialModal] = useState(false);
   const [showAddAnalyticsModal, setShowAddAnalyticsModal] = useState(false);
   const [showAddRevenueModal, setShowAddRevenueModal] = useState(false);
 
   const editModalTriggerRef = useRef<HTMLButtonElement | null>(null);
   const addToolTriggerRef = useRef<HTMLButtonElement | null>(null);
+
+  const handleEditItem = async (type: string, id: string, data: unknown) => {
+    try {
+      const res = await fetch(`/api/business-units/${slug}/items`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, id, data }),
+      });
+
+      if (res.ok) {
+        const resData = await fetch(`/api/business-units/${slug}`);
+        if (resData.ok) {
+          const updatedBu = await resData.json();
+          setBusinessUnit(updatedBu);
+        }
+        setMessage({ type: "success", text: "Item editado com sucesso" });
+        return true;
+      } else {
+        try {
+          const err = await res.json();
+          setMessage({ type: "error", text: err.error || "Erro ao editar item" });
+        } catch {
+          setMessage({ type: "error", text: "Erro ao editar item" });
+        }
+        return false;
+      }
+    } catch {
+      setMessage({ type: "error", text: "Erro na conexão" });
+      return false;
+    }
+  };
 
   const handleAddItem = async (type: string, data: unknown) => {
     try {
@@ -789,6 +821,7 @@ export default function BusinessUnitDetailPage() {
                     <ToolCard
                       key={tool.id}
                       tool={tool}
+                      onEdit={userLevel <= 2 ? () => setEditingTool(tool) : undefined}
                       onDelete={userLevel <= 2 ? () => handleDeleteItem("tool", tool.id) : undefined}
                     />
                   ))}
@@ -1382,6 +1415,88 @@ export default function BusinessUnitDetailPage() {
             </FocusLock>
           </motion.div>
         )}
+
+        {editingTool && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onMouseDown={() => setEditingTool(null)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setEditingTool(null);
+              }
+            }}
+          >
+            <FocusLock returnFocus>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={{ type: "tween", duration: 0.2 }}
+                className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-brand-terciar/10 overflow-hidden max-h-[90vh] flex flex-col transform-gpu"
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between p-4 border-b border-brand-terciar/10">
+                  <h2 className="text-sm font-bold text-brand-extra1 flex items-center gap-2">
+                    <Edit2 className="w-4 h-4" />
+                    Editar Ferramenta
+                  </h2>
+                  <button onClick={() => setEditingTool(null)} aria-label="Fechar modal de ferramenta" className="p-1.5 rounded-lg hover:bg-brand-terciar/10 text-brand-terciar/50 transition-colors">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const form = e.currentTarget;
+                    const fd = new FormData(form);
+                    const success = await handleEditItem("tool", editingTool.id, {
+                      name: fd.get("name"),
+                      url: fd.get("url"),
+                      category: fd.get("category"),
+                      description: fd.get("description"),
+                      icon: editingTool.icon || "Building2",
+                    });
+                    if (success) {
+                      setEditingTool(null);
+                    }
+                  }}
+                  className="p-4 space-y-4"
+                >
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] text-brand-terciar/70 font-mono uppercase">Nome *</label>
+                    <input name="name" required defaultValue={editingTool.name} placeholder="Ex: CRM Vendas" className="w-full px-3 py-2 bg-brand-principal/30 border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar placeholder-brand-terciar/45 focus:outline-none focus:border-brand-secundar focus:bg-white transition-colors" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] text-brand-terciar/70 font-mono uppercase">URL *</label>
+                    <input name="url" required defaultValue={editingTool.url} placeholder="https://..." className="w-full px-3 py-2 bg-brand-principal/30 border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar placeholder-brand-terciar/45 focus:outline-none focus:border-brand-secundar focus:bg-white transition-colors" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] text-brand-terciar/70 font-mono uppercase">Categoria *</label>
+                    <select name="category" required defaultValue={editingTool.category} className="w-full px-3 py-2 bg-brand-principal/30 border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar focus:outline-none focus:border-brand-secundar focus:bg-white transition-colors cursor-pointer">
+                      <option value="CRM">CRM</option>
+                      <option value="ERP">ERP</option>
+                      <option value="Analytics">Analytics</option>
+                      <option value="Marketing">Marketing</option>
+                      <option value="Outro">Outro</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] text-brand-terciar/70 font-mono uppercase">Descrição</label>
+                    <textarea name="description" rows={2} defaultValue={editingTool.description || ""} placeholder="Descreva brevemente..." className="w-full px-3 py-2 bg-brand-principal/30 border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar placeholder-brand-terciar/45 focus:outline-none focus:border-brand-secundar focus:bg-white transition-colors resize-none" />
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2 border-t border-brand-terciar/10">
+                    <button type="button" onClick={() => setEditingTool(null)} className="px-4 py-2 border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar/70">Cancelar</button>
+                    <button type="submit" className="px-4 py-2 bg-brand-extra2 text-white font-bold rounded-lg text-xs shadow-sm">Salvar Alterações</button>
+                  </div>
+                </form>
+              </motion.div>
+            </FocusLock>
+          </motion.div>
+        )}
       </AnimatePresence>
 
       {/* Modal Vincular Rede Social */}
@@ -1696,9 +1811,9 @@ function ContactItem({
   );
 }
 
-function ToolCard({ tool, onDelete }: { tool: BusinessUnitTool; onDelete?: () => void }) {
+function ToolCard({ tool, onEdit, onDelete }: { tool: BusinessUnitTool; onEdit?: () => void; onDelete?: () => void }) {
   return (
-    <div className="relative group/tool pr-10">
+    <div className={`relative group/tool ${onEdit ? "pr-20" : "pr-10"}`}>
       <a
         href={tool.url}
         target="_blank"
@@ -1721,6 +1836,20 @@ function ToolCard({ tool, onDelete }: { tool: BusinessUnitTool; onDelete?: () =>
         </span>
         <ExternalLink className="w-4 h-4 text-brand-terciar/40" />
       </a>
+      {onEdit && (
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onEdit();
+          }}
+          className="absolute right-10 top-1/2 -translate-y-1/2 p-2 text-brand-secundar hover:bg-brand-principal/50 rounded-lg opacity-0 group-hover/tool:opacity-100 transition-opacity"
+          title="Editar ferramenta"
+          aria-label={`Editar ferramenta ${tool.name}`}
+        >
+          <Edit2 className="w-3.5 h-3.5" />
+        </button>
+      )}
       {onDelete && (
         <button
           onClick={(e) => {
