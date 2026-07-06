@@ -404,7 +404,7 @@ export const configUpdateSchema = z.object({
 
 export const updateBusinessUnitBySlugSchema = z.object({
   name: z.string().min(2).max(200).optional(),
-  slug: z.string().min(2).max(100).regex(/^[a-z0-9-]+$/).optional(),
+  slug: z.string().min(2).max(100).transform((val) => val.toLowerCase()).pipe(z.string().regex(/^[a-z0-9-]+$/)).optional(),
   company: panelCategoryEnum.optional(),
   description: z.string().max(2000).optional(),
   logo: z.string().refine((val) => val === "" || val.startsWith("/") || /^https?:\/\//.test(val), { message: "Logo deve ser uma URL ou caminho de upload valido" }).optional().or(z.literal("")),
