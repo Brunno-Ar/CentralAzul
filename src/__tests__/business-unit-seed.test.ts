@@ -31,12 +31,6 @@ const aggregatingUnits = [
     showOnHome: true,
   },
   {
-    slug: "CENTRAL",
-    name: "Central",
-    company: Company.CENTRAL,
-    showOnHome: true,
-  },
-  {
     slug: "COMP-GRAN-RESERVA",
     name: "Gran Reserva",
     company: Company.BORGO,
@@ -44,7 +38,7 @@ const aggregatingUnits = [
   },
 ] as const;
 
-const allCompanyValues = Object.values(Company);
+const allCompanyValues = Object.values(Company).filter((c) => c !== Company.CENTRAL);
 
 describe("T2: Business Unit seed - unidades agregadoras", () => {
   describe("aggregatingUnits (seed config)", () => {
@@ -57,8 +51,8 @@ describe("T2: Business Unit seed - unidades agregadoras", () => {
       });
     });
 
-    it("tem exatamente 5 unidades agregadoras", () => {
-      expect(aggregatingUnits.length).toBe(5);
+    it("tem exatamente 4 unidades agregadoras", () => {
+      expect(aggregatingUnits.length).toBe(4);
     });
 
     it("todas as unidades agregadoras tem showOnHome=true", () => {
@@ -84,15 +78,6 @@ describe("T2: Business Unit seed - unidades agregadoras", () => {
         expect(u).toHaveProperty("showOnHome");
         expect(typeof u.showOnHome).toBe("boolean");
       });
-    });
-
-    it("inclui bu-4 (CENTRAL) com showOnHome=true", async () => {
-      const { db } = await import("@/lib/db");
-      const units = await db.getBusinessUnits();
-      const central = units.find((u) => u.slug === "CENTRAL");
-      expect(central).toBeDefined();
-      expect(central?.company).toBe(Company.CENTRAL);
-      expect(central?.showOnHome).toBe(true);
     });
 
     allCompanyValues.forEach((company) => {

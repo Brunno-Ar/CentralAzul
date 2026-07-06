@@ -226,7 +226,6 @@ export default function BusinessUnitsListPage() {
     { value: "BORGO", label: "Borgo del Vin" },
     { value: "MAPLE_BEAR", label: "Maple Bear" },
     { value: "AZUL", label: "Azul Incorporações" },
-    { value: "CENTRAL", label: "Central / Geral" },
   ];
 
   return (

@@ -142,19 +142,6 @@
       "createdAt": "2026-06-23T03:09:54.637Z"
     },
     {
-      "id": "panel-5",
-      "name": "Central Azul - Politicas & Logs",
-      "description": "Monitoramento de seguranca de acessos e edicao de politicas da Central.",
-      "url": "/dashboard/seguranca",
-      "icon": "ShieldAlert",
-      "category": "CENTRAL",
-      "minRole": "ADMIN",
-      "minHierarchy": 1,
-      "isActive": true,
-      "companySlug": null,
-      "createdAt": "2026-06-23T03:09:54.852Z"
-    },
-    {
       "id": "panel-6",
       "name": "Formulario de Parcerias Azul",
       "description": "Painel administrativo de cadastros e parcerias da Azul Incorporacoes.",
@@ -452,29 +439,6 @@
       "revenueData": []
     },
     {
-      "id": "bu-4",
-      "name": "Central",
-      "slug": "CENTRAL",
-      "company": "CENTRAL",
-      "description": "Unidade agregadora Central Azul responsável pela gestão integrada do grupo.",
-      "logo": "",
-      "coverImage": "",
-      "address": "",
-      "phone": "",
-      "email": "",
-      "website": "",
-      "isActive": true,
-      "order": 4,
-      "showOnHome": true,
-      "createdAt": "2026-06-26T20:30:38.137Z",
-      "updatedAt": "2026-06-26T20:30:38.137Z",
-      "tools": [],
-      "socialLinks": [],
-      "analytics": [],
-      "metaData": [],
-      "revenueData": []
-    },
-    {
       "id": "bu-5",
       "name": "Gran Reserva",
       "slug": "COMP-GRAN-RESERVA",
@@ -487,7 +451,7 @@
       "email": "",
       "website": "",
       "isActive": true,
-      "order": 5,
+      "order": 4,
       "showOnHome": true,
       "createdAt": "2026-06-26T20:30:38.137Z",
       "updatedAt": "2026-06-26T20:30:38.137Z",

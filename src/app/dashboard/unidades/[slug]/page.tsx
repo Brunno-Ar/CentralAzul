@@ -1180,7 +1180,6 @@ export default function BusinessUnitDetailPage() {
                       <option value="BORGO">Borgo del Vin</option>
                       <option value="MAPLE_BEAR">Maple Bear</option>
                       <option value="AZUL">Azul Incorporações</option>
-                      <option value="CENTRAL">Central / Geral</option>
                     </select>
                   </div>
 

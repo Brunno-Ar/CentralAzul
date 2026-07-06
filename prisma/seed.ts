@@ -37,20 +37,12 @@ const aggregatingUnits: AggregatingUnit[] = [
     order: 3,
   },
   {
-    slug: "CENTRAL",
-    name: "Central",
-    company: Company.CENTRAL,
-    description: "Unidade agregadora Central Azul responsável pela gestão integrada do grupo.",
-    showOnHome: true,
-    order: 4,
-  },
-  {
     slug: "COMP-GRAN-RESERVA",
     name: "Gran Reserva",
     company: Company.BORGO,
     description: "Lançamento de lotes exclusivos de alto padrão inserido no complexo Borgo del Vino.",
     showOnHome: true,
-    order: 5,
+    order: 4,
   },
 ];
 

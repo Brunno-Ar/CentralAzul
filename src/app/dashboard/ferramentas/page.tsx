@@ -85,7 +85,6 @@ export default function FerramentasPage() {
     { value: "BORGO", label: "Borgo del Vino" },
     { value: "MAPLE_BEAR", label: "Maple Bear" },
     { value: "AZUL", label: "Azul Incorporacoes" },
-    { value: "CENTRAL", label: "Central" },
     { value: "GERAL", label: "Geral" },
   ];
 
