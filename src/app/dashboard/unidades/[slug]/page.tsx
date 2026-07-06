@@ -152,6 +152,12 @@ const formatDate = (dateStr: string) => {
   return new Date(dateStr).toLocaleDateString("pt-BR");
 };
 
+const getCsrfToken = () => {
+  if (typeof document === "undefined") return "";
+  const match = document.cookie.match(/csrfToken=([^;]+)/);
+  return match ? match[1] : "";
+};
+
 export default function BusinessUnitDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -185,7 +191,10 @@ export default function BusinessUnitDetailPage() {
     try {
       const res = await fetch(`/api/business-units/${slug}/items`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "X-CSRF-Token": getCsrfToken()
+        },
         body: JSON.stringify({ type, id, data }),
       });
 
@@ -216,7 +225,10 @@ export default function BusinessUnitDetailPage() {
     try {
       const res = await fetch(`/api/business-units/${slug}/items`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "X-CSRF-Token": getCsrfToken()
+        },
         body: JSON.stringify({ type, data }),
       });
 
@@ -262,6 +274,9 @@ export default function BusinessUnitDetailPage() {
     try {
       const res = await fetch(`/api/business-units/${slug}/items?type=${type}&id=${itemId}`, {
         method: "DELETE",
+        headers: {
+          "X-CSRF-Token": getCsrfToken()
+        }
       });
 
       if (res.ok) {
@@ -313,7 +328,10 @@ export default function BusinessUnitDetailPage() {
     try {
       const res = await fetch(`/api/business-units/${slug}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "X-CSRF-Token": getCsrfToken()
+        },
         body: JSON.stringify(updates),
       });
 
@@ -369,6 +387,9 @@ export default function BusinessUnitDetailPage() {
 
     const syncPromise = fetch(`/api/business-units/${slug}/sync`, {
       method: "POST",
+      headers: {
+        "X-CSRF-Token": getCsrfToken()
+      }
     });
 
     try {

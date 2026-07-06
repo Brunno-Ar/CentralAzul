@@ -121,6 +121,12 @@ const formatNumber = (num: number) => {
   return num.toString();
 };
 
+const getCsrfToken = () => {
+  if (typeof document === "undefined") return "";
+  const match = document.cookie.match(/csrfToken=([^;]+)/);
+  return match ? match[1] : "";
+};
+
 export default function BusinessUnitsListPage() {
   const { data: session } = useSession();
   const router = useRouter();
@@ -200,7 +206,10 @@ export default function BusinessUnitsListPage() {
     try {
       const res = await fetch("/api/business-units", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "X-CSRF-Token": getCsrfToken()
+        },
         body: JSON.stringify(data),
       });
 

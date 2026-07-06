@@ -47,6 +47,12 @@ interface ComunicadosClientProps {
   userId: string;
 }
 
+const getCsrfToken = () => {
+  if (typeof document === "undefined") return "";
+  const match = document.cookie.match(/csrfToken=([^;]+)/);
+  return match ? match[1] : "";
+};
+
 const priorityOptions = [
   {
     value: "INFO",
@@ -163,7 +169,10 @@ export default function ComunicadosClient({
 
       const res = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "X-CSRF-Token": getCsrfToken()
+        },
         body: JSON.stringify(data),
       });
 
@@ -219,6 +228,9 @@ export default function ComunicadosClient({
     try {
       const res = await fetch(`/api/announcements/${id}`, {
         method: "DELETE",
+        headers: {
+          "X-CSRF-Token": getCsrfToken()
+        }
       });
 
       if (res.ok) {
@@ -241,7 +253,12 @@ export default function ComunicadosClient({
 
   const handleMarkRead = async (id: string) => {
     try {
-      await fetch(`/api/announcements/${id}/read`, { method: "POST" });
+      await fetch(`/api/announcements/${id}/read`, {
+        method: "POST",
+        headers: {
+          "X-CSRF-Token": getCsrfToken()
+        }
+      });
       setAnnouncements((prev) =>
         prev.map((a) => (a.id === id ? { ...a, read: true } : a)),
       );
