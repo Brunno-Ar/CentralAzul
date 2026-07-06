@@ -34,7 +34,6 @@ export function getCsrfTokenFromCookie(request: Request): string | null {
 export function validateCsrf(request: Request): boolean {
   const headerToken = getCsrfTokenFromRequest(request);
   const cookieToken = getCsrfTokenFromCookie(request);
-  console.log("CSRF Debug - headerToken:", headerToken, "cookieToken:", cookieToken, "match:", headerToken === cookieToken);
   return !!(headerToken && cookieToken && headerToken === cookieToken);
 }
 

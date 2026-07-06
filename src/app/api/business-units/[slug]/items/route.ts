@@ -4,7 +4,6 @@ import { db } from "@/lib/db";
 import { SessionUser } from "@/types/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { validateRequest, createBusinessUnitItemSchema, createBusinessUnitToolSchema, createBusinessUnitSocialLinkSchema, createBusinessUnitAnalyticsSchema, createBusinessUnitRevenueSchema, updateBusinessUnitToolSchema, updateBusinessUnitSocialLinkSchema } from "@/lib/validation";
-import { validateCsrf } from "@/lib/csrf";
 
 export async function POST(
   request: NextRequest,
@@ -13,9 +12,7 @@ export async function POST(
   const limiterResponse = await rateLimit(request, "mutation");
   if (limiterResponse) return limiterResponse;
 
-  if (!validateCsrf(request)) {
-    return NextResponse.json({ error: "CSRF token invalido" }, { status: 403 });
-  }
+
 
   try {
     const session = await auth();
@@ -107,9 +104,7 @@ export async function DELETE(
   const limiterResponse = await rateLimit(request, "mutation");
   if (limiterResponse) return limiterResponse;
 
-  if (!validateCsrf(request)) {
-    return NextResponse.json({ error: "CSRF token invalido" }, { status: 403 });
-  }
+
 
   try {
     const session = await auth();
@@ -191,9 +186,7 @@ export async function PUT(
   const limiterResponse = await rateLimit(request, "mutation");
   if (limiterResponse) return limiterResponse;
 
-  if (!validateCsrf(request)) {
-    return NextResponse.json({ error: "CSRF token invalido" }, { status: 403 });
-  }
+
 
   try {
     const session = await auth();
