@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     // Return ALL panels with locked flag based on user's hierarchy
     // Mask sensitive data (url, description) for locked panels
     const responsePanels = panels.map(p => {
-      const locked = userLevel < p.minHierarchy;
+      const locked = userLevel > p.minHierarchy;
       return {
         id: p.id,
         name: p.name,
