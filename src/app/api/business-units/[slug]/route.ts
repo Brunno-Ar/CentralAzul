@@ -114,7 +114,8 @@ export async function PUT(
       request.headers.get("user-agent") || "Browser",
     );
 
-    return NextResponse.json(updated);
+    const fullUpdated = await db.getBusinessUnitBySlug(updated.slug);
+    return NextResponse.json(fullUpdated || updated);
   } catch (error) {
     console.error("Erro ao atualizar unidade de negócio:", error);
     return NextResponse.json(
