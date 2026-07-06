@@ -155,7 +155,12 @@ const formatDate = (dateStr: string) => {
 const getCsrfToken = () => {
   if (typeof document === "undefined") return "";
   const match = document.cookie.match(/csrfToken=([^;]+)/);
-  return match ? match[1] : "";
+  if (!match) {
+    const token = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+    document.cookie = `csrfToken=${token}; path=/; SameSite=Lax;`;
+    return token;
+  }
+  return match[1];
 };
 
 export default function BusinessUnitDetailPage() {
