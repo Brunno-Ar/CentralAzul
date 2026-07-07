@@ -128,7 +128,7 @@ export default async function DashboardHome() {
         iconName: iconMap[bu.company] || "Building2",
         colorClass: colorClassMap[bu.company] || "from-brand-principal/20 to-brand-principal/40 border-brand-secundar/20",
         accentClass: accentClassMap[bu.company] || "text-brand-secundar",
-        url: `/dashboard/unidades/${bu.slug}`,
+        url: `/dashboard/ferramentas?company=${bu.company}`,
         isActive: bu.isActive,
         showOnHome: bu.showOnHome,
         order: bu.order,

@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
     token.company = dbUser.company;
     token.status = dbUser.status;
     token.name = dbUser.name;
+    token.picture = dbUser.image;
 
     const encodedToken = await encode({
       token,
@@ -81,6 +82,7 @@ export async function POST(request: NextRequest) {
         id: dbUser.id,
         name: dbUser.name,
         email: dbUser.email,
+        image: dbUser.image,
         role: dbUser.role,
         hierarchyLevel: dbUser.hierarchyLevel,
         company: dbUser.company,

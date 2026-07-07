@@ -96,23 +96,39 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         const u = user as {
           id?: string;
+          name?: string | null;
+          email?: string | null;
+          image?: string | null;
           role?: string;
           hierarchyLevel?: number;
           company?: Company;
           status?: string;
         };
         token.id = u.id;
+        token.name = u.name;
+        token.email = u.email;
+        token.picture = u.image;
         token.role = u.role || "VIEWER";
         token.hierarchyLevel = u.hierarchyLevel || 3;
         token.company = u.company || Company.CENTRAL;
         token.status = u.status || "ACTIVE";
       }
 
-      // Handle updating the session on role change in the UI
+      // Handle updating the session on profile/role changes in the UI
       if (trigger === "update" && session) {
-        token.role = session.role ?? token.role;
-        token.hierarchyLevel = session.hierarchyLevel ?? token.hierarchyLevel;
-        token.company = session.company ?? token.company;
+        const sessionData = session as {
+          role?: string;
+          hierarchyLevel?: number;
+          company?: Company;
+          user?: { name?: string | null; image?: string | null };
+        };
+        token.role = sessionData.role ?? token.role;
+        token.hierarchyLevel = sessionData.hierarchyLevel ?? token.hierarchyLevel;
+        token.company = sessionData.company ?? token.company;
+        if (sessionData.user) {
+          token.name = sessionData.user.name ?? token.name;
+          token.picture = sessionData.user.image ?? token.picture;
+        }
       }
 
       return token;
@@ -121,12 +137,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user) {
         const u = session.user as {
           id?: string;
+          name?: string | null;
+          email?: string | null;
+          image?: string | null;
           role?: string;
           hierarchyLevel?: number;
           company?: Company;
           status?: string;
         };
         u.id = token.id as string;
+        u.name = token.name as string | null | undefined;
+        u.email = token.email as string | null | undefined;
+        u.image = token.picture as string | null | undefined;
         u.role = token.role as string;
         u.hierarchyLevel = token.hierarchyLevel as number;
         u.company = token.company as Company;
