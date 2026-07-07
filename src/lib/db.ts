@@ -5,6 +5,7 @@ import { usersDb } from "./db/users";
 import { rolesDb } from "./db/roles";
 import { permissionsDb } from "./db/permissions";
 import { panelsDb } from "./db/panels";
+import { businessUnitsDb } from "./db/business-units";
 
 const parseDbUrl = (urlStr: string) => {
   try {
@@ -1612,64 +1613,9 @@ export const dbSim = {
     return true;
   },
 
-  addBusinessUnitTool: async (
-    unitId: string,
-    tool: Omit<MockBusinessUnitTool, "id" | "createdAt" | "updatedAt">,
-  ) => {
-    const newTool = {
-      ...tool,
-      id: "tool-" + Math.random().toString(36).substr(2, 9),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    if (prismaClient && isDbConnected) {
-      try {
-        return await prismaClient.businessUnitTool.create({
-          data: {
-            businessUnitId: unitId,
-            name: tool.name,
-            url: tool.url,
-            icon: tool.icon || null,
-            description: tool.description || null,
-            category: tool.category,
-            isExternal: tool.isExternal,
-            order: tool.order || 0,
-            isActive: tool.isActive,
-          },
-        });
-      } catch (e) {
-        console.error("Prisma error adding tool", e);
-      }
-    }
-    const bu = mockBusinessUnits.find((u) => u.id === unitId);
-    if (bu) {
-      if (!bu.tools) bu.tools = [];
-      bu.tools.push(newTool);
-      return newTool;
-    }
-    return null;
-  },
+  addBusinessUnitTool: businessUnitsDb.addBusinessUnitTool,
 
-  deleteBusinessUnitTool: async (toolId: string) => {
-    if (prismaClient && isDbConnected) {
-      try {
-        await prismaClient.businessUnitTool.delete({ where: { id: toolId } });
-        return true;
-      } catch (e) {
-        console.error("Prisma error deleting tool", e);
-      }
-    }
-    for (const bu of mockBusinessUnits) {
-      if (bu.tools) {
-        const idx = bu.tools.findIndex((t) => t.id === toolId);
-        if (idx !== -1) {
-          bu.tools.splice(idx, 1);
-          return true;
-        }
-      }
-    }
-    return false;
-  },
+  deleteBusinessUnitTool: businessUnitsDb.deleteBusinessUnitTool,
 
   addBusinessUnitSocialLink: async (
     unitId: string,
@@ -1909,83 +1855,11 @@ export const dbSim = {
     return null;
   },
 
-  getBusinessUnitTools: async (unitId: string) => {
-    if (prismaClient && isDbConnected) {
-      try {
-        return await prismaClient.businessUnitTool.findMany({
-          where: { businessUnitId: unitId },
-          orderBy: { order: "asc" },
-        });
-      } catch (e) {
-        console.error("Prisma error getting tools", e);
-      }
-    }
-    const bu = mockBusinessUnits.find((u) => u.id === unitId);
-    return bu?.tools || [];
-  },
+  getBusinessUnitTools: businessUnitsDb.getBusinessUnitTools,
 
-  getBusinessUnitToolById: async (toolId: string, unitId?: string) => {
-    if (prismaClient && isDbConnected) {
-      try {
-        return await prismaClient.businessUnitTool.findUnique({
-          where: { id: toolId, ...(unitId ? { businessUnitId: unitId } : {}) },
-        });
-      } catch (e) {
-        console.error("Prisma error fetching single tool", e);
-      }
-    }
-    for (const bu of mockBusinessUnits) {
-      if (unitId && bu.id !== unitId) continue;
-      const tool = (bu.tools || []).find((t) => t.id === toolId);
-      if (tool) return tool;
-    }
-    return null;
-  },
+  getBusinessUnitToolById: businessUnitsDb.getBusinessUnitToolById,
 
-  updateBusinessUnitTool: async (
-    toolId: string,
-    updates: Partial<MockBusinessUnitTool>,
-  ) => {
-    if (prismaClient && isDbConnected) {
-      try {
-        return await prismaClient.businessUnitTool.update({
-          where: { id: toolId },
-          data: {
-            ...(updates.name ? { name: updates.name } : {}),
-            ...(updates.url ? { url: updates.url } : {}),
-            ...(updates.icon !== undefined ? { icon: updates.icon } : {}),
-            ...(updates.description !== undefined
-              ? { description: updates.description }
-              : {}),
-            ...(updates.category ? { category: updates.category } : {}),
-            ...(updates.isExternal !== undefined
-              ? { isExternal: updates.isExternal }
-              : {}),
-            ...(updates.order !== undefined ? { order: updates.order } : {}),
-            ...(updates.isActive !== undefined
-              ? { isActive: updates.isActive }
-              : {}),
-          },
-        });
-      } catch (e) {
-        console.error("Prisma error updating tool", e);
-      }
-    }
-    for (const bu of mockBusinessUnits) {
-      if (bu.tools) {
-        const idx = bu.tools.findIndex((t) => t.id === toolId);
-        if (idx !== -1) {
-          bu.tools[idx] = {
-            ...bu.tools[idx],
-            ...updates,
-            updatedAt: new Date(),
-          };
-          return bu.tools[idx];
-        }
-      }
-    }
-    return null;
-  },
+  updateBusinessUnitTool: businessUnitsDb.updateBusinessUnitTool,
 
   getBusinessUnitSocialLinks: async (unitId: string) => {
     if (prismaClient && isDbConnected) {
@@ -2444,7 +2318,7 @@ export const dbSim = {
 };
 
 // Mock Business Units data
-const mockBusinessUnits: MockBusinessUnit[] = globalThis.__mockBusinessUnits ?? (globalThis.__mockBusinessUnits = [
+export const mockBusinessUnits: MockBusinessUnit[] = globalThis.__mockBusinessUnits ?? (globalThis.__mockBusinessUnits = [
   {
     id: "bu-1",
     name: "Borgo del Vino",
