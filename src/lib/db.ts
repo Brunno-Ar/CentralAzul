@@ -6,6 +6,7 @@ import { rolesDb } from "./db/roles";
 import { permissionsDb } from "./db/permissions";
 import { panelsDb } from "./db/panels";
 import { businessUnitsDb } from "./db/business-units";
+import { documentsDb } from "./db/documents";
 
 const parseDbUrl = (urlStr: string) => {
   try {
@@ -453,7 +454,7 @@ export const mockPanels: MockSystemPanel[] = globalThis.__mockPanels ?? (globalT
   },
 ]);
 
-const mockDocuments: MockDocument[] = globalThis.__mockDocuments ?? (globalThis.__mockDocuments = [
+export const mockDocuments: MockDocument[] = globalThis.__mockDocuments ?? (globalThis.__mockDocuments = [
   {
     id: "doc-1",
     title: "Diretrizes de Seguranca da Informacao 2026",
@@ -690,130 +691,9 @@ export const dbSim = {
 
   getPanelByBusinessUnitToolId: panelsDb.getPanelByBusinessUnitToolId,
 
-  getDocuments: async (
-    userLevel?: number,
-    userCompany?: Company,
-  ) => {
-    // Applicative RLS via Prisma where clause.
-    // Level 1 (Direcao Geral) sees ALL docs.
-    // Level 2+ sees only docs where minHierarchyLevel >= userLevel
-    //   AND (category == userCompany OR category == CENTRAL).
-    const whereFilter =
-      userLevel !== undefined && userLevel !== 1 && userCompany
-        ? {
-            minHierarchyLevel: { gte: userLevel },
-            OR: [{ category: userCompany }, { category: Company.CENTRAL }],
-          }
-        : userLevel !== undefined && userLevel !== 1 && !userCompany
-          ? { minHierarchyLevel: { gte: userLevel } }
-          : undefined;
+  getDocuments: documentsDb.getDocuments,
 
-    if (prismaClient && isDbConnected) {
-      try {
-        const dbDocs = await prismaClient.document.findMany({
-          where: whereFilter as never,
-          include: { uploadedBy: true },
-          orderBy: { createdAt: "desc" },
-        });
-        return dbDocs.map((d) => ({
-          id: d.id,
-          title: d.title,
-          description: DOMPurify.sanitize(d.description || ""),
-          fileUrl: d.fileUrl,
-          fileSize: d.fileSize || 0,
-          fileType: d.fileType || "",
-          category: d.category,
-          minHierarchyLevel: d.minHierarchyLevel,
-          uploadedById: d.uploadedById,
-          uploadedByName: d.uploadedBy.name || "Usuario",
-          createdAt: d.createdAt,
-        }));
-      } catch (e) {
-        console.error("Prisma error, falling back", e);
-      }
-    }
-    // Mock fallback: apply same RLS filter
-    let mockResult = mockDocuments.map((doc) => ({
-      ...doc,
-      description: DOMPurify.sanitize(doc.description),
-    }));
-    if (userLevel !== undefined && userLevel !== 1) {
-      mockResult = mockResult.filter(
-        (doc) =>
-          doc.minHierarchyLevel >= userLevel &&
-          (!userCompany ||
-            doc.category === userCompany ||
-            doc.category === Company.CENTRAL),
-      );
-    }
-    return mockResult;
-  },
-
-  addDocument: async (
-    doc: Omit<MockDocument, "id" | "createdAt" | "uploadedByName">,
-  ) => {
-    const newDoc: MockDocument = {
-      ...doc,
-      id: "doc-" + Math.random().toString(36).substr(2, 9),
-      createdAt: new Date(),
-      uploadedByName:
-        mockUsers.find((u) => u.id === doc.uploadedById)?.name || "Usuario",
-    };
-    if (prismaClient && isDbConnected) {
-      try {
-        // Ensure user exists in db first
-        let dbUser = await prismaClient.user.findUnique({
-          where: { id: doc.uploadedById },
-        });
-        if (!dbUser) {
-          const user = mockUsers.find((u) => u.id === doc.uploadedById);
-          if (user) {
-            dbUser = await prismaClient.user.create({
-              data: {
-                id: user.id,
-                name: user.name,
-                email: user.email,
-                image: user.image,
-                role: user.role,
-                hierarchyLevel: user.hierarchyLevel,
-                company: user.company,
-              },
-            });
-          }
-        }
-        const created = await prismaClient.document.create({
-          data: {
-            title: doc.title,
-            description: doc.description,
-            fileUrl: doc.fileUrl,
-            fileSize: doc.fileSize,
-            fileType: doc.fileType,
-            category: doc.category,
-            minHierarchyLevel: doc.minHierarchyLevel,
-            uploadedById: doc.uploadedById,
-          },
-          include: { uploadedBy: true },
-        });
-        return {
-          id: created.id,
-          title: created.title,
-          description: created.description || "",
-          fileUrl: created.fileUrl,
-          fileSize: created.fileSize || 0,
-          fileType: created.fileType || "",
-          category: created.category,
-          minHierarchyLevel: created.minHierarchyLevel,
-          uploadedById: created.uploadedById,
-          uploadedByName: created.uploadedBy.name || "Usuario",
-          createdAt: created.createdAt,
-        };
-      } catch (e) {
-        console.error("Prisma error creating document, falling back", e);
-      }
-    }
-    mockDocuments.unshift(newDoc);
-    return newDoc;
-  },
+  addDocument: documentsDb.addDocument,
 
   getLogs: async (
     userLevel?: number,
@@ -2247,22 +2127,7 @@ export const dbSim = {
 
   deletePanel: panelsDb.deletePanel,
 
-  deleteDocument: async (id: string) => {
-    if (prismaClient && isDbConnected) {
-      try {
-        await prismaClient.document.delete({ where: { id } });
-        return true;
-      } catch (e) {
-        console.error("Prisma error deleting document, falling back", e);
-      }
-    }
-    const idx = mockDocuments.findIndex((d) => d.id === id);
-    if (idx !== -1) {
-      mockDocuments.splice(idx, 1);
-      return true;
-    }
-    return false;
-  },
+  deleteDocument: documentsDb.deleteDocument,
 
   createAnnouncement: async (
     ann: Omit<MockAnnouncement, "id" | "createdAt" | "updatedAt">,
