@@ -2,6 +2,8 @@ import { PrismaClient, Company } from "@prisma/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import DOMPurify from "isomorphic-dompurify";
 import { usersDb } from "./db/users";
+import { rolesDb } from "./db/roles";
+import { permissionsDb } from "./db/permissions";
 
 const parseDbUrl = (urlStr: string) => {
   try {
@@ -298,13 +300,13 @@ export interface MockMenuPermission {
   minLevel: number;
 }
 
-const mockLevels: MockLevelConfig[] = globalThis.__mockLevels ?? (globalThis.__mockLevels = [
+export const mockLevels: MockLevelConfig[] = globalThis.__mockLevels ?? (globalThis.__mockLevels = [
   { id: "lvl-1", level: 1, name: "Direcao Geral", createdAt: new Date() },
   { id: "lvl-2", level: 2, name: "Gerencia / Coordenacao", createdAt: new Date() },
   { id: "lvl-3", level: 3, name: "Operacional", createdAt: new Date() },
 ]);
 
-const mockMenuPermissions: MockMenuPermission[] = globalThis.__mockMenuPermissions ?? (globalThis.__mockMenuPermissions = [
+export const mockMenuPermissions: MockMenuPermission[] = globalThis.__mockMenuPermissions ?? (globalThis.__mockMenuPermissions = [
   { href: "/dashboard", name: "Painel Principal", minLevel: 3 },
   { href: "/dashboard/ferramentas", name: "Ferramentas", minLevel: 3 },
   { href: "/dashboard/comunicados", name: "Comunicados", minLevel: 3 },
@@ -315,7 +317,7 @@ const mockMenuPermissions: MockMenuPermission[] = globalThis.__mockMenuPermissio
 ]);
 
 // Initial mock data (persisted via globalThis to survive hot reloads)
-const mockRoles: MockRoleConfig[] = globalThis.__mockRoles ?? (globalThis.__mockRoles = [
+export const mockRoles: MockRoleConfig[] = globalThis.__mockRoles ?? (globalThis.__mockRoles = [
   {
     id: "role-admin",
     name: "ADMIN",
@@ -388,7 +390,7 @@ export const mockUsers: MockUser[] = globalThis.__mockUsers ?? (globalThis.__moc
   },
 ]);
 
-const mockPanels: MockSystemPanel[] = globalThis.__mockPanels ?? (globalThis.__mockPanels = [
+export const mockPanels: MockSystemPanel[] = globalThis.__mockPanels ?? (globalThis.__mockPanels = [
   {
     id: "panel-1",
     name: "CRM - Grupo Azul",
@@ -642,10 +644,10 @@ export const mockCompanies: MockCompany[] = globalThis.__mockCompanies ?? (globa
 // ACCOUNT LOCKOUT STATE (In-Memory Map for dev mode)
 // ============================================
 // Stores failed login attempts and lockout timestamps per email
-const lockoutState = new Map<string, { attempts: number; lockedUntil?: Date }>();
+export const lockoutState = new Map<string, { attempts: number; lockedUntil?: Date }>();
 
-const LOCKOUT_THRESHOLD = 5;
-const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+export const LOCKOUT_THRESHOLD = 5;
+export const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 
 // ============================================
 // STANDALONE FUNCTIONS (shared by modules)
@@ -942,235 +944,13 @@ export const dbSim = {
   },
 
   // RoleConfig simulation and database methods
-  getRoles: async () => {
-    if (prismaClient && isDbConnected) {
-      try {
-        const dbRoles = await prismaClient.roleConfig.findMany({
-          orderBy: { hierarchyLevel: "asc" },
-        });
-        if (dbRoles.length > 0) {
-          return dbRoles.map((r) => ({
-            id: r.id,
-            name: r.name,
-            displayName: r.displayName,
-            hierarchyLevel: r.hierarchyLevel,
-            createdAt: r.createdAt,
-            updatedAt: r.updatedAt,
-          }));
-        }
+  getRoles: rolesDb.getRoles,
 
-        // Seed database if roleConfigs table is empty
-        for (const r of mockRoles) {
-          await prismaClient.roleConfig.create({
-            data: {
-              name: r.name,
-              displayName: r.displayName,
-              hierarchyLevel: r.hierarchyLevel,
-            },
-          });
-        }
-        const refetched = await prismaClient.roleConfig.findMany({
-          orderBy: { hierarchyLevel: "asc" },
-        });
-        return refetched.map((r) => ({
-          id: r.id,
-          name: r.name,
-          displayName: r.displayName,
-          hierarchyLevel: r.hierarchyLevel,
-          createdAt: r.createdAt,
-          updatedAt: r.updatedAt,
-        }));
-      } catch (e) {
-        console.error("Prisma error fetching roles, falling back", e);
-      }
-    }
-    return mockRoles;
-  },
+  addRole: rolesDb.addRole,
 
-  addRole: async (role: {
-    name: string;
-    displayName: string;
-    hierarchyLevel: number;
-  }) => {
-    const nameUpper = role.name.toUpperCase().replace(/\s+/g, "_");
-    const newRole: MockRoleConfig = {
-      id: "role-" + Math.random().toString(36).substr(2, 9),
-      name: nameUpper,
-      displayName: role.displayName,
-      hierarchyLevel: role.hierarchyLevel,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    if (prismaClient && isDbConnected) {
-      try {
-        const created = await prismaClient.roleConfig.create({
-          data: {
-            name: nameUpper,
-            displayName: role.displayName,
-            hierarchyLevel: role.hierarchyLevel,
-          },
-        });
-        return {
-          id: created.id,
-          name: created.name,
-          displayName: created.displayName,
-          hierarchyLevel: created.hierarchyLevel,
-          createdAt: created.createdAt,
-          updatedAt: created.updatedAt,
-        };
-      } catch (e) {
-        console.error("Prisma error creating role, falling back", e);
-      }
-    }
-    mockRoles.push(newRole);
-    return newRole;
-  },
+  updateRole: rolesDb.updateRole,
 
-  updateRole: async (
-    id: string,
-    updates: { name?: string; displayName?: string; hierarchyLevel?: number },
-  ) => {
-    const nameUpper = updates.name
-      ? updates.name.toUpperCase().replace(/\s+/g, "_")
-      : undefined;
-    if (prismaClient && isDbConnected) {
-      try {
-        const origRole = await prismaClient.roleConfig.findUnique({
-          where: { id },
-        });
-        const updated = await prismaClient.$transaction(async (tx) => {
-          const updatedRole = await tx.roleConfig.update({
-            where: { id },
-            data: {
-              ...(nameUpper ? { name: nameUpper } : {}),
-              ...(updates.displayName
-                ? { displayName: updates.displayName }
-                : {}),
-              ...(updates.hierarchyLevel !== undefined
-                ? { hierarchyLevel: updates.hierarchyLevel }
-                : {}),
-            },
-          });
-
-          if (origRole && nameUpper && origRole.name !== nameUpper) {
-            // Update users
-            await tx.user.updateMany({
-              where: { role: origRole.name },
-              data: { role: nameUpper },
-            });
-            // Update system panels
-            await tx.systemPanel.updateMany({
-              where: { minRole: origRole.name },
-              data: { minRole: nameUpper },
-            });
-          }
-          return updatedRole;
-        });
-        return {
-          id: updated.id,
-          name: updated.name,
-          displayName: updated.displayName,
-          hierarchyLevel: updated.hierarchyLevel,
-          createdAt: updated.createdAt,
-          updatedAt: updated.updatedAt,
-        };
-      } catch (e) {
-        console.error("Prisma error updating role, falling back", e);
-      }
-    }
-    const role = mockRoles.find((r) => r.id === id);
-    if (role) {
-      const oldName = role.name;
-      const oldRole = { ...role };
-      try {
-        if (nameUpper) role.name = nameUpper;
-        if (updates.displayName) role.displayName = updates.displayName;
-        if (updates.hierarchyLevel !== undefined)
-          role.hierarchyLevel = updates.hierarchyLevel;
-        role.updatedAt = new Date();
-
-        if (nameUpper && oldName !== nameUpper) {
-          // Update mock users role
-          for (const u of mockUsers) {
-            if (u.role === oldName) u.role = nameUpper;
-          }
-          // Update mock panels minRole
-          for (const p of mockPanels) {
-            if (p.minRole === oldName) p.minRole = nameUpper;
-          }
-        }
-        return role;
-      } catch (e) {
-        Object.assign(role, oldRole);
-        throw e;
-      }
-    }
-    return null;
-  },
-
-  deleteRole: async (id: string) => {
-    if (prismaClient && isDbConnected) {
-      try {
-        const origRole = await prismaClient.roleConfig.findUnique({
-          where: { id },
-        });
-        if (origRole) {
-          await prismaClient.$transaction(async (tx) => {
-            // Reassign users of this role to VIEWER (or another base role) before deletion
-            await tx.user.updateMany({
-              where: { role: origRole.name },
-              data: { role: "VIEWER" },
-            });
-            // Reassign system panels
-            await tx.systemPanel.updateMany({
-              where: { minRole: origRole.name },
-              data: { minRole: "VIEWER" },
-            });
-
-            await tx.roleConfig.delete({ where: { id } });
-          });
-          return true;
-        }
-      } catch (e) {
-        console.error("Prisma error deleting role, falling back", e);
-      }
-    }
-    const index = mockRoles.findIndex((r) => r.id === id);
-    if (index !== -1) {
-      const deletedName = mockRoles[index].name;
-      const deletedRole = mockRoles[index];
-      const affectedUsers: typeof mockUsers = [];
-      const affectedPanels: typeof mockPanels = [];
-      try {
-        mockRoles.splice(index, 1);
-        // Reassign mock users
-        for (const u of mockUsers) {
-          if (u.role === deletedName) {
-            u.role = "VIEWER";
-            affectedUsers.push(u);
-          }
-        }
-        // Reassign mock panels
-        for (const p of mockPanels) {
-          if (p.minRole === deletedName) {
-            p.minRole = "VIEWER";
-            affectedPanels.push(p);
-          }
-        }
-        return true;
-      } catch (e) {
-        mockRoles.splice(index, 0, deletedRole);
-        for (const u of affectedUsers) {
-          u.role = deletedName;
-        }
-        for (const p of affectedPanels) {
-          p.minRole = deletedName;
-        }
-        throw e;
-      }
-    }
-    return false;
-  },
+  deleteRole: rolesDb.deleteRole,
 
   // Fase 1 - Announcements
   getAnnouncements: async () => {
@@ -2612,13 +2392,7 @@ export const dbSim = {
 
   updateUserRole: usersDb.updateUserRole,
 
-  createRole: async (role: {
-    name: string;
-    displayName: string;
-    hierarchyLevel: number;
-  }) => {
-    return dbSim.addRole(role);
-  },
+  createRole: rolesDb.createRole,
 
   createPanel: async (panel: {
     name: string;
@@ -2794,124 +2568,22 @@ export const dbSim = {
     return dbSim.addBusinessUnit(bu);
   },
 
-  getLevels: async () => {
-    return mockLevels.sort((a, b) => a.level - b.level);
-  },
+  getLevels: permissionsDb.getLevels,
 
-  createLevel: async (level: { level: number; name: string }) => {
-    const newLvl: MockLevelConfig = {
-      id: "lvl-" + Math.random().toString(36).substr(2, 9),
-      level: level.level,
-      name: level.name,
-      createdAt: new Date(),
-    };
-    mockLevels.push(newLvl);
-    return newLvl;
-  },
+  createLevel: permissionsDb.createLevel,
 
-  deleteLevel: async (id: string) => {
-    const idx = mockLevels.findIndex((l) => l.id === id);
-    if (idx !== -1) {
-      mockLevels.splice(idx, 1);
-      return true;
-    }
-    return false;
-  },
+  deleteLevel: permissionsDb.deleteLevel,
 
-  getMenuPermissions: async () => {
-    return mockMenuPermissions;
-  },
+  getMenuPermissions: permissionsDb.getMenuPermissions,
 
-  updateMenuPermission: async (href: string, minLevel: number) => {
-    const permission = mockMenuPermissions.find((p) => p.href === href);
-    if (permission) {
-      permission.minLevel = minLevel;
-      return permission;
-    }
-    return null;
-  },
+  updateMenuPermission: permissionsDb.updateMenuPermission,
 
   // Account Lockout
-  checkAccountLockout: async (email: string): Promise<{ locked: boolean; lockedUntil?: Date }> => {
-    if (prismaClient && isDbConnected) {
-      try {
-        const user = await prismaClient.user.findUnique({
-          where: { email },
-          select: { failedLoginAttempts: true, lockedUntil: true },
-        });
-        if (user) {
-          const now = new Date();
-          if (user.lockedUntil && user.lockedUntil > now) {
-            return { locked: true, lockedUntil: user.lockedUntil };
-          }
-        }
-        return { locked: false };
-      } catch (e) {
-        console.error("Prisma error checking lockout, falling back", e);
-      }
-    }
-    const state = lockoutState.get(email.toLowerCase());
-    const now = new Date();
-    if (state && state.lockedUntil && state.lockedUntil > now) {
-      return { locked: true, lockedUntil: state.lockedUntil };
-    }
-    return { locked: false };
-  },
+  checkAccountLockout: permissionsDb.checkAccountLockout,
 
-  recordFailedLoginAttempt: async (email: string): Promise<{ locked: boolean; lockedUntil?: Date }> => {
-    const normalizedEmail = email.toLowerCase();
-    if (prismaClient && isDbConnected) {
-      try {
-        const user = await prismaClient.user.findUnique({
-          where: { email: normalizedEmail },
-          select: { failedLoginAttempts: true, lockedUntil: true },
-        });
-        if (user) {
-          const newAttempts = user.failedLoginAttempts + 1;
-          let lockedUntil: Date | null = null;
-          if (newAttempts >= LOCKOUT_THRESHOLD) {
-            lockedUntil = new Date(Date.now() + LOCKOUT_DURATION_MS);
-          }
-          await prismaClient.user.update({
-            where: { email: normalizedEmail },
-            data: {
-              failedLoginAttempts: newAttempts,
-              ...(lockedUntil ? { lockedUntil } : {}),
-            },
-          });
-          return { locked: !!lockedUntil, lockedUntil: lockedUntil || undefined };
-        }
-      } catch (e) {
-        console.error("Prisma error recording failed attempt, falling back", e);
-      }
-    }
-    const state = lockoutState.get(normalizedEmail) || { attempts: 0 };
-    state.attempts += 1;
-    if (state.attempts >= LOCKOUT_THRESHOLD) {
-      state.lockedUntil = new Date(Date.now() + LOCKOUT_DURATION_MS);
-    }
-    lockoutState.set(normalizedEmail, state);
-    return { locked: !!state.lockedUntil, lockedUntil: state.lockedUntil };
-  },
+  recordFailedLoginAttempt: permissionsDb.recordFailedLoginAttempt,
 
-  resetFailedLoginAttempts: async (email: string): Promise<void> => {
-    const normalizedEmail = email.toLowerCase();
-    if (prismaClient && isDbConnected) {
-      try {
-        await prismaClient.user.update({
-          where: { email: normalizedEmail },
-          data: {
-            failedLoginAttempts: 0,
-            lockedUntil: null,
-          },
-        });
-        return;
-      } catch (e) {
-        console.error("Prisma error resetting failed attempts, falling back", e);
-      }
-    }
-    lockoutState.delete(normalizedEmail);
-  },
+  resetFailedLoginAttempts: permissionsDb.resetFailedLoginAttempts,
 
   // System Config (key-value store)
   getSystemConfig: async (key: string): Promise<string | null> => {
