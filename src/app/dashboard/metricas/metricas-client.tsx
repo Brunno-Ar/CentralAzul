@@ -21,6 +21,9 @@ import { PageWrapper } from "@/components/PageWrapper";
 import { SectionCard } from "@/components/metricas/SectionCard";
 import { KpiGrid } from "@/components/metricas/KpiGrid";
 import { FiltersBar } from "@/components/metricas/FiltersBar";
+import { LineChartCard } from "@/components/metricas/LineChartCard";
+import { AreaChartCard } from "@/components/metricas/AreaChartCard";
+import { BarChartCard } from "@/components/metricas/BarChartCard";
 import {
   MetricasFiltersProvider,
   useMetricasFilters,
@@ -178,30 +181,21 @@ function MetricasClientContent({
           </div>
         </SectionCard>
 
-        {/* Grafico de Receita (placeholder para Bloco 5.4) */}
+        {/* Grafico de Receita - Bloco 5.4 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <SectionCard title="Evolucao de Receita" icon={LineChart}>
-            <ChartPlaceholder
-              description="Grafico de linhas sera implementado no Bloco 5.4"
-              series={displayData.receitaSeries.length}
-            />
+            <LineChartCard data={displayData.receitaSeries} seriesLabel="Receita" />
           </SectionCard>
 
-          {/* Grafico de Seguidores (placeholder para Bloco 5.4) */}
+          {/* Grafico de Seguidores - Bloco 5.4 */}
           <SectionCard title="Crescimento de Seguidores" icon={AreaIcon}>
-            <ChartPlaceholder
-              description="Grafico de area sera implementado no Bloco 5.4"
-              series={displayData.seguidoresSeries.length}
-            />
+            <AreaChartCard data={displayData.seguidoresSeries} seriesLabel="Seguidores" />
           </SectionCard>
         </div>
 
-        {/* Grafico de Engagement (placeholder para Bloco 5.4) */}
+        {/* Grafico de Engagement - Bloco 5.4 */}
         <SectionCard title="Engagement Mensal" icon={BarChart3}>
-          <ChartPlaceholder
-            description="Grafico de barras sera implementado no Bloco 5.4"
-            series={displayData.engagementSeries.length}
-          />
+          <BarChartCard data={displayData.engagementSeries} seriesLabel="Engagement" />
         </SectionCard>
 
         {/* Comparativo entre unidades (placeholder para Bloco 5.5) */}
