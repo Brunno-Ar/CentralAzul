@@ -64,7 +64,7 @@ export default async function FerramentasPage({ searchParams }: PageProps) {
     db.getBusinessUnits(),
   ]);
 
-  let allPanels: SystemPanel[] = panelsData || [];
+  const allPanels: SystemPanel[] = panelsData || [];
   const businessUnits: BusinessUnit[] = businessUnitsData || [];
 
   // Merge business unit tools
@@ -115,7 +115,10 @@ export default async function FerramentasPage({ searchParams }: PageProps) {
     const params = await searchParams;
     const companyParam = params.company;
     if (typeof companyParam === "string") {
-      initialCompanyFilter = companyParam.toUpperCase();
+      const normalizedCompany = companyParam.toUpperCase();
+      initialCompanyFilter = normalizedCompany === "COMP-GRAN-RESERVA"
+        ? "BORGO"
+        : normalizedCompany;
     }
   } catch {
     // ignore
