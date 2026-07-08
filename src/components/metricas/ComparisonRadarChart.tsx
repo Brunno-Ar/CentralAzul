@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, memo } from "react";
 import {
   RadarChart,
   Radar,
@@ -52,7 +52,7 @@ const METRIC_LABELS: { key: keyof Pick<MockUnitMetric, "receita" | "seguidores" 
   { key: "engagement", label: "Engagement" },
 ];
 
-export function ComparisonRadarChart({
+export const ComparisonRadarChart = memo(function ComparisonRadarChart({
   units,
   selectedSlugs,
   isLoading = false,
@@ -138,7 +138,7 @@ export function ComparisonRadarChart({
       </ResponsiveContainer>
     </ChartContainer>
   );
-}
+});
 
 /**
  * Tooltip customizada para o grafico de radar.

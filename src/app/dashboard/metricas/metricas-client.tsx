@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, memo } from "react";
 import {
   DollarSign,
   CalendarDays,
@@ -21,14 +21,17 @@ import { PageWrapper } from "@/components/PageWrapper";
 import { SectionCard } from "@/components/metricas/SectionCard";
 import { KpiGrid } from "@/components/metricas/KpiGrid";
 import { FiltersBar } from "@/components/metricas/FiltersBar";
-import { LineChartCard } from "@/components/metricas/LineChartCard";
-import { AreaChartCard } from "@/components/metricas/AreaChartCard";
-import { BarChartCard } from "@/components/metricas/BarChartCard";
 import { ComparisonUnitSelector } from "@/components/metricas/ComparisonUnitSelector";
-import { ComparisonBarChart } from "@/components/metricas/ComparisonBarChart";
-import { ComparisonRadarChart } from "@/components/metricas/ComparisonRadarChart";
-import { PlatformDonutChart } from "@/components/metricas/PlatformDonutChart";
-import { PlatformStackedBarChart } from "@/components/metricas/PlatformStackedBarChart";
+import {
+  LazyLineChartCard,
+  LazyAreaChartCard,
+  LazyBarChartCard,
+  LazyComparisonBarChart,
+  LazyComparisonRadarChart,
+  LazyPlatformDonutChart,
+  LazyPlatformStackedBarChart,
+} from "@/components/metricas/lazy-charts";
+import { useChartHeight } from "@/components/metricas/use-chart-height";
 import {
   MetricasFiltersProvider,
   useMetricasFilters,
@@ -90,10 +93,24 @@ function MetricasClientContent({
 
   const k = displayData.kpis;
 
+  // Alturas responsivas para graficos (Bloco 5.7 -性能)
+  // Reduz altura em mobile para otimizar espaco vertical
+  const timeSeriesHeight = useChartHeight(240);
+  const comparisonBarHeight = useChartHeight(280);
+  const radarHeight = useChartHeight(320);
+  const donutHeight = useChartHeight(280);
+  const stackedBarHeight = useChartHeight(200);
+
   // Estado para a selecao de unidades no comparativo (Bloco 5.5).
   // Inicia com todas as unidades selecionadas.
+  // Memoiza os slugs iniciais para evitar recalculo em re-renders.
+  const initialSlugs = useMemo(
+    () => displayData.unitMetrics.map((u) => u.slug),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [], // So calcula uma vez na montagem
+  );
   const [comparisonSelectedSlugs, setComparisonSelectedSlugs] = useState<string[]>(
-    displayData.unitMetrics.map((u) => u.slug),
+    initialSlugs,
   );
 
   return (
@@ -192,28 +209,28 @@ function MetricasClientContent({
           </div>
         </SectionCard>
 
-        {/* Grafico de Receita - Bloco 5.4 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Grafico de Receita - Bloco 5.4 (lazy loaded) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           <SectionCard title="Evolucao de Receita" icon={LineChart}>
-            <LineChartCard data={displayData.receitaSeries} seriesLabel="Receita" />
+            <LazyLineChartCard data={displayData.receitaSeries} seriesLabel="Receita" height={timeSeriesHeight} />
           </SectionCard>
 
-          {/* Grafico de Seguidores - Bloco 5.4 */}
+          {/* Grafico de Seguidores - Bloco 5.4 (lazy loaded) */}
           <SectionCard title="Crescimento de Seguidores" icon={AreaIcon}>
-            <AreaChartCard data={displayData.seguidoresSeries} seriesLabel="Seguidores" />
+            <LazyAreaChartCard data={displayData.seguidoresSeries} seriesLabel="Seguidores" height={timeSeriesHeight} />
           </SectionCard>
         </div>
 
-        {/* Grafico de Engagement - Bloco 5.4 */}
+        {/* Grafico de Engagement - Bloco 5.4 (lazy loaded) */}
         <SectionCard title="Engagement Mensal" icon={BarChart3}>
-          <BarChartCard data={displayData.engagementSeries} seriesLabel="Engagement" />
+          <LazyBarChartCard data={displayData.engagementSeries} seriesLabel="Engagement" height={timeSeriesHeight} />
         </SectionCard>
 
-        {/* Comparativo entre unidades - Bloco 5.5 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Comparativo entre unidades - Bloco 5.5 (lazy loaded) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           <SectionCard title="Comparativo de Barras" icon={BarChart3}>
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
                 <p className="text-xs text-brand-terciar/70">
                   Compare as metricas entre unidades selecionadas.
                 </p>
@@ -223,9 +240,10 @@ function MetricasClientContent({
                   onChange={setComparisonSelectedSlugs}
                 />
               </div>
-              <ComparisonBarChart
+              <LazyComparisonBarChart
                 units={displayData.unitMetrics}
                 selectedSlugs={comparisonSelectedSlugs}
+                height={comparisonBarHeight}
               />
             </div>
           </SectionCard>
@@ -235,22 +253,22 @@ function MetricasClientContent({
               <p className="text-xs text-brand-terciar/70">
                 Visao multidimensional das unidades (valores normalizados 0-100).
               </p>
-              <ComparisonRadarChart
+              <LazyComparisonRadarChart
                 units={displayData.unitMetrics}
                 selectedSlugs={comparisonSelectedSlugs}
-                height={280}
+                height={radarHeight}
               />
             </div>
           </SectionCard>
         </div>
 
-        {/* Distribuicao por plataforma (placeholder para Bloco 5.6) */}
-        {/* Distribuicao por plataforma - Bloco 5.6 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Distribuicao por plataforma - Bloco 5.6 (lazy loaded) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           <SectionCard title="Distribuicao por Plataforma" icon={PieChart}>
-            <PlatformDonutChart
+            <LazyPlatformDonutChart
               data={displayData.platformDistribution}
               defaultVariant="donut"
+              height={donutHeight}
             />
           </SectionCard>
 
@@ -259,8 +277,9 @@ function MetricasClientContent({
               <p className="text-xs text-brand-terciar/70">
                 Proporcao total da distribuicao entre plataformas.
               </p>
-              <PlatformStackedBarChart
+              <LazyPlatformStackedBarChart
                 data={displayData.platformDistribution}
+                height={stackedBarHeight}
               />
             </div>
           </SectionCard>
@@ -272,8 +291,10 @@ function MetricasClientContent({
 
 /**
  * Linha de comparacao entre periodo atual e periodo anterior.
+ * Memoizada para evitar re-renders desnecessarios quando apenas
+ * outros KPIs mudam.
  */
-function ComparisonRow({
+const ComparisonRow = memo(function ComparisonRow({
   icon: Icon,
   label,
   current,
@@ -323,5 +344,5 @@ function ComparisonRow({
       </div>
     </div>
   );
-}
+});
 

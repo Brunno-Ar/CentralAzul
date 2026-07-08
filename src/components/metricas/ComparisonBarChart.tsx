@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, memo } from "react";
 import {
   BarChart,
   Bar,
@@ -75,7 +75,7 @@ interface ComparisonBarChartProps {
   height?: number;
 }
 
-export function ComparisonBarChart({
+export const ComparisonBarChart = memo(function ComparisonBarChart({
   units,
   selectedSlugs,
   isLoading = false,
@@ -173,4 +173,4 @@ export function ComparisonBarChart({
       </ChartContainer>
     </div>
   );
-}
+});
