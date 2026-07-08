@@ -2056,9 +2056,15 @@ export const dbSim = {
 
   deleteLevel: permissionsDb.deleteLevel,
 
+  updateLevel: permissionsDb.updateLevel,
+
   getMenuPermissions: permissionsDb.getMenuPermissions,
 
   updateMenuPermission: permissionsDb.updateMenuPermission,
+
+  createMenuPermission: permissionsDb.createMenuPermission,
+
+  deleteMenuPermission: permissionsDb.deleteMenuPermission,
 
   // Account Lockout
   checkAccountLockout: permissionsDb.checkAccountLockout,
@@ -2362,10 +2368,13 @@ export const db = {
   getLevels: dbSim.getLevels,
   createLevel: dbSim.createLevel,
   deleteLevel: dbSim.deleteLevel,
+  updateLevel: dbSim.updateLevel,
 
   // Menu Permissions
   getMenuPermissions: dbSim.getMenuPermissions,
   updateMenuPermission: dbSim.updateMenuPermission,
+  createMenuPermission: dbSim.createMenuPermission,
+  deleteMenuPermission: dbSim.deleteMenuPermission,
 
   // Account Lockout
   checkAccountLockout: dbSim.checkAccountLockout,

@@ -440,6 +440,12 @@ export const deleteLevelSchema = z.object({
   id: z.string().min(1, "ID e obrigatorio"),
 });
 
+export const updateLevelSchema = z.object({
+  id: z.string().min(1, "ID e obrigatorio"),
+  level: z.number().int().min(1, "Nivel deve ser um numero positivo").optional(),
+  name: z.string().min(2, "Nome e obrigatorio").max(100).optional(),
+}).strict();
+
 // ============================================
 // MENU PERMISSION SCHEMA
 // ============================================
@@ -448,6 +454,16 @@ export const updateMenuPermissionSchema = z.object({
   href: z.string().min(1, "Caminho e obrigatorio").max(500),
   minLevel: z.number().int().min(1, "Nivel minimo e obrigatorio"),
 }).strict();
+
+export const createMenuPermissionSchema = z.object({
+  href: z.string().min(1, "Caminho e obrigatorio").max(500),
+  name: z.string().min(2, "Nome e obrigatorio").max(100),
+  minLevel: z.number().int().min(1, "Nivel minimo e obrigatorio"),
+}).strict();
+
+export const deleteMenuPermissionSchema = z.object({
+  href: z.string().min(1, "Caminho e obrigatorio").max(500),
+});
 
 // ============================================
 // USER PROFILE UPDATE SCHEMA
