@@ -148,9 +148,6 @@ async function persistSocialMetrics(
             engagementRate: m.engagementRate ?? existing.engagementRate,
             reach: m.reach ?? existing.reach,
             impressions: m.impressions ?? existing.impressions,
-            watchTimeMinutes: m.watchTimeMinutes ?? existing.watchTimeMinutes,
-            avgViewDurationSeconds:
-              m.avgViewDurationSeconds ?? existing.avgViewDurationSeconds,
           },
         });
       } else {
@@ -165,8 +162,6 @@ async function persistSocialMetrics(
             engagementRate: m.engagementRate || 0,
             reach: m.reach || 0,
             impressions: m.impressions || 0,
-            watchTimeMinutes: m.watchTimeMinutes || null,
-            avgViewDurationSeconds: m.avgViewDurationSeconds || null,
           },
         });
       }

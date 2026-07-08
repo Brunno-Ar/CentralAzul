@@ -925,7 +925,6 @@ export const dbSim = {
             tools: true,
             socialLinks: true,
             analytics: { orderBy: { date: "desc" }, take: 30 },
-            metaData: { orderBy: { date: "desc" }, take: 30 },
             revenueData: { orderBy: { period: "desc" }, take: 12 },
           },
           orderBy: { order: "asc" },
@@ -946,7 +945,6 @@ export const dbSim = {
             tools: { where: { isActive: true }, orderBy: { order: "asc" } },
             socialLinks: { where: { isActive: true } },
             analytics: { orderBy: { date: "desc" }, take: 30 },
-            metaData: { orderBy: { date: "desc" }, take: 30 },
             revenueData: { orderBy: { period: "desc" }, take: 12 },
           },
         });

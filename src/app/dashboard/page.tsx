@@ -28,8 +28,8 @@ const fallbackCompanies: DashboardCompany[] = [
     url: "/dashboard/ferramentas?company=BORGO",
   },
   {
-    name: "Grand Reserva",
-    desc: "Lancamento de lotes exclusivos de alto padrao inserido no complexo Borgo del Vino.",
+    name: "Gran Reserva",
+    desc: "Lançamento de lotes exclusivos de alto padrão inserido no complexo Borgo del Vino.",
     iconName: "Wine",
     colorClass: "from-brand-extra3/5 to-brand-extra3/15 border-brand-extra3/20",
     accentClass: "text-brand-extra3",
@@ -119,6 +119,7 @@ export default async function DashboardHome() {
         AZUL: "text-brand-extra2",
         CENTRAL: "text-brand-terciar",
       };
+      const isGranReserva = bu.slug === "COMP-GRAN-RESERVA";
       return {
         id: bu.id,
         name: bu.name,
@@ -128,7 +129,7 @@ export default async function DashboardHome() {
         iconName: iconMap[bu.company] || "Building2",
         colorClass: colorClassMap[bu.company] || "from-brand-principal/20 to-brand-principal/40 border-brand-secundar/20",
         accentClass: accentClassMap[bu.company] || "text-brand-secundar",
-        url: `/dashboard/ferramentas?company=${bu.company}`,
+        url: isGranReserva ? "/dashboard/ferramentas?company=BORGO" : `/dashboard/ferramentas?company=${bu.company}`,
         isActive: bu.isActive,
         showOnHome: bu.showOnHome,
         order: bu.order,

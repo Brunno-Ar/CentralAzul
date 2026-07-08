@@ -187,13 +187,10 @@ model BusinessUnitMetaData {
   followersCount  Int          @default(0)
   followingCount  Int          @default(0)
   postsCount      Int          @default(0)
-  engagementRate       Float        @default(0)
-  reach                Int          @default(0)
-  impressions          Int          @default(0)
-  // Metricas de YouTube (opcionais - nem todos platforms tem esses dados)
-  watchTimeMinutes     Int?
-  avgViewDurationSeconds Int?
-  createdAt            DateTime     @default(now())
+  engagementRate  Float        @default(0)
+  reach           Int          @default(0)
+  impressions     Int          @default(0)
+  createdAt       DateTime     @default(now())
   @@unique([businessUnitId, date, platform])
 }
 
