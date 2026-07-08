@@ -99,13 +99,15 @@ export const ComparisonBarChart = memo(function ComparisonBarChart({
   return (
     <div className="space-y-4">
       {/* Tabs de selecao de metrica */}
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Metrica do comparativo">
         {METRIC_KEYS.map((key) => {
           const isActive = key === activeMetric;
           return (
             <button
               key={key}
               type="button"
+              role="tab"
+              aria-selected={isActive}
               onClick={() => setActiveMetric(key)}
               className={`px-2.5 py-1 rounded-lg text-[10px] font-mono uppercase tracking-wider transition-colors duration-200 easeInOut ${
                 isActive

@@ -22,6 +22,7 @@ import { SectionCard } from "@/components/metricas/SectionCard";
 import { KpiGrid } from "@/components/metricas/KpiGrid";
 import { FiltersBar } from "@/components/metricas/FiltersBar";
 import { ComparisonUnitSelector } from "@/components/metricas/ComparisonUnitSelector";
+import { EmptyState } from "@/components/metricas/EmptyState";
 import {
   LazyLineChartCard,
   LazyAreaChartCard,
@@ -115,14 +116,27 @@ function MetricasClientContent({
 
   return (
     <PageWrapper title="Metricas">
-      <div className="space-y-8 text-brand-terciar">
+      {/* Skip link de acessibilidade para leitores de tela */}
+      <a
+        href="#metricas-conteudo"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-brand-secundar focus:text-white focus:text-xs focus:font-semibold"
+      >
+        Pular para o conteudo principal
+      </a>
+
+      <div
+        id="metricas-conteudo"
+        className="space-y-8 text-brand-terciar"
+        role="main"
+        aria-label="Dashboard de Metricas e Desempenho"
+      >
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-brand-terciar/10">
           <div>
             <h1 className="text-xl font-bold tracking-tight text-brand-extra1 sm:text-2xl">
               Metricas e Desempenho
             </h1>
-            <p className="text-xs text-brand-terciar/70 mt-1 leading-normal">
+            <p className="text-xs text-brand-terciar/70 mt-1 leading-normal" aria-live="polite">
               Visao consolidada do desempenho de todas as unidades do Grupo Azul.
               Seu nivel atual e Nivel {userLevel} ({userRole}).
             </p>
@@ -212,18 +226,45 @@ function MetricasClientContent({
         {/* Grafico de Receita - Bloco 5.4 (lazy loaded) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           <SectionCard title="Evolucao de Receita" icon={LineChart}>
-            <LazyLineChartCard data={displayData.receitaSeries} seriesLabel="Receita" height={timeSeriesHeight} />
+            {displayData.receitaSeries.length === 0 ? (
+              <EmptyState
+                icon={LineChart}
+                title="Sem dados de receita"
+                description="Nao ha dados de receita para o periodo selecionado."
+                height={timeSeriesHeight}
+              />
+            ) : (
+              <LazyLineChartCard data={displayData.receitaSeries} seriesLabel="Receita" height={timeSeriesHeight} />
+            )}
           </SectionCard>
 
           {/* Grafico de Seguidores - Bloco 5.4 (lazy loaded) */}
           <SectionCard title="Crescimento de Seguidores" icon={AreaIcon}>
-            <LazyAreaChartCard data={displayData.seguidoresSeries} seriesLabel="Seguidores" height={timeSeriesHeight} />
+            {displayData.seguidoresSeries.length === 0 ? (
+              <EmptyState
+                icon={AreaIcon}
+                title="Sem dados de seguidores"
+                description="Nao ha dados de seguidores para o periodo selecionado."
+                height={timeSeriesHeight}
+              />
+            ) : (
+              <LazyAreaChartCard data={displayData.seguidoresSeries} seriesLabel="Seguidores" height={timeSeriesHeight} />
+            )}
           </SectionCard>
         </div>
 
         {/* Grafico de Engagement - Bloco 5.4 (lazy loaded) */}
         <SectionCard title="Engagement Mensal" icon={BarChart3}>
-          <LazyBarChartCard data={displayData.engagementSeries} seriesLabel="Engagement" height={timeSeriesHeight} />
+          {displayData.engagementSeries.length === 0 ? (
+            <EmptyState
+              icon={BarChart3}
+              title="Sem dados de engagement"
+              description="Nao ha dados de engagement para o periodo selecionado."
+              height={timeSeriesHeight}
+            />
+          ) : (
+            <LazyBarChartCard data={displayData.engagementSeries} seriesLabel="Engagement" height={timeSeriesHeight} />
+          )}
         </SectionCard>
 
         {/* Comparativo entre unidades - Bloco 5.5 (lazy loaded) */}
@@ -234,17 +275,28 @@ function MetricasClientContent({
                 <p className="text-xs text-brand-terciar/70">
                   Compare as metricas entre unidades selecionadas.
                 </p>
-                <ComparisonUnitSelector
+                {displayData.unitMetrics.length > 1 && (
+                  <ComparisonUnitSelector
+                    units={displayData.unitMetrics}
+                    selectedSlugs={comparisonSelectedSlugs}
+                    onChange={setComparisonSelectedSlugs}
+                  />
+                )}
+              </div>
+              {displayData.unitMetrics.length <= 1 ? (
+                <EmptyState
+                  icon={BarChart3}
+                  title="Selecione outra unidade"
+                  description="O comparativo exige duas ou mais unidades. Ajuste o filtro de unidade para ver todas."
+                  height={comparisonBarHeight}
+                />
+              ) : (
+                <LazyComparisonBarChart
                   units={displayData.unitMetrics}
                   selectedSlugs={comparisonSelectedSlugs}
-                  onChange={setComparisonSelectedSlugs}
+                  height={comparisonBarHeight}
                 />
-              </div>
-              <LazyComparisonBarChart
-                units={displayData.unitMetrics}
-                selectedSlugs={comparisonSelectedSlugs}
-                height={comparisonBarHeight}
-              />
+              )}
             </div>
           </SectionCard>
 
@@ -253,11 +305,20 @@ function MetricasClientContent({
               <p className="text-xs text-brand-terciar/70">
                 Visao multidimensional das unidades (valores normalizados 0-100).
               </p>
-              <LazyComparisonRadarChart
-                units={displayData.unitMetrics}
-                selectedSlugs={comparisonSelectedSlugs}
-                height={radarHeight}
-              />
+              {displayData.unitMetrics.length <= 1 ? (
+                <EmptyState
+                  icon={GitCompare}
+                  title="Sem unidades para comparar"
+                  description="Ajuste o filtro de unidade para incluir duas ou mais unidades."
+                  height={radarHeight}
+                />
+              ) : (
+                <LazyComparisonRadarChart
+                  units={displayData.unitMetrics}
+                  selectedSlugs={comparisonSelectedSlugs}
+                  height={radarHeight}
+                />
+              )}
             </div>
           </SectionCard>
         </div>
@@ -265,11 +326,20 @@ function MetricasClientContent({
         {/* Distribuicao por plataforma - Bloco 5.6 (lazy loaded) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           <SectionCard title="Distribuicao por Plataforma" icon={PieChart}>
-            <LazyPlatformDonutChart
-              data={displayData.platformDistribution}
-              defaultVariant="donut"
-              height={donutHeight}
-            />
+            {displayData.platformDistribution.length === 0 ? (
+              <EmptyState
+                icon={PieChart}
+                title="Sem dados de distribuicao"
+                description="Nao ha dados de distribuicao por plataforma para os filtros selecionados."
+                height={donutHeight}
+              />
+            ) : (
+              <LazyPlatformDonutChart
+                data={displayData.platformDistribution}
+                defaultVariant="donut"
+                height={donutHeight}
+              />
+            )}
           </SectionCard>
 
           <SectionCard title="Composicao Empilhada" icon={BarChart3}>
@@ -277,10 +347,19 @@ function MetricasClientContent({
               <p className="text-xs text-brand-terciar/70">
                 Proporcao total da distribuicao entre plataformas.
               </p>
-              <LazyPlatformStackedBarChart
-                data={displayData.platformDistribution}
-                height={stackedBarHeight}
-              />
+              {displayData.platformDistribution.length === 0 ? (
+                <EmptyState
+                  icon={BarChart3}
+                  title="Sem dados de composicao"
+                  description="Nao ha dados de composicao por plataforma para os filtros selecionados."
+                  height={stackedBarHeight}
+                />
+              ) : (
+                <LazyPlatformStackedBarChart
+                  data={displayData.platformDistribution}
+                  height={stackedBarHeight}
+                />
+              )}
             </div>
           </SectionCard>
         </div>

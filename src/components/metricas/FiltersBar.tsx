@@ -26,12 +26,12 @@ export function FiltersBar() {
       {/* Period Filter - Botões de período */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-2xl border border-brand-terciar/10 bg-white shadow-sm">
         <div className="flex items-center gap-2 shrink-0">
-          <Calendar className="w-4 h-4 text-brand-secundar" />
+          <Calendar className="w-4 h-4 text-brand-secundar" aria-hidden="true" />
           <span className="text-[10px] font-mono uppercase tracking-wider text-brand-terciar/60">
             Período
           </span>
         </div>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Selecao de periodo">
           {PERIOD_VALUES.map((p) => (
             <button
               key={p}
@@ -39,6 +39,7 @@ export function FiltersBar() {
                 setPeriod(p);
                 setShowCustomDate(false);
               }}
+              aria-pressed={filters.period === p}
               className={cn(
                 "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 transform-gpu",
                 filters.period === p
@@ -54,6 +55,7 @@ export function FiltersBar() {
               setPeriod("custom");
               setShowCustomDate(true);
             }}
+            aria-pressed={filters.period === "custom"}
             className={cn(
               "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 transform-gpu",
               filters.period === "custom"
@@ -83,9 +85,10 @@ export function FiltersBar() {
                 const end = filters.customEndDate || new Date().toISOString().split("T")[0];
                 setCustomDateRange(e.target.value, end);
               }}
+              aria-label="Data inicial do periodo personalizado"
               className="px-3 py-1.5 rounded-lg border border-brand-terciar/15 bg-white text-xs text-brand-terciar font-mono focus:outline-none focus:border-brand-secundar/40"
             />
-            <span className="text-brand-terciar/40 self-center text-xs">ate</span>
+            <span className="text-brand-terciar/40 self-center text-xs" aria-hidden="true">ate</span>
             <input
               type="date"
               value={filters.customEndDate || ""}
@@ -93,6 +96,7 @@ export function FiltersBar() {
                 const start = filters.customStartDate || new Date().toISOString().split("T")[0];
                 setCustomDateRange(start, e.target.value);
               }}
+              aria-label="Data final do periodo personalizado"
               className="px-3 py-1.5 rounded-lg border border-brand-terciar/15 bg-white text-xs text-brand-terciar font-mono focus:outline-none focus:border-brand-secundar/40"
             />
           </div>
@@ -103,13 +107,14 @@ export function FiltersBar() {
       <div className="flex flex-col sm:flex-row gap-3">
         {/* Unit Selector */}
         <div className="flex-1 flex items-center gap-3 p-4 rounded-2xl border border-brand-terciar/10 bg-white shadow-sm">
-          <Building2 className="w-4 h-4 text-brand-secundar shrink-0" />
+          <Building2 className="w-4 h-4 text-brand-secundar shrink-0" aria-hidden="true" />
           <span className="text-[10px] font-mono uppercase tracking-wider text-brand-terciar/60 shrink-0">
             Unidade
           </span>
           <select
             value={filters.unit}
             onChange={(e) => setUnit(e.target.value)}
+            aria-label="Filtrar por unidade de negocio"
             className="flex-1 text-xs font-semibold text-brand-terciar bg-transparent focus:outline-none cursor-pointer"
           >
             {UNIT_OPTIONS.map((opt) => (
@@ -122,13 +127,14 @@ export function FiltersBar() {
 
         {/* Platform Selector */}
         <div className="flex-1 flex items-center gap-3 p-4 rounded-2xl border border-brand-terciar/10 bg-white shadow-sm">
-          <Smartphone className="w-4 h-4 text-brand-secundar shrink-0" />
+          <Smartphone className="w-4 h-4 text-brand-secundar shrink-0" aria-hidden="true" />
           <span className="text-[10px] font-mono uppercase tracking-wider text-brand-terciar/60 shrink-0">
             Plataforma
           </span>
           <select
             value={filters.platform}
             onChange={(e) => setPlatform(e.target.value as typeof filters.platform)}
+            aria-label="Filtrar por plataforma"
             className="flex-1 text-xs font-semibold text-brand-terciar bg-transparent focus:outline-none cursor-pointer"
           >
             {PLATFORM_OPTIONS.map((opt) => (

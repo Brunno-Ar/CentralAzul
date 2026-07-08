@@ -59,13 +59,14 @@ export function PlatformDonutChart({
   return (
     <div className="space-y-4">
       {/* Toggle entre pizza e donut */}
-      <div className="flex gap-1.5">
+      <div className="flex gap-1.5" role="group" aria-label="Tipo de visualizacao">
         {(["donut", "pie"] as ChartVariant[]).map((v) => {
           const isActive = v === variant;
           return (
             <button
               key={v}
               type="button"
+              aria-pressed={isActive}
               onClick={() => setVariant(v)}
               className={`px-2.5 py-1 rounded-lg text-[10px] font-mono uppercase tracking-wider transition-colors duration-200 easeInOut ${
                 isActive

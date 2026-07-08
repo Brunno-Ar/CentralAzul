@@ -26,8 +26,9 @@ export function ChartSkeleton({
       role="status"
       aria-label="Carregando grafico"
       aria-busy="true"
+      aria-live="polite"
     >
-      <div className="flex items-end justify-between h-full gap-1.5">
+      <div className="flex items-end justify-between h-full gap-1.5" aria-hidden="true">
         {Array.from({ length: 12 }).map((_, i) => {
           const baseHeight =
             variant === "bar"

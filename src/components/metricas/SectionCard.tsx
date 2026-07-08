@@ -21,17 +21,18 @@ export function SectionCard({
   className,
 }: SectionCardProps) {
   return (
-    <div
+    <section
       className={`p-5 rounded-2xl border border-brand-terciar/10 bg-white shadow-sm space-y-4 ${className || ""}`}
+      aria-label={title}
     >
       <div className="flex items-center justify-between">
         <h2 className="text-xs font-mono uppercase text-brand-terciar/60 tracking-wider flex items-center gap-2">
-          <Icon className="w-3.5 h-3.5" />
+          <Icon className="w-3.5 h-3.5" aria-hidden="true" />
           {title}
         </h2>
         {action}
       </div>
       {children}
-    </div>
+    </section>
   );
 }

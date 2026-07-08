@@ -114,7 +114,7 @@ export function ComparisonUnitSelector({
           </div>
 
           {/* Lista de unidades com checkboxes */}
-          <div className="max-h-56 overflow-y-auto">
+          <div className="max-h-56 overflow-y-auto" role="listbox" aria-label="Unidades disponiveis para comparacao">
             {units.map((unit) => {
               const isSelected = selectedSlugs.includes(unit.slug);
               return (
@@ -122,6 +122,8 @@ export function ComparisonUnitSelector({
                   key={unit.slug}
                   type="button"
                   onClick={() => toggleUnit(unit.slug)}
+                  role="option"
+                  aria-selected={isSelected}
                   className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-brand-principal/30 transition-colors duration-150 easeInOut"
                 >
                   <span

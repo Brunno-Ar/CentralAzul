@@ -10,7 +10,7 @@
 // PRNG (mesma implementacao de db.ts / mock-provider.ts)
 // ---------------------------------------------------------------
 
-function mulberry32(seed: number): () => number {
+export function mulberry32(seed: number): () => number {
   return function () {
     seed |= 0;
     seed = (seed + 0x6d2b79f5) | 0;
@@ -20,7 +20,7 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-function hashSeed(str: string): number {
+export function hashSeed(str: string): number {
   let h = 1779033703 ^ str.length;
   for (let i = 0; i < str.length; i++) {
     h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
@@ -292,7 +292,7 @@ export function generateDashboardMockData(
     ultimaSincronizacao: {
       value: formatDateLabel(),
       raw: Date.now(),
-      previousValue: "—",
+      previousValue: "-",
       previousRaw: 0,
       change: 0,
       changeLabel: "Ultima atualizacao automatica",
