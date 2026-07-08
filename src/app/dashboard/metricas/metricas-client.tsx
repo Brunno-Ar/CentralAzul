@@ -27,6 +27,8 @@ import { BarChartCard } from "@/components/metricas/BarChartCard";
 import { ComparisonUnitSelector } from "@/components/metricas/ComparisonUnitSelector";
 import { ComparisonBarChart } from "@/components/metricas/ComparisonBarChart";
 import { ComparisonRadarChart } from "@/components/metricas/ComparisonRadarChart";
+import { PlatformDonutChart } from "@/components/metricas/PlatformDonutChart";
+import { PlatformStackedBarChart } from "@/components/metricas/PlatformStackedBarChart";
 import {
   MetricasFiltersProvider,
   useMetricasFilters,
@@ -243,20 +245,26 @@ function MetricasClientContent({
         </div>
 
         {/* Distribuicao por plataforma (placeholder para Bloco 5.6) */}
-        <SectionCard
-          title="Distribuicao por Plataforma"
-          icon={PieChart}
-          action={
-            <span className="text-[10px] text-brand-terciar/45 font-mono">
-              {displayData.platformDistribution.length} plataformas
-            </span>
-          }
-        >
-          <ChartPlaceholder
-            description="Graficos de pizza e donut serao implementados no Bloco 5.6"
-            series={displayData.platformDistribution.length}
-          />
-        </SectionCard>
+        {/* Distribuicao por plataforma - Bloco 5.6 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <SectionCard title="Distribuicao por Plataforma" icon={PieChart}>
+            <PlatformDonutChart
+              data={displayData.platformDistribution}
+              defaultVariant="donut"
+            />
+          </SectionCard>
+
+          <SectionCard title="Composicao Empilhada" icon={BarChart3}>
+            <div className="space-y-4">
+              <p className="text-xs text-brand-terciar/70">
+                Proporcao total da distribuicao entre plataformas.
+              </p>
+              <PlatformStackedBarChart
+                data={displayData.platformDistribution}
+              />
+            </div>
+          </SectionCard>
+        </div>
       </div>
     </PageWrapper>
   );
@@ -317,27 +325,3 @@ function ComparisonRow({
   );
 }
 
-/**
- * Placeholder visual para secoes onde os graficos serao inseridos.
- */
-function ChartPlaceholder({
-  description,
-  series,
-}: {
-  description: string;
-  series: number;
-}) {
-  return (
-    <div className="flex items-center justify-center min-h-[220px] rounded-xl border border-dashed border-brand-terciar/15 bg-brand-principal/30 p-6">
-      <div className="text-center space-y-2">
-        <div className="w-12 h-12 rounded-full bg-brand-terciar/10 mx-auto flex items-center justify-center">
-          <BarChart3 className="w-6 h-6 text-brand-terciar/30" />
-        </div>
-        <p className="text-xs text-brand-terciar/50 font-mono">{description}</p>
-        <p className="text-[10px] text-brand-terciar/30">
-          ({series} pontos de dados disponíveis)
-        </p>
-      </div>
-    </div>
-  );
-}
