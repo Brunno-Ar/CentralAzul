@@ -46,6 +46,22 @@ const aggregatingUnits: AggregatingUnit[] = [
   },
 ];
 
+const seedLevels = [
+  { level: 1, name: "Direcao Geral" },
+  { level: 2, name: "Gerencia / Coordenacao" },
+  { level: 3, name: "Operacional" },
+];
+
+const seedMenuPermissions = [
+  { href: "/dashboard", name: "Painel Principal", minLevel: 3 },
+  { href: "/dashboard/ferramentas", name: "Ferramentas", minLevel: 3 },
+  { href: "/dashboard/comunicados", name: "Comunicados", minLevel: 3 },
+  { href: "/dashboard/unidades", name: "Unidades de Negocio", minLevel: 3 },
+  { href: "/dashboard/documentos", name: "Drive de Arquivos", minLevel: 3 },
+  { href: "/dashboard/seguranca", name: "Seguranca & Niveis", minLevel: 1 },
+  { href: "/dashboard/configuracoes", name: "Configuracoes", minLevel: 99 },
+];
+
 async function main() {
   for (const unit of aggregatingUnits) {
     try {
@@ -71,6 +87,32 @@ async function main() {
       console.log(`Seed: upsert OK for ${unit.name} (${unit.slug})`);
     } catch (e) {
       console.error(`Seed: failed for ${unit.name} (${unit.slug})`, e);
+    }
+  }
+
+  for (const lvl of seedLevels) {
+    try {
+      await prisma.levelConfig.upsert({
+        where: { level: lvl.level },
+        update: { name: lvl.name },
+        create: { level: lvl.level, name: lvl.name },
+      });
+      console.log(`Seed: upsert OK for level ${lvl.level} (${lvl.name})`);
+    } catch (e) {
+      console.error(`Seed: failed for level ${lvl.level}`, e);
+    }
+  }
+
+  for (const perm of seedMenuPermissions) {
+    try {
+      await prisma.menuPermission.upsert({
+        where: { href: perm.href },
+        update: { name: perm.name, minLevel: perm.minLevel },
+        create: { href: perm.href, name: perm.name, minLevel: perm.minLevel },
+      });
+      console.log(`Seed: upsert OK for menu permission ${perm.href}`);
+    } catch (e) {
+      console.error(`Seed: failed for menu permission ${perm.href}`, e);
     }
   }
 }

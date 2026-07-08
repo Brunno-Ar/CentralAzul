@@ -226,3 +226,24 @@ model UserMfa {
   updatedAt DateTime @updatedAt
 }
 
+/// Persisted hierarchy levels for access control.
+/// Level 1 = highest (Direcao Geral), 3 = lowest (Operacional).
+model LevelConfig {
+  id        String   @id @default(cuid())
+  level     Int      @unique
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Persisted menu item access permissions.
+/// Controls which hierarchy level can see each menu item in the sidebar.
+model MenuPermission {
+  id        String   @id @default(cuid())
+  href      String   @unique
+  name      String
+  minLevel  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
