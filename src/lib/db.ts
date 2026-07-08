@@ -275,6 +275,8 @@ export interface MockBusinessUnitMetaData {
   engagementRate: number;
   reach: number;
   impressions: number;
+  watchTimeMinutes?: number;
+  avgViewDurationSeconds?: number;
   createdAt: Date;
 }
 
@@ -1106,12 +1108,39 @@ export const dbSim = {
 
     if (!unitId) return null;
 
+    function mulberry32(seed: number): () => number {
+      return function () {
+        seed |= 0;
+        seed = (seed + 0x6d2b79f5) | 0;
+        let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+    function hashSeed(str: string): number {
+      let h = 1779033703 ^ str.length;
+      for (let i = 0; i < str.length; i++) {
+        h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+        h = (h << 13) | (h >>> 19);
+      }
+      return (h ^ (h >>> 16)) >>> 0;
+    }
+    function randInt(rng: () => number, min: number, max: number): number {
+      return Math.floor(rng() * (max - min + 1)) + min;
+    }
+    function randFloat(rng: () => number, min: number, max: number): number {
+      return rng() * (max - min) + min;
+    }
+
+    const seed = hashSeed(slug);
+    const baseRng = mulberry32(seed);
+
     const platforms = ["instagram", "youtube", "facebook", "linkedin"];
     const baseFollowers: Record<string, number> = {
-      instagram: 12500 + Math.floor(Math.random() * 5000),
-      youtube: 4300 + Math.floor(Math.random() * 1500),
-      facebook: 8200 + Math.floor(Math.random() * 2000),
-      linkedin: 3100 + Math.floor(Math.random() * 1000),
+      instagram: 12500 + randInt(baseRng, 0, 5000),
+      youtube: 4300 + randInt(baseRng, 0, 1500),
+      facebook: 8200 + randInt(baseRng, 0, 2000),
+      linkedin: 3100 + randInt(baseRng, 0, 1000),
     };
     const handles: Record<string, string> = {
       instagram: unitName.toLowerCase().replace(/\s+/g, ""),
@@ -1172,7 +1201,7 @@ export const dbSim = {
             (l) => l.platform === platform,
           );
           const newSocial = {
-            id: `social-${platform}-${Math.random().toString(36).substr(2, 5)}`,
+            id: `social-${platform}-${slug}-${seed.toString(36).slice(-5)}`,
             businessUnitId: unitId,
             platform,
             url,
@@ -1199,12 +1228,13 @@ export const dbSim = {
       date.setDate(today.getDate() - i);
       date.setHours(0, 0, 0, 0);
 
-      const pageViews = 1500 + Math.floor(Math.random() * 2500);
-      const uniqueVisitors = 1100 + Math.floor(Math.random() * 1800);
-      const sessions = 1200 + Math.floor(Math.random() * 2000);
-      const bounceRate = 35 + Math.random() * 20;
-      const avgSessionDuration = 90 + Math.floor(Math.random() * 150);
-      const source = "google_analytics";
+      const dailyRng = mulberry32(seed + i * 1000);
+      const pageViews = 1500 + randInt(dailyRng, 0, 2500);
+      const uniqueVisitors = 1100 + randInt(dailyRng, 0, 1800);
+      const sessions = 1200 + randInt(dailyRng, 0, 2000);
+      const bounceRate = 35 + randFloat(dailyRng, 0, 20);
+      const avgSessionDuration = 90 + randInt(dailyRng, 0, 150);
+      const source = "mock";
 
       if (prismaClient && isDbConnected) {
         try {
@@ -1251,7 +1281,7 @@ export const dbSim = {
               a.source === source,
           );
           const newAnalytic = {
-            id: `analytic-${i}-${Math.random().toString(36).substr(2, 5)}`,
+            id: `analytic-${i}-${slug}-${seed.toString(36).slice(-5)}`,
             businessUnitId: unitId,
             date,
             pageViews,
@@ -1277,11 +1307,12 @@ export const dbSim = {
     const platformsMeta = ["instagram", "facebook"];
     for (const platform of platformsMeta) {
       const followers = baseFollowers[platform];
-      const postsCount = 45 + Math.floor(Math.random() * 15);
-      const followingCount = 200 + Math.floor(Math.random() * 50);
-      const engagementRate = 1.8 + Math.random() * 4.5;
-      const reach = Math.floor(followers * (0.15 + Math.random() * 0.25));
-      const impressions = Math.floor(reach * (1.2 + Math.random() * 0.8));
+      const metaRng = mulberry32(hashSeed(slug + platform));
+      const postsCount = 45 + randInt(metaRng, 0, 15);
+      const followingCount = 200 + randInt(metaRng, 0, 50);
+      const engagementRate = 1.8 + randFloat(metaRng, 0, 4.5);
+      const reach = Math.floor(followers * (0.15 + randFloat(metaRng, 0, 0.25)));
+      const impressions = Math.floor(reach * (1.2 + randFloat(metaRng, 0, 0.8)));
       const date = new Date();
       date.setHours(0, 0, 0, 0);
 
@@ -1332,7 +1363,7 @@ export const dbSim = {
               m.platform === platform,
           );
           const newMeta = {
-            id: `meta-${platform}-${Math.random().toString(36).substr(2, 5)}`,
+            id: `meta-${platform}-${slug}-${hashSeed(slug + platform).toString(36).slice(-5)}`,
             businessUnitId: unitId,
             date,
             platform,
@@ -1364,7 +1395,7 @@ export const dbSim = {
             data: {
               businessUnitId: unitId,
               period: "2026-06",
-              amount: 150000 + Math.random() * 100000,
+              amount: 150000 + randFloat(mulberry32(seed), 0, 100000),
               currency: "BRL",
               type: "gross",
               source: "manual",
@@ -1379,7 +1410,7 @@ export const dbSim = {
       const bu = mockBusinessUnits.find((u) => u.id === unitId);
       if (bu && bu.revenueData && bu.revenueData.length === 0) {
         bu.revenueData.push({
-          id: `rev-${Math.random().toString(36).substr(2, 5)}`,
+          id: `rev-${slug}-${seed.toString(36).slice(-5)}`,
           businessUnitId: unitId,
           period: "2026-06",
           amount: 185000,

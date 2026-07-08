@@ -187,10 +187,13 @@ model BusinessUnitMetaData {
   followersCount  Int          @default(0)
   followingCount  Int          @default(0)
   postsCount      Int          @default(0)
-  engagementRate  Float        @default(0)
-  reach           Int          @default(0)
-  impressions     Int          @default(0)
-  createdAt       DateTime     @default(now())
+  engagementRate       Float        @default(0)
+  reach                Int          @default(0)
+  impressions          Int          @default(0)
+  // Metricas de YouTube (opcionais - nem todos platforms tem esses dados)
+  watchTimeMinutes     Int?
+  avgViewDurationSeconds Int?
+  createdAt            DateTime     @default(now())
   @@unique([businessUnitId, date, platform])
 }
 
@@ -214,6 +217,19 @@ model SystemConfig {
   key       String   @unique
   value     String   @db.Text
   updatedAt DateTime @updatedAt
+}
+
+/// Credenciais OAuth para integracoes de analytics.
+/// Armazena tokens de acesso e refresh criptografados com AES-256-GCM.
+model IntegrationCredential {
+  id                    String    @id @default(cuid())
+  provider              String    @unique // "google_analytics" | "meta" | "youtube_analytics"
+  encryptedAccessToken  String    @db.Text
+  encryptedRefreshToken String?   @db.Text
+  expiresAt             DateTime?
+  scopes                String?   // separados por espaco
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 }
 
 model UserMfa {
