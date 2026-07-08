@@ -8,7 +8,7 @@
 export const CHART_COLORS = {
   secundar: "#105D8F",
   principal: "#E9E9E9",
-  terciary: "#262626",
+  terciar: "#262626",
   extra1: "#5C4C44",
   extra2: "#604F45",
   extra3: "#CC9F6F",

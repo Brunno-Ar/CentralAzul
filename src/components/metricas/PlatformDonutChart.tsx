@@ -148,6 +148,7 @@ function PlatformTooltip({
   payload?: ReadonlyArray<{
     name?: string;
     value?: number;
+    color?: string;
     payload?: MockPlatformDistribution;
   }>;
 }) {
@@ -164,7 +165,7 @@ function PlatformTooltip({
         {platform}
       </p>
       <div className="flex items-center gap-2">
-        <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.payload ? CHART_PALETTE[0] : "#105D8F" }} />
+        <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color ?? CHART_PALETTE[0] }} />
         <span className="text-brand-extra1 font-bold font-mono">
           {percentage.toFixed(1)}%
         </span>
