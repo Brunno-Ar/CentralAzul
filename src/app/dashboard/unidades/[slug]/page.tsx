@@ -31,6 +31,11 @@ import {
   Upload,
 } from "lucide-react";
 import { SessionUser } from "@/types/auth";
+import type {
+  BusinessUnitAnalyticsSerialized,
+  BusinessUnitMetaDataSerialized,
+  BusinessUnitRevenueSerialized,
+} from "@/types/analytics";
 import FocusLock from "react-focus-lock";
 
 interface BusinessUnit {
@@ -51,9 +56,9 @@ interface BusinessUnit {
   updatedAt: string;
   tools: BusinessUnitTool[];
   socialLinks: BusinessUnitSocialLink[];
-  analytics: BusinessUnitAnalytics[];
-  metaData: BusinessUnitMetaData[];
-  revenueData: BusinessUnitRevenue[];
+  analytics: BusinessUnitAnalyticsSerialized[];
+  metaData: BusinessUnitMetaDataSerialized[];
+  revenueData: BusinessUnitRevenueSerialized[];
 }
 
 interface BusinessUnitTool {
@@ -79,46 +84,6 @@ interface BusinessUnitSocialLink {
   handle: string;
   followersCount: number;
   isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface BusinessUnitAnalytics {
-  id: string;
-  businessUnitId: string;
-  date: string;
-  pageViews: number;
-  uniqueVisitors: number;
-  sessions: number;
-  bounceRate: number;
-  avgSessionDuration: number;
-  source: string;
-  createdAt: string;
-}
-
-interface BusinessUnitMetaData {
-  id: string;
-  businessUnitId: string;
-  date: string;
-  platform: string;
-  followersCount: number;
-  followingCount: number;
-  postsCount: number;
-  engagementRate: number;
-  reach: number;
-  impressions: number;
-  createdAt: string;
-}
-
-interface BusinessUnitRevenue {
-  id: string;
-  businessUnitId: string;
-  period: string;
-  amount: number;
-  currency: string;
-  type: string;
-  source: string;
-  notes: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -7,6 +7,11 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { Building2, MapPin, Phone, Mail, Plus, Search, X, Upload, RefreshCw } from "lucide-react";
 import { PageWrapper } from "@/components/PageWrapper";
+import type {
+  BusinessUnitAnalyticsSerialized,
+  BusinessUnitMetaDataSerialized,
+  BusinessUnitRevenueSerialized,
+} from "@/types/analytics";
 
 interface BusinessUnitTool {
   id: string;
@@ -35,46 +40,6 @@ interface BusinessUnitSocialLink {
   updatedAt: string;
 }
 
-interface BusinessUnitAnalytics {
-  id: string;
-  businessUnitId: string;
-  date: string;
-  pageViews: number;
-  uniqueVisitors: number;
-  sessions: number;
-  bounceRate: number;
-  avgSessionDuration: number;
-  source: string;
-  createdAt: string;
-}
-
-interface BusinessUnitMetaData {
-  id: string;
-  businessUnitId: string;
-  date: string;
-  platform: string;
-  followersCount: number;
-  followingCount: number;
-  postsCount: number;
-  engagementRate: number;
-  reach: number;
-  impressions: number;
-  createdAt: string;
-}
-
-interface BusinessUnitRevenue {
-  id: string;
-  businessUnitId: string;
-  period: string;
-  amount: number;
-  currency: string;
-  type: string;
-  source: string;
-  notes: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 interface BusinessUnit {
   id: string;
   name: string;
@@ -93,9 +58,9 @@ interface BusinessUnit {
   updatedAt: string;
   tools: BusinessUnitTool[];
   socialLinks: BusinessUnitSocialLink[];
-  analytics: BusinessUnitAnalytics[];
-  metaData: BusinessUnitMetaData[];
-  revenueData: BusinessUnitRevenue[];
+  analytics: BusinessUnitAnalyticsSerialized[];
+  metaData: BusinessUnitMetaDataSerialized[];
+  revenueData: BusinessUnitRevenueSerialized[];
 }
 
 const companyColors: Record<string, string> = {

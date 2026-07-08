@@ -2,6 +2,11 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import UnidadesClient from "./UnidadesClient";
+import type {
+  BusinessUnitAnalyticsSerialized,
+  BusinessUnitMetaDataSerialized,
+  BusinessUnitRevenueSerialized,
+} from "@/types/analytics";
 
 interface BusinessUnitTool {
   id: string;
@@ -30,46 +35,6 @@ interface BusinessUnitSocialLink {
   updatedAt: string;
 }
 
-interface BusinessUnitAnalytics {
-  id: string;
-  businessUnitId: string;
-  date: string;
-  pageViews: number;
-  uniqueVisitors: number;
-  sessions: number;
-  bounceRate: number;
-  avgSessionDuration: number;
-  source: string;
-  createdAt: string;
-}
-
-interface BusinessUnitMetaData {
-  id: string;
-  businessUnitId: string;
-  date: string;
-  platform: string;
-  followersCount: number;
-  followingCount: number;
-  postsCount: number;
-  engagementRate: number;
-  reach: number;
-  impressions: number;
-  createdAt: string;
-}
-
-interface BusinessUnitRevenue {
-  id: string;
-  businessUnitId: string;
-  period: string;
-  amount: number;
-  currency: string;
-  type: string;
-  source: string;
-  notes: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 interface BusinessUnit {
   id: string;
   name: string;
@@ -88,9 +53,9 @@ interface BusinessUnit {
   updatedAt: string;
   tools: BusinessUnitTool[];
   socialLinks: BusinessUnitSocialLink[];
-  analytics: BusinessUnitAnalytics[];
-  metaData: BusinessUnitMetaData[];
-  revenueData: BusinessUnitRevenue[];
+  analytics: BusinessUnitAnalyticsSerialized[];
+  metaData: BusinessUnitMetaDataSerialized[];
+  revenueData: BusinessUnitRevenueSerialized[];
 }
 
 export default async function UnidadesPage() {
@@ -131,9 +96,9 @@ export default async function UnidadesPage() {
       updatedAt: Date;
       tools?: BusinessUnitTool[];
       socialLinks?: BusinessUnitSocialLink[];
-      analytics?: BusinessUnitAnalytics[];
-      metaData?: BusinessUnitMetaData[];
-      revenueData?: BusinessUnitRevenue[];
+      analytics?: BusinessUnitAnalyticsSerialized[];
+      metaData?: BusinessUnitMetaDataSerialized[];
+      revenueData?: BusinessUnitRevenueSerialized[];
     }>
   ).map((bu) => ({
     id: bu.id,
