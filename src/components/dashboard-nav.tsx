@@ -16,6 +16,7 @@ import {
   Sliders,
   Bell,
   Building2,
+  BarChart3,
 } from "lucide-react";
 import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
 
@@ -92,9 +93,16 @@ export default function DashboardNav() {
       badge: unreadCount > 0 ? unreadCount : undefined,
     },
     {
-      name: "Unidades de Negócio",
+      name: "Unidades de Negocio",
       href: "/dashboard/unidades",
       icon: Building2,
+      allowedRoles: ["ADMIN", "COORDINATOR", "VIEWER"],
+      minLevel: 3,
+    },
+    {
+      name: "Metricas",
+      href: "/dashboard/metricas",
+      icon: BarChart3,
       allowedRoles: ["ADMIN", "COORDINATOR", "VIEWER"],
       minLevel: 3,
     },
