@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   DollarSign,
   CalendarDays,
@@ -24,6 +24,9 @@ import { FiltersBar } from "@/components/metricas/FiltersBar";
 import { LineChartCard } from "@/components/metricas/LineChartCard";
 import { AreaChartCard } from "@/components/metricas/AreaChartCard";
 import { BarChartCard } from "@/components/metricas/BarChartCard";
+import { ComparisonUnitSelector } from "@/components/metricas/ComparisonUnitSelector";
+import { ComparisonBarChart } from "@/components/metricas/ComparisonBarChart";
+import { ComparisonRadarChart } from "@/components/metricas/ComparisonRadarChart";
 import {
   MetricasFiltersProvider,
   useMetricasFilters,
@@ -84,6 +87,12 @@ function MetricasClientContent({
       : data;
 
   const k = displayData.kpis;
+
+  // Estado para a selecao de unidades no comparativo (Bloco 5.5).
+  // Inicia com todas as unidades selecionadas.
+  const [comparisonSelectedSlugs, setComparisonSelectedSlugs] = useState<string[]>(
+    displayData.unitMetrics.map((u) => u.slug),
+  );
 
   return (
     <PageWrapper title="Metricas">
@@ -198,21 +207,40 @@ function MetricasClientContent({
           <BarChartCard data={displayData.engagementSeries} seriesLabel="Engagement" />
         </SectionCard>
 
-        {/* Comparativo entre unidades (placeholder para Bloco 5.5) */}
-        <SectionCard
-          title="Comparativo entre Unidades"
-          icon={GitCompare}
-          action={
-            <span className="text-[10px] text-brand-terciar/45 font-mono">
-              {displayData.unitMetrics.length} unidades
-            </span>
-          }
-        >
-          <ChartPlaceholder
-            description="Graficos comparativos entre unidades serao implementados no Bloco 5.5"
-            series={displayData.unitMetrics.length}
-          />
-        </SectionCard>
+        {/* Comparativo entre unidades - Bloco 5.5 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <SectionCard title="Comparativo de Barras" icon={BarChart3}>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-brand-terciar/70">
+                  Compare as metricas entre unidades selecionadas.
+                </p>
+                <ComparisonUnitSelector
+                  units={displayData.unitMetrics}
+                  selectedSlugs={comparisonSelectedSlugs}
+                  onChange={setComparisonSelectedSlugs}
+                />
+              </div>
+              <ComparisonBarChart
+                units={displayData.unitMetrics}
+                selectedSlugs={comparisonSelectedSlugs}
+              />
+            </div>
+          </SectionCard>
+
+          <SectionCard title="Perfil Comparativo" icon={GitCompare}>
+            <div className="space-y-4">
+              <p className="text-xs text-brand-terciar/70">
+                Visao multidimensional das unidades (valores normalizados 0-100).
+              </p>
+              <ComparisonRadarChart
+                units={displayData.unitMetrics}
+                selectedSlugs={comparisonSelectedSlugs}
+                height={280}
+              />
+            </div>
+          </SectionCard>
+        </div>
 
         {/* Distribuicao por plataforma (placeholder para Bloco 5.6) */}
         <SectionCard
