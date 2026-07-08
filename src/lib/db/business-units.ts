@@ -26,7 +26,6 @@ import { prisma, isDatabaseConnected, mockBusinessUnits } from "../db";
 export type { MockBusinessUnitTool };
 
 export const businessUnitsDb = {
-  // Tools
   addBusinessUnitTool: async (
     unitId: string,
     tool: Omit<MockBusinessUnitTool, "id" | "createdAt" | "updatedAt">,
@@ -39,21 +38,66 @@ export const businessUnitsDb = {
     };
     if (prisma && isDatabaseConnected()) {
       try {
-        return await prisma.businessUnitTool.create({
-          data: {
-            businessUnitId: unitId,
-            name: tool.name,
-            url: tool.url,
-            icon: tool.icon || null,
-            description: tool.description || null,
-            category: tool.category,
-            isExternal: tool.isExternal,
-            order: tool.order || 0,
-            isActive: tool.isActive,
-          },
+        return await prisma.$transaction(async (tx) => {
+          const createdTool = await tx.businessUnitTool.create({
+            data: {
+              businessUnitId: unitId,
+              name: tool.name,
+              url: tool.url,
+              icon: tool.icon || null,
+              description: tool.description || null,
+              category: tool.category,
+              isExternal: tool.isExternal,
+              order: tool.order || 0,
+              isActive: tool.isActive,
+            },
+          });
+
+          const bu = await tx.businessUnit.findUnique({
+            where: { id: unitId },
+            select: { slug: true, company: true },
+          });
+
+          if (bu) {
+            const existingPanel = await tx.systemPanel.findUnique({
+              where: { businessUnitToolId: createdTool.id },
+            });
+
+            if (existingPanel) {
+              await tx.systemPanel.update({
+                where: { id: existingPanel.id },
+                data: {
+                  name: createdTool.name,
+                  description: createdTool.description || "",
+                  url: createdTool.url,
+                  icon: createdTool.icon || "ShieldAlert",
+                  category: bu.company,
+                  isActive: createdTool.isActive,
+                  companySlug: bu.slug,
+                },
+              });
+            } else {
+              await tx.systemPanel.create({
+                data: {
+                  name: createdTool.name,
+                  description: createdTool.description || "",
+                  url: createdTool.url,
+                  icon: createdTool.icon || "ShieldAlert",
+                  category: bu.company,
+                  minRole: "VIEWER",
+                  minHierarchy: 3,
+                  isActive: createdTool.isActive,
+                  companySlug: bu.slug,
+                  businessUnitToolId: createdTool.id,
+                },
+              });
+            }
+          }
+
+          return createdTool;
         });
       } catch (e) {
-        console.error("Prisma error adding tool", e);
+        console.error("Prisma error adding tool (transaction)", e);
       }
     }
     const bu = mockBusinessUnits.find((u) => u.id === unitId);
@@ -68,10 +112,15 @@ export const businessUnitsDb = {
   deleteBusinessUnitTool: async (toolId: string) => {
     if (prisma && isDatabaseConnected()) {
       try {
-        await prisma.businessUnitTool.delete({ where: { id: toolId } });
-        return true;
+        return await prisma.$transaction(async (tx) => {
+          await tx.systemPanel.deleteMany({
+            where: { businessUnitToolId: toolId },
+          });
+          await tx.businessUnitTool.delete({ where: { id: toolId } });
+          return true;
+        });
       } catch (e) {
-        console.error("Prisma error deleting tool", e);
+        console.error("Prisma error deleting tool (transaction)", e);
       }
     }
     for (const bu of mockBusinessUnits) {
@@ -84,6 +133,102 @@ export const businessUnitsDb = {
       }
     }
     return false;
+  },
+
+  updateBusinessUnitTool: async (
+    toolId: string,
+    updates: Partial<MockBusinessUnitTool>,
+  ) => {
+    if (prisma && isDatabaseConnected()) {
+      try {
+        return await prisma.$transaction(async (tx) => {
+          const updatedTool = await tx.businessUnitTool.update({
+            where: { id: toolId },
+            data: {
+              ...(updates.name ? { name: updates.name } : {}),
+              ...(updates.url ? { url: updates.url } : {}),
+              ...(updates.icon !== undefined ? { icon: updates.icon } : {}),
+              ...(updates.description !== undefined
+                ? { description: updates.description }
+                : {}),
+              ...(updates.category ? { category: updates.category } : {}),
+              ...(updates.isExternal !== undefined
+                ? { isExternal: updates.isExternal }
+                : {}),
+              ...(updates.order !== undefined ? { order: updates.order } : {}),
+              ...(updates.isActive !== undefined
+                ? { isActive: updates.isActive }
+                : {}),
+            },
+          });
+
+          const bu = await tx.businessUnit.findUnique({
+            where: { id: updatedTool.businessUnitId },
+            select: { slug: true, company: true },
+          });
+
+          if (bu) {
+            const existingPanel = await tx.systemPanel.findUnique({
+              where: { businessUnitToolId: toolId },
+            });
+
+            if (existingPanel) {
+              await tx.systemPanel.update({
+                where: { id: existingPanel.id },
+                data: {
+                  ...(updates.name ? { name: updates.name } : {}),
+                  ...(updates.url ? { url: updates.url } : {}),
+                  ...(updates.icon !== undefined ? { icon: updates.icon } : {}),
+                  ...(updates.description !== undefined
+                    ? { description: updates.description }
+                    : {}),
+                  ...(updates.category !== undefined
+                    ? { category: bu.company }
+                    : {}),
+                  ...(updates.isActive !== undefined
+                    ? { isActive: updates.isActive }
+                    : {}),
+                  companySlug: bu.slug,
+                },
+              });
+            } else {
+              await tx.systemPanel.create({
+                data: {
+                  name: updatedTool.name,
+                  description: updatedTool.description || "",
+                  url: updatedTool.url,
+                  icon: updatedTool.icon || "ShieldAlert",
+                  category: bu.company,
+                  minRole: "VIEWER",
+                  minHierarchy: 3,
+                  isActive: updatedTool.isActive,
+                  companySlug: bu.slug,
+                  businessUnitToolId: updatedTool.id,
+                },
+              });
+            }
+          }
+
+          return updatedTool;
+        });
+      } catch (e) {
+        console.error("Prisma error updating tool (transaction)", e);
+      }
+    }
+    for (const bu of mockBusinessUnits) {
+      if (bu.tools) {
+        const idx = bu.tools.findIndex((t) => t.id === toolId);
+        if (idx !== -1) {
+          bu.tools[idx] = {
+            ...bu.tools[idx],
+            ...updates,
+            updatedAt: new Date(),
+          };
+          return bu.tools[idx];
+        }
+      }
+    }
+    return null;
   },
 
   getBusinessUnitTools: async (unitId: string) => {
@@ -115,51 +260,6 @@ export const businessUnitsDb = {
       if (unitId && bu.id !== unitId) continue;
       const tool = (bu.tools || []).find((t) => t.id === toolId);
       if (tool) return tool;
-    }
-    return null;
-  },
-
-  updateBusinessUnitTool: async (
-    toolId: string,
-    updates: Partial<MockBusinessUnitTool>,
-  ) => {
-    if (prisma && isDatabaseConnected()) {
-      try {
-        return await prisma.businessUnitTool.update({
-          where: { id: toolId },
-          data: {
-            ...(updates.name ? { name: updates.name } : {}),
-            ...(updates.url ? { url: updates.url } : {}),
-            ...(updates.icon !== undefined ? { icon: updates.icon } : {}),
-            ...(updates.description !== undefined
-              ? { description: updates.description }
-              : {}),
-            ...(updates.category ? { category: updates.category } : {}),
-            ...(updates.isExternal !== undefined
-              ? { isExternal: updates.isExternal }
-              : {}),
-            ...(updates.order !== undefined ? { order: updates.order } : {}),
-            ...(updates.isActive !== undefined
-              ? { isActive: updates.isActive }
-              : {}),
-          },
-        });
-      } catch (e) {
-        console.error("Prisma error updating tool", e);
-      }
-    }
-    for (const bu of mockBusinessUnits) {
-      if (bu.tools) {
-        const idx = bu.tools.findIndex((t) => t.id === toolId);
-        if (idx !== -1) {
-          bu.tools[idx] = {
-            ...bu.tools[idx],
-            ...updates,
-            updatedAt: new Date(),
-          };
-          return bu.tools[idx];
-        }
-      }
     }
     return null;
   },
