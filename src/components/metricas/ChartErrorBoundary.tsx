@@ -16,7 +16,6 @@ import { AlertCircle } from "lucide-react";
  * - Estado de erro com icone, mensagem e botao de retry
  * - Estilo consistente com o padrao visual do sistema
  * - Acessivel: role="alert", aria-live
- * - Mensagem tecnicaICH alternativa para desenvolvimento
  */
 
 interface ChartErrorBoundaryProps {

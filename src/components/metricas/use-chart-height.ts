@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
  * Hook para obter altura responsiva de graficos baseada no viewport.
  *
  * Em telas pequenas (mobile), reduz a altura para economizar espaco vertical
- * sem comprometer a legibilidade.	evita re-renders desnecessarios usando
+ * sem comprometer a legibilidade. Evita re-renders desnecessarios usando
  * threshold breakpoints (so atualiza ao cruzar um breakpoint).
  *
  * @param baseHeight Altura padrao para desktop (default 240)

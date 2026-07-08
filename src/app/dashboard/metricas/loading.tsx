@@ -6,7 +6,7 @@
  */
 export default function MetricasLoading() {
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-brand-principal text-brand-principal text-brand-terciar font-sans">
+    <div className="flex flex-col md:flex-row min-h-screen bg-brand-principal text-brand-terciar font-sans">
       {/* Sidebar / Nav skeleton (reutilizado do skeleton existente) */}
       <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 p-4 border-r border-brand-terciar/10 gap-4">
         <div className="h-10 w-full rounded-lg bg-brand-terciar/10 animate-pulse" />

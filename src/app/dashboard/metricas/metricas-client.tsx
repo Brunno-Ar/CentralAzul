@@ -94,7 +94,7 @@ function MetricasClientContent({
 
   const k = displayData.kpis;
 
-  // Alturas responsivas para graficos (Bloco 5.7 -性能)
+  // Alturas responsivas para graficos (Bloco 5.7 - Performance)
   // Reduz altura em mobile para otimizar espaco vertical
   const timeSeriesHeight = useChartHeight(240);
   const comparisonBarHeight = useChartHeight(280);
@@ -104,14 +104,8 @@ function MetricasClientContent({
 
   // Estado para a selecao de unidades no comparativo (Bloco 5.5).
   // Inicia com todas as unidades selecionadas.
-  // Memoiza os slugs iniciais para evitar recalculo em re-renders.
-  const initialSlugs = useMemo(
-    () => displayData.unitMetrics.map((u) => u.slug),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [], // So calcula uma vez na montagem
-  );
   const [comparisonSelectedSlugs, setComparisonSelectedSlugs] = useState<string[]>(
-    initialSlugs,
+    displayData.unitMetrics.map((u) => u.slug),
   );
 
   return (

@@ -67,7 +67,7 @@ export const ComparisonRadarChart = memo(function ComparisonRadarChart({
         acc[key] = Math.max(...selected.map((u) => u[key]), 1);
         return acc;
       },
-      {} as Record<string, number>,
+      {} as Record<typeof METRIC_LABELS[number]["key"], number>,
     );
 
     // Cada ponto de dados e uma metrica (eixo do radar)
