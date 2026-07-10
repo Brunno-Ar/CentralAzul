@@ -8,7 +8,6 @@
  * - getUserMfa, setUserMfa, isMfaEnabled
  */
 
-import { Company } from "@prisma/client";
 import type { MockUser, MockUserMfa } from "../db";
 import { prisma, isDatabaseConnected, mockUsers, mockMfaUsers, getSystemConfig } from "../db";
 
@@ -133,7 +132,7 @@ export const usersDb = {
     email: string;
     role: string;
     hierarchyLevel: number;
-    company: Company;
+    company: string;
     password?: string;
   }) => {
     const newUser: MockUser = {
@@ -174,7 +173,7 @@ export const usersDb = {
     email: string;
     role: string;
     hierarchyLevel: number;
-    company: Company;
+    company: string;
     password?: string;
   }) => {
     return usersDb.addUser(user);

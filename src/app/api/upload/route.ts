@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { uploadToB2 } from "@/lib/b2";
 import { db } from "@/lib/db";
-import { Company } from "@prisma/client";
 import { SessionUser } from "@/types/auth";
 import { createDocumentSchema } from "@/lib/validation";
 import { rateLimit } from "@/lib/rate-limit";
@@ -106,7 +105,7 @@ export async function POST(request: NextRequest) {
     const externalUrl = formData.get("externalUrl") as string | null;
     const title = formData.get("title") as string | null;
     const description = formData.get("description") as string | null;
-    const category = (formData.get("category") as Company | null) || Company.CENTRAL;
+    const category = (formData.get("category") as string | null) || "CENTRAL";
     
     // Only Level 1 users can set a minimum hierarchy level other than 3
     const sessionLevel = (session.user as SessionUser).hierarchyLevel;

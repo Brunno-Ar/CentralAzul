@@ -6,7 +6,6 @@
  * - getAuditLogs
  */
 
-import { Company } from "@prisma/client";
 import type { MockAuditLog } from "../db";
 import { prisma, isDatabaseConnected, mockLogs, mockUsers } from "../db";
 
@@ -15,7 +14,7 @@ export type { MockAuditLog };
 export const analyticsDb = {
   getLogs: async (
     userLevel?: number,
-    userCompany?: Company,
+    userCompany?: string,
   ) => {
     // Applicative RLS for audit logs.
     // Level 1 sees ALL logs. Level 2 sees only logs from users in their company.
@@ -117,7 +116,7 @@ export const analyticsDb = {
 
   getAuditLogs: async (
     userLevel?: number,
-    userCompany?: Company,
+    userCompany?: string,
   ) => {
     return analyticsDb.getLogs(userLevel, userCompany);
   },

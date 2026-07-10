@@ -1,6 +1,5 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { Company } from "@prisma/client";
 import DocumentosClient from "./DocumentosClient";
 
 interface DocumentItem {
@@ -24,7 +23,7 @@ export default async function DocumentosPage() {
         name?: string | null;
         role?: string;
         hierarchyLevel?: number;
-        company?: Company;
+        company?: string;
       }
     | undefined;
 

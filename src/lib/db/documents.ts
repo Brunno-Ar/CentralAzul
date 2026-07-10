@@ -8,7 +8,6 @@
  */
 
 import DOMPurify from "isomorphic-dompurify";
-import { Company } from "@prisma/client";
 import type { MockDocument } from "../db";
 import { prisma, isDatabaseConnected, mockDocuments, mockUsers } from "../db";
 
@@ -17,7 +16,7 @@ export type { MockDocument };
 export const documentsDb = {
   getDocuments: async (
     userLevel?: number,
-    userCompany?: Company,
+    userCompany?: string,
   ) => {
     // Applicative RLS via Prisma where clause.
     // Level 1 (Direcao Geral) sees ALL docs.
@@ -27,7 +26,7 @@ export const documentsDb = {
       userLevel !== undefined && userLevel !== 1 && userCompany
         ? {
             minHierarchyLevel: { gte: userLevel },
-            OR: [{ category: userCompany }, { category: Company.CENTRAL }],
+            OR: [{ category: userCompany }, { category: "CENTRAL" }],
           }
         : userLevel !== undefined && userLevel !== 1 && !userCompany
           ? { minHierarchyLevel: { gte: userLevel } }
@@ -68,7 +67,7 @@ export const documentsDb = {
           doc.minHierarchyLevel >= userLevel &&
           (!userCompany ||
             doc.category === userCompany ||
-            doc.category === Company.CENTRAL),
+            doc.category === "CENTRAL"),
       );
     }
     return mockResult;
