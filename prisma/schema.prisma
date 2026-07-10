@@ -39,11 +39,11 @@ model User {
   emailVerified  DateTime?
   image          String?
   password       String?
-  role           String     @default("VIEWER") // References RoleConfig.name
+  role           String     // References RoleConfig.name
   hierarchyLevel Int        @default(3)
-  company        String   @default("CENTRAL")
+  company        String
   companyRef     Company?  @relation("UserCompany", fields: [company], references: [slug], onDelete: Restrict)
-  status         String     @default("ACTIVE") // ACTIVE, BLOCKED
+  status         String     // ACTIVE, BLOCKED
   failedLoginAttempts Int   @default(0)
   lockedUntil    DateTime?
   createdAt      DateTime   @default(now())
@@ -269,6 +269,28 @@ model MenuPermission {
   href      String   @unique
   name      String
   minLevel  Int
+  icon      String?
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RolePermission {
+  id        String   @id @default(cuid())
+  role      String   // References RoleConfig.name or represents the role name
+  action    String   // e.g. "panel:create", "document:upload", etc.
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([role, action])
+}
+
+model DocumentType {
+  id        String   @id @default(cuid())
+  name      String   @unique // e.g. "pdf", "link", "video", "sharepoint"
+  icon      String   // lucide icon name
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
