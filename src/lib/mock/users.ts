@@ -1,4 +1,4 @@
-import type { MockUser } from "../db";
+import type { MockUser, MockUserMfa } from "../db";
 
 export const mockUsers: MockUser[] = globalThis.__mockUsers ?? (globalThis.__mockUsers = [
   {
@@ -41,3 +41,5 @@ export const mockUsers: MockUser[] = globalThis.__mockUsers ?? (globalThis.__moc
     createdAt: new Date(),
   },
 ]);
+
+export const mockMfaUsers: MockUserMfa[] = globalThis.__mockMfaUsers ?? (globalThis.__mockMfaUsers = []);
