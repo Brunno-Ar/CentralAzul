@@ -134,6 +134,9 @@ export default function BusinessUnitDetailPage() {
   const router = useRouter();
   const slug = params.slug as string;
   const { data: session } = useSession();
+  const user = session?.user as SessionUser | undefined;
+  const userRole = user?.role || "VIEWER";
+  const userLevel = user?.hierarchyLevel || 3;
   const [businessUnit, setBusinessUnit] = useState<BusinessUnit | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -344,8 +347,6 @@ export default function BusinessUnitDetailPage() {
     }
   };
 
-  const user = session?.user as SessionUser | undefined;
-  const userLevel = user?.hierarchyLevel || 3;
   const isAdmin = userLevel === 1;
 
   const syncSteps = [
@@ -789,6 +790,68 @@ export default function BusinessUnitDetailPage() {
                       <Phone className="w-3.5 h-3.5" />
                       Ligar
                     </a>
+                  )}
+
+                  {/* Ações administrativas para Nível 1 e 2 */}
+                  {userLevel <= 2 && (
+                    <>
+                      <button
+                        onClick={() => {
+                          setActiveTab("revenue");
+                          setShowAddRevenueModal(true);
+                        }}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-xs font-semibold hover:bg-amber-100 transition-colors cursor-pointer"
+                      >
+                        <DollarSign className="w-3.5 h-3.5 text-amber-700" />
+                        Registrar Faturamento
+                      </button>
+                      <button
+                        onClick={() => {
+                          setActiveTab("analytics");
+                          setShowAddAnalyticsModal(true);
+                        }}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-blue-50 text-blue-800 border border-blue-200 rounded-lg text-xs font-semibold hover:bg-blue-100 transition-colors cursor-pointer"
+                      >
+                        <BarChart3 className="w-3.5 h-3.5 text-blue-700" />
+                        Registrar Analytics
+                      </button>
+                      <button
+                        onClick={() => {
+                          setActiveTab("tools");
+                          setShowAddToolModal(true);
+                        }}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-purple-50 text-purple-800 border border-purple-200 rounded-lg text-xs font-semibold hover:bg-purple-100 transition-colors cursor-pointer"
+                      >
+                        <Settings className="w-3.5 h-3.5 text-purple-700" />
+                        Adicionar Ferramenta
+                      </button>
+                      <button
+                        onClick={() => {
+                          setActiveTab("social");
+                          setShowAddSocialModal(true);
+                        }}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-pink-50 text-pink-800 border border-pink-200 rounded-lg text-xs font-semibold hover:bg-pink-100 transition-colors cursor-pointer"
+                      >
+                        <Users className="w-3.5 h-3.5 text-pink-700" />
+                        Vincular Redes Sociais
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowEditModal(true);
+                        }}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-gray-50 text-gray-800 border border-gray-200 rounded-lg text-xs font-semibold hover:bg-gray-100 transition-colors cursor-pointer"
+                      >
+                        <Edit2 className="w-3.5 h-3.5 text-gray-700" />
+                        Editar Cadastro
+                      </button>
+                    </>
+                  )}
+
+                  {/* Fallback se não houver nenhuma ação disponível para Nível 3 */}
+                  {userLevel > 2 && !businessUnit.website && !businessUnit.email && !businessUnit.phone && (
+                    <span className="text-xs text-brand-terciar/50 italic">
+                      Nenhuma ação rápida disponível para esta unidade.
+                    </span>
                   )}
                 </div>
               </div>
