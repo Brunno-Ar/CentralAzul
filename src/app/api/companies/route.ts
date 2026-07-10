@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
       name,
       slug: finalSlug,
       color: color || "AZUL",
+      holding: null,
       isActive: isActive !== undefined ? isActive : true,
       showOnHome: showOnHome !== undefined ? showOnHome : true,
       order: finalOrder,

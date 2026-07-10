@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { hasPermission } from "@/lib/auth/permissions";
 import { SessionUser } from "@/types/auth";
 import { 
   validateRequest, 
@@ -45,11 +46,10 @@ async function handlePost(request: NextRequest) {
       return NextResponse.json({ error: "Nao autorizado" }, { status: 401 });
     }
 
-    const userLevel = (session.user as SessionUser).hierarchyLevel || 3;
     const userRole = (session.user as SessionUser).role || "VIEWER";
 
-    // Only Level 1 accounts can configure roles
-    if (userLevel !== 1 && userRole !== "ADMIN") {
+    // Only authorized users can configure roles
+    if (!await hasPermission(userRole, "role:configure")) {
       return NextResponse.json({ error: "Acesso negado. Apenas Nivel 1." }, { status: 403 });
     }
 
@@ -88,11 +88,10 @@ async function handlePut(request: NextRequest) {
       return NextResponse.json({ error: "Nao autorizado" }, { status: 401 });
     }
 
-    const userLevel = (session.user as SessionUser).hierarchyLevel || 3;
     const userRole = (session.user as SessionUser).role || "VIEWER";
 
-    // Only Level 1 accounts can configure roles
-    if (userLevel !== 1 && userRole !== "ADMIN") {
+    // Only authorized users can configure roles
+    if (!await hasPermission(userRole, "role:configure")) {
       return NextResponse.json({ error: "Acesso negado. Apenas Nivel 1." }, { status: 403 });
     }
 
@@ -131,11 +130,10 @@ async function handleDelete(request: NextRequest) {
       return NextResponse.json({ error: "Nao autorizado" }, { status: 401 });
     }
 
-    const userLevel = (session.user as SessionUser).hierarchyLevel || 3;
     const userRole = (session.user as SessionUser).role || "VIEWER";
 
-    // Only Level 1 accounts can configure roles
-    if (userLevel !== 1 && userRole !== "ADMIN") {
+    // Only authorized users can configure roles
+    if (!await hasPermission(userRole, "role:configure")) {
       return NextResponse.json({ error: "Acesso negado. Apenas Nivel 1." }, { status: 403 });
     }
 

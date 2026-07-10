@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { hasPermission } from "@/lib/auth/permissions";
 import { SessionUser } from "@/types/auth";
 import {
   validateSearchParams,
@@ -102,9 +103,9 @@ export async function POST(request: NextRequest) {
     }
 
     const user = session.user as SessionUser;
-    if (user.hierarchyLevel !== 1 && user.role !== "ADMIN") {
+    if (!await hasPermission(user.role || "VIEWER", "panel:create")) {
       return NextResponse.json(
-        { error: "Acesso negado. Apenas Nivel 1." },
+        { error: "Acesso negado. Permissao insuficiente." },
         { status: 403 }
       );
     }
@@ -153,9 +154,9 @@ export async function PUT(request: NextRequest) {
     }
 
     const user = session.user as SessionUser;
-    if (user.hierarchyLevel !== 1 && user.role !== "ADMIN") {
+    if (!await hasPermission(user.role || "VIEWER", "panel:create")) {
       return NextResponse.json(
-        { error: "Acesso negado. Apenas Nivel 1." },
+        { error: "Acesso negado. Permissao insuficiente." },
         { status: 403 }
       );
     }
@@ -204,9 +205,9 @@ export async function DELETE(request: NextRequest) {
     }
 
     const user = session.user as SessionUser;
-    if (user.hierarchyLevel !== 1 && user.role !== "ADMIN") {
+    if (!await hasPermission(user.role || "VIEWER", "panel:create")) {
       return NextResponse.json(
-        { error: "Acesso negado. Apenas Nivel 1." },
+        { error: "Acesso negado. Permissao insuficiente." },
         { status: 403 }
       );
     }

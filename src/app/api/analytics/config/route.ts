@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { getAllProviderStatuses, getProviderRegistry } from "@/lib/analytics/registry";
 import { getSyncHistory } from "@/lib/analytics/sync";
 import type { ProviderId } from "@/lib/analytics/types";
-import { db } from "@/lib/db";
+
 
 export async function GET() {
   const session = await auth();

@@ -8,8 +8,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { validateExternalUrl } from "@/lib/ssrf";
 import { randomUUID } from "crypto";
 
-// Max file size: 10GB
-const MAX_FILE_SIZE = 10 * 1024 * 1024 * 1024;
+// Dynamic max file size configured in SystemConfig
 
 // MIME type allowlist
 const ALLOWED_MIME_TYPES = [
@@ -172,9 +171,12 @@ export async function POST(request: NextRequest) {
       }
 
       // Validate file size
-      if (file.size > MAX_FILE_SIZE) {
+      const maxFileConfig = await db.getSystemConfig("maxFileSizeBytes");
+      const maxFileSize = parseInt(maxFileConfig || "10737418240", 10);
+      if (file.size > maxFileSize) {
+        const maxGb = (maxFileSize / (1024 * 1024 * 1024)).toFixed(0);
         return NextResponse.json(
-          { error: `Arquivo muito grande. Tamanho maximo: 10GB` },
+          { error: `Arquivo muito grande. Tamanho maximo: ${maxGb}GB` },
           { status: 400 }
         );
       }

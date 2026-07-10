@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { SessionUser } from "@/types/auth";
 import { rateLimit } from "@/lib/rate-limit";
-import { validateSearchParams, paginationSchema } from "@/lib/validation";
+
 import { prisma, isDatabaseConnected } from "@/lib/db";
 
 async function handleGet(request: NextRequest) {
@@ -20,7 +20,7 @@ async function handleGet(request: NextRequest) {
     // RLS: Operacionais (Nível 3) só podem ver seus próprios logs de atividade
     // Gerentes (Nível 2) veem os logs dos usuários de sua mesma empresa
     // Diretores (Nível 1) veem tudo
-    let rlsFilter: any = {};
+    let rlsFilter: Record<string, unknown> = {};
     if (userLevel === 3) {
       rlsFilter = { userId: user.id };
     } else if (userLevel === 2 && userCompany) {
@@ -38,7 +38,7 @@ async function handleGet(request: NextRequest) {
 
     if (prisma && isDatabaseConnected()) {
       // Montar filtros dinâmicos
-      const andFilters: any[] = [{ ...rlsFilter }];
+      const andFilters: Record<string, unknown>[] = [rlsFilter];
 
       if (search) {
         andFilters.push({

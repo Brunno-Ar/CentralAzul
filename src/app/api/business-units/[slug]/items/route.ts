@@ -30,10 +30,12 @@ export async function POST(
     const { slug } = await params;
     const validation = await validateRequest(request, createBusinessUnitItemSchema);
     if (!validation.success) {
+      console.log("POST /api/business-units/[slug]/items - First level validation failed:", validation);
       return validation.error;
     }
 
     const { type, data: rawData } = validation.data;
+    console.log("POST /api/business-units/[slug]/items - First level success:", { type, rawData });
 
     const businessUnit = await db.getBusinessUnitBySlug(slug);
     if (!businessUnit) {
@@ -44,24 +46,28 @@ export async function POST(
     if (type === "tool") {
       const sub = createBusinessUnitToolSchema.pick({ name: true, description: true, url: true, icon: true, category: true }).safeParse(rawData);
       if (!sub.success) {
+        console.log("POST /api/business-units/[slug]/items - Tool sub-validation failed:", sub.error.format());
         return NextResponse.json({ error: "Dados invalidos", details: sub.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") }, { status: 400 });
       }
       validatedData = sub.data as unknown as Record<string, unknown>;
     } else if (type === "social") {
       const sub = createBusinessUnitSocialLinkSchema.pick({ platform: true, handle: true, url: true, followersCount: true }).safeParse(rawData);
       if (!sub.success) {
+        console.log("POST /api/business-units/[slug]/items - Social sub-validation failed:", sub.error.format());
         return NextResponse.json({ error: "Dados invalidos", details: sub.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") }, { status: 400 });
       }
       validatedData = sub.data as unknown as Record<string, unknown>;
     } else if (type === "analytics") {
       const sub = createBusinessUnitAnalyticsSchema.pick({ date: true, pageViews: true, uniqueVisitors: true, avgSessionDuration: true, bounceRate: true }).safeParse(rawData);
       if (!sub.success) {
+        console.log("POST /api/business-units/[slug]/items - Analytics sub-validation failed:", sub.error.format());
         return NextResponse.json({ error: "Dados invalidos", details: sub.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") }, { status: 400 });
       }
       validatedData = sub.data as unknown as Record<string, unknown>;
     } else if (type === "revenue") {
       const sub = createBusinessUnitRevenueSchema.pick({ month: true, amount: true, currency: true }).safeParse(rawData);
       if (!sub.success) {
+        console.log("POST /api/business-units/[slug]/items - Revenue sub-validation failed:", sub.error.format());
         return NextResponse.json({ error: "Dados invalidos", details: sub.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") }, { status: 400 });
       }
       validatedData = sub.data as unknown as Record<string, unknown>;
