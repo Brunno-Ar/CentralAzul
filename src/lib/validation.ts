@@ -191,15 +191,15 @@ export const markReadSchema = z.object({
 
 export const createBusinessUnitSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").max(200),
-  slug: z.string().min(2, "Slug deve ter pelo menos 2 caracteres").max(100).regex(/^[a-z0-9-]+$/, "Slug deve conter apenas letras minúsculas, números e hífens"),
-  company: panelCategoryEnum,
+  slug: z.string().min(2).max(100).regex(/^[a-z0-9-]+$/, "Slug deve conter apenas letras minusculas, numeros e hifens").optional(),
+  company: z.string().max(200).optional(),
   description: z.string().max(2000).optional(),
   logo: z.string().url().optional().or(z.literal("")),
   coverImage: z.string().url().optional().or(z.literal("")),
   address: z.string().max(500).optional(),
   phone: z.string().max(50).optional(),
   email: z.string().email().optional().or(z.literal("")),
-  website: z.string().url().optional().or(z.literal("")),
+  website: z.string().max(500).optional().or(z.literal("")),
   isActive: z.boolean().default(true),
   order: z.number().int().min(0).default(0),
   showOnHome: z.boolean().default(true),
@@ -209,14 +209,14 @@ export const updateBusinessUnitSchema = z.object({
   id: z.string().min(1, "ID é obrigatório"),
   name: z.string().min(2).max(200).optional(),
   slug: z.string().min(2).max(100).regex(/^[a-z0-9-]+$/).optional(),
-  company: panelCategoryEnum.optional(),
+  company: z.string().max(200).optional(),
   description: z.string().max(2000).optional(),
   logo: z.string().url().optional().or(z.literal("")),
   coverImage: z.string().url().optional().or(z.literal("")),
   address: z.string().max(500).optional(),
   phone: z.string().max(50).optional(),
   email: z.string().email().optional().or(z.literal("")),
-  website: z.string().url().optional().or(z.literal("")),
+  website: z.string().max(500).optional().or(z.literal("")),
   isActive: z.boolean().optional(),
   order: z.number().int().min(0).optional(),
   showOnHome: z.boolean().optional(),
@@ -231,8 +231,8 @@ export const createBusinessUnitToolSchema = z.object({
   businessUnitId: z.string().min(1, "Business Unit ID é obrigatório"),
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").max(100),
   description: z.string().max(500).optional(),
-  url: z.string().url("URL inválida"),
-  icon: z.string().min(1, "Ícone é obrigatório").max(50),
+  url: z.string().min(1, "URL é obrigatória").max(500),
+  icon: z.string().max(50).optional().default("Link"),
   category: z.string().min(1, "Categoria é obrigatória").max(50),
 });
 
@@ -240,7 +240,7 @@ export const updateBusinessUnitToolSchema = z.object({
   id: z.string().min(1, "ID é obrigatório"),
   name: z.string().min(2).max(100).optional(),
   description: z.string().max(500).optional(),
-  url: z.string().url().optional(),
+  url: z.string().max(500).optional(),
   icon: z.string().min(1).max(50).optional(),
   category: z.string().min(1).max(50).optional(),
 });
@@ -256,7 +256,7 @@ export const createBusinessUnitSocialLinkSchema = z.object({
   businessUnitId: z.string().min(1, "Business Unit ID é obrigatório"),
   platform: socialPlatformEnum,
   handle: z.string().min(1, "Handle é obrigatório").max(100).optional(),
-  url: z.string().url("URL inválida"),
+  url: z.string().min(1, "URL é obrigatória").max(500),
   followersCount: z.number().int().min(0).default(0),
 });
 
@@ -264,7 +264,7 @@ export const updateBusinessUnitSocialLinkSchema = z.object({
   id: z.string().min(1, "ID é obrigatório"),
   platform: socialPlatformEnum.optional(),
   handle: z.string().max(100).optional(),
-  url: z.string().url().optional(),
+  url: z.string().max(500).optional(),
   followersCount: z.number().int().min(0).optional(),
 });
 
@@ -451,17 +451,32 @@ export const updateLevelSchema = z.object({
 
 export const updateMenuPermissionSchema = z.object({
   href: z.string().min(1, "Caminho e obrigatorio").max(500),
-  minLevel: z.number().int().min(1, "Nivel minimo e obrigatorio"),
+  name: z.string().min(2).optional(),
+  minLevel: z.number().int().min(1).optional(),
+  icon: z.string().nullable().optional(),
+  order: z.number().int().optional(),
+  isActive: z.boolean().optional(),
 }).strict();
 
 export const createMenuPermissionSchema = z.object({
   href: z.string().min(1, "Caminho e obrigatorio").max(500),
   name: z.string().min(2, "Nome e obrigatorio").max(100),
   minLevel: z.number().int().min(1, "Nivel minimo e obrigatorio"),
+  icon: z.string().nullable().optional(),
+  order: z.number().int().optional().default(0),
+  isActive: z.boolean().optional().default(true),
 }).strict();
 
 export const deleteMenuPermissionSchema = z.object({
   href: z.string().min(1, "Caminho e obrigatorio").max(500),
+});
+
+// ============================================
+// DOCUMENT TYPE SCHEMA
+// ============================================
+
+export const deleteDocumentTypeSchema = z.object({
+  id: z.string().min(1, "Id e obrigatorio"),
 });
 
 // ============================================
@@ -524,6 +539,46 @@ export const auditLogFilterSchema = z.object({
   action: z.string().optional(),
   startDate: z.string().datetime().optional(),
   endDate: z.string().datetime().optional(),
+});
+
+// ============================================
+// ROLE PERMISSION SCHEMAS
+// ============================================
+
+export const createRolePermissionSchema = z.object({
+  role: z.string().min(1, "Cargo é obrigatório"),
+  action: z.string().min(1, "Ação é obrigatória"),
+});
+
+export const deleteRolePermissionSchema = z.object({
+  role: z.string().min(1, "Cargo é obrigatório"),
+  action: z.string().min(1, "Ação é obrigatória"),
+});
+
+// ============================================
+// SYSTEM CONFIG SCHEMAS
+// ============================================
+
+export const updateSystemConfigSchema = z.object({
+  key: z.string().min(1, "Chave é obrigatória"),
+  value: z.string().min(1, "Valor é obrigatório"),
+});
+
+// ============================================
+// DOCUMENT TYPE SCHEMAS
+// ============================================
+
+export const createDocumentTypeSchema = z.object({
+  name: z.string().min(1, "Nome é obrigatório"),
+  icon: z.string().min(1, "Ícone é obrigatório"),
+  isActive: z.boolean().optional().default(true),
+});
+
+export const updateDocumentTypeSchema = z.object({
+  id: z.string().min(1, "ID é obrigatório"),
+  name: z.string().min(1).optional(),
+  icon: z.string().min(1).optional(),
+  isActive: z.boolean().optional(),
 });
 
 // ============================================
