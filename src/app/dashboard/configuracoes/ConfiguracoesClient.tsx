@@ -346,26 +346,6 @@ export default function ConfiguracoesClient({ initialUser }: ConfiguracoesClient
           </div>
         </div>
 
-        {/* Card: Company Management (Nivel 1 only) */}
-        {(user?.hierarchyLevel || initialUser.hierarchyLevel) === 1 && (
-          <Link
-            href="/dashboard/configuracoes/empresas"
-            className="block p-5 rounded-2xl border border-brand-terciar/10 bg-white shadow-sm hover:border-brand-secundar transition-colors group"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-brand-principal border border-brand-terciar/10">
-                  <Building2 className="w-5 h-5 text-brand-secundar" />
-                </div>
-                <div className="space-y-0.5">
-                  <h3 className="text-sm font-bold text-brand-extra1">Gestao de Empresas</h3>
-                  <p className="text-xs text-brand-terciar/70">Crie, edite e gerencie as empresas do grupo</p>
-                </div>
-              </div>
-              <ChevronRight className="w-5 h-5 text-brand-terciar/40 group-hover:text-brand-secundar transition-colors" />
-            </div>
-          </Link>
-        )}
       </div>
     </PageWrapper>
   );
