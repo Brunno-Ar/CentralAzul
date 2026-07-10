@@ -32,11 +32,41 @@ export async function GET(request: NextRequest) {
     const user = session.user as SessionUser;
     const userLevel = user.hierarchyLevel || 3;
 
-    const panels = await db.getPanels();
+    const [panels, companies, businessUnits] = await Promise.all([
+      db.getPanels(),
+      db.getCompanies(),
+      db.getBusinessUnits(),
+    ]);
+
+    const validBusinessUnitToolIds = new Set(
+      businessUnits.flatMap((bu) => (bu.tools || []).map((t) => t.id))
+    );
+    const validBusinessUnitSlugs = new Set(
+      businessUnits.map((bu) => bu.slug.toLowerCase())
+    );
+    const validCompanySlugs = new Set(
+      companies.map((c) => c.slug.toLowerCase())
+    );
+
+    const cleanPanels = panels.filter((panel) => {
+      if (panel.businessUnitToolId && !validBusinessUnitToolIds.has(panel.businessUnitToolId)) {
+        return false;
+      }
+      if (panel.companySlug) {
+        const slugLower = panel.companySlug.toLowerCase();
+        if (slugLower.startsWith("comp-") && !validBusinessUnitSlugs.has(slugLower)) {
+          return false;
+        }
+        if (!validCompanySlugs.has(slugLower) && !validBusinessUnitSlugs.has(slugLower)) {
+          return false;
+        }
+      }
+      return true;
+    });
 
     // Return ALL panels with locked flag based on user's hierarchy
     // Mask sensitive data (url, description) for locked panels
-    const responsePanels = panels.map(p => {
+    const responsePanels = cleanPanels.map(p => {
       const locked = userLevel > p.minHierarchy;
       return {
         id: p.id,

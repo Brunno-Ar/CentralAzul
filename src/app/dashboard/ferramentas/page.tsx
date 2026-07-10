@@ -96,8 +96,36 @@ export default async function FerramentasPage({ searchParams }: PageProps) {
     }
   }
 
+  // Crie conjuntos de IDs e Slugs válidos de empresas e unidades ativas
+  const validBusinessUnitToolIds = new Set(
+    businessUnits.flatMap((bu) => (bu.tools || []).map((t) => t.id))
+  );
+  const validBusinessUnitSlugs = new Set(
+    businessUnits.map((bu) => bu.slug.toLowerCase())
+  );
+  const validCompanySlugs = new Set(
+    companiesData?.map((c) => c.slug.toLowerCase()) || []
+  );
+
+  // Filtra painéis órfãos de unidades deletadas ou ferramentas excluídas
+  const cleanPanels = allPanels.filter((panel) => {
+    if (panel.businessUnitToolId && !validBusinessUnitToolIds.has(panel.businessUnitToolId)) {
+      return false;
+    }
+    if (panel.companySlug) {
+      const slugLower = panel.companySlug.toLowerCase();
+      if (slugLower.startsWith("comp-") && !validBusinessUnitSlugs.has(slugLower)) {
+        return false;
+      }
+      if (!validCompanySlugs.has(slugLower) && !validBusinessUnitSlugs.has(slugLower)) {
+        return false;
+      }
+    }
+    return true;
+  });
+
   // Process panels: add locked flag and mask data for locked panels
-  const processedPanels = allPanels.map((panel) => {
+  const processedPanels = cleanPanels.map((panel) => {
     const locked = userLevel > panel.minHierarchy;
     return {
       ...panel,

@@ -143,6 +143,7 @@ export interface MockSystemPanel {
   minHierarchy: number;
   isActive: boolean;
   companySlug?: string | null;
+  businessUnitToolId?: string | null;
 }
 
 export interface MockDocument {
@@ -1067,7 +1068,28 @@ export const dbSim = {
   deleteBusinessUnit: async (id: string) => {
     if (prismaClient && isDbConnected) {
       try {
-        await prismaClient.businessUnit.delete({ where: { id } });
+        await prismaClient.$transaction(async (tx) => {
+          const bu = await tx.businessUnit.findUnique({
+            where: { id },
+            include: { tools: true },
+          });
+          
+          if (bu) {
+            const toolIds = bu.tools.map((t) => t.id);
+            
+            // Remove da tabela SystemPanel as ferramentas associadas a esta unidade
+            await tx.systemPanel.deleteMany({
+              where: {
+                OR: [
+                  { businessUnitToolId: { in: toolIds } },
+                  { companySlug: bu.slug },
+                ],
+              },
+            });
+          }
+          
+          await tx.businessUnit.delete({ where: { id } });
+        });
         return true;
       } catch (e) {
         console.error("Prisma error deleting business unit, falling back", e);
