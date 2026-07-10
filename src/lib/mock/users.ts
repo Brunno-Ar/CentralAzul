@@ -1,4 +1,3 @@
-import { Company } from "@prisma/client";
 import type { MockUser } from "../db";
 
 export const mockUsers: MockUser[] = globalThis.__mockUsers ?? (globalThis.__mockUsers = [
@@ -11,7 +10,7 @@ export const mockUsers: MockUser[] = globalThis.__mockUsers ?? (globalThis.__moc
     password: "admin12345",
     role: "ADMIN",
     hierarchyLevel: 1,
-    company: Company.CENTRAL,
+    company: "CENTRAL",
     status: "ACTIVE",
     createdAt: new Date(),
   },
@@ -24,7 +23,7 @@ export const mockUsers: MockUser[] = globalThis.__mockUsers ?? (globalThis.__moc
     password: "gerente123",
     role: "COORDINATOR",
     hierarchyLevel: 2,
-    company: Company.CENTRAL,
+    company: "CENTRAL",
     status: "ACTIVE",
     createdAt: new Date(),
   },
@@ -37,7 +36,7 @@ export const mockUsers: MockUser[] = globalThis.__mockUsers ?? (globalThis.__moc
     password: "operador123",
     role: "VIEWER",
     hierarchyLevel: 3,
-    company: Company.CENTRAL,
+    company: "CENTRAL",
     status: "ACTIVE",
     createdAt: new Date(),
   },

@@ -1,4 +1,3 @@
-import { Company } from "@prisma/client";
 import type { MockDocument } from "../db";
 
 export const mockDocuments: MockDocument[] = globalThis.__mockDocuments ?? (globalThis.__mockDocuments = [
@@ -9,7 +8,7 @@ export const mockDocuments: MockDocument[] = globalThis.__mockDocuments ?? (glob
     fileUrl: "https://example.com/doc1.pdf",
     fileSize: 1024,
     fileType: "application/pdf",
-    category: Company.CENTRAL,
+    category: "CENTRAL",
     minHierarchyLevel: 1,
     uploadedById: "user-central-admin",
     uploadedByName: "Administrador Central",

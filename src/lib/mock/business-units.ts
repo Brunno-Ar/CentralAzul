@@ -1,4 +1,3 @@
-import { Company } from "@prisma/client";
 import type { MockBusinessUnit } from "../db";
 
 export const mockBusinessUnits: MockBusinessUnit[] = globalThis.__mockBusinessUnits ?? (globalThis.__mockBusinessUnits = [
@@ -6,7 +5,7 @@ export const mockBusinessUnits: MockBusinessUnit[] = globalThis.__mockBusinessUn
     id: "bu-1",
     name: "Borgo del Vino",
     slug: "BORGO",
-    company: Company.BORGO,
+    company: "BORGO",
     description: "Primeiro condominio vinicola da Regiao Serrana e Sudeste.",
     logo: "",
     coverImage: "",
