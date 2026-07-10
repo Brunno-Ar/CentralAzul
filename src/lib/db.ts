@@ -8,6 +8,7 @@ import { panelsDb } from "./db/panels";
 import { businessUnitsDb } from "./db/business-units";
 import { documentsDb } from "./db/documents";
 import { analyticsDb } from "./db/analytics";
+import { announcementsDb } from "./db/announcements";
 
 const parseDbUrl = (urlStr: string) => {
   try {
@@ -2354,12 +2355,12 @@ export const db = {
   deleteDocument: dbSim.deleteDocument,
 
   // Announcements
-  getAnnouncements: dbSim.getAnnouncements,
-  getAnnouncementReadsByUser: dbSim.getAnnouncementReadsByUser,
-  createAnnouncement: dbSim.createAnnouncement,
-  updateAnnouncement: dbSim.updateAnnouncement,
-  deleteAnnouncement: dbSim.deleteAnnouncement,
-  markAnnouncementAsRead: dbSim.markAnnouncementAsRead,
+  getAnnouncements: announcementsDb.getAnnouncements,
+  getAnnouncementReadsByUser: announcementsDb.getAnnouncementReadsByUser,
+  createAnnouncement: announcementsDb.addAnnouncement,
+  updateAnnouncement: announcementsDb.updateAnnouncement,
+  deleteAnnouncement: announcementsDb.deleteAnnouncement,
+  markAnnouncementAsRead: announcementsDb.markAnnouncementAsRead,
 
   // Audit Logs
   getAuditLogs: dbSim.getAuditLogs,

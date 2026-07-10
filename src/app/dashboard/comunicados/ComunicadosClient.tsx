@@ -21,10 +21,11 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { useForm, Resolver, SubmitHandler } from "react-hook-form";
+import { useForm, Resolver, SubmitHandler, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { PageWrapper } from "@/components/PageWrapper";
+import RichTextEditor from "@/components/RichTextEditor";
 
 interface Announcement {
   id: string;
@@ -131,6 +132,7 @@ export default function ComunicadosClient({
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(formSchema) as unknown as Resolver<FormData>,
@@ -478,11 +480,16 @@ export default function ComunicadosClient({
                     <label className="text-[10px] text-brand-terciar/70 font-mono uppercase">
                       Conteudo *
                     </label>
-                    <textarea
-                      {...register("content")}
-                      rows={4}
-                      placeholder="Descreva o comunicado detalhadamente..."
-                      className="w-full px-3 py-2 bg-brand-principal/30 border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar placeholder-brand-terciar/45 focus:outline-none focus:border-brand-secundar focus:bg-white transition-colors resize-none"
+                    <Controller
+                      name="content"
+                      control={control}
+                      render={({ field }) => (
+                        <RichTextEditor
+                          value={field.value}
+                          onChange={field.onChange}
+                          error={!!errors.content}
+                        />
+                      )}
                     />
                     {errors.content && (
                       <p className="text-[10px] text-red-600">

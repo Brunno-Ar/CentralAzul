@@ -38,7 +38,7 @@ async function handleGet(request: NextRequest) {
       >
     > = [];
     if (db.getAnnouncements) {
-      announcements = await db.getAnnouncements();
+      announcements = await db.getAnnouncements(user.hierarchyLevel, user.company);
     }
 
     // Filtrar por empresa, expiração e status ativo

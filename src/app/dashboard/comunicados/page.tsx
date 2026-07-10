@@ -17,10 +17,11 @@ export default async function ComunicadosPage() {
 
   const userId = user?.id || "";
   const userLevel = user?.hierarchyLevel || 3;
+  const companySlug = typeof user?.company === "object" && user?.company ? (user.company as any).slug : user?.company;
 
   // Fetch announcements server-side
   const [announcementsData, readsData] = await Promise.all([
-    db.getAnnouncements().catch(() => []),
+    db.getAnnouncements(userLevel, companySlug).catch(() => []),
     db.getAnnouncementReadsByUser(userId).catch(() => []),
   ]);
 

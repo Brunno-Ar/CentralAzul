@@ -17,6 +17,7 @@ import {
   Bell,
   Building2,
   BarChart3,
+  Activity,
 } from "lucide-react";
 import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
 
@@ -110,6 +111,13 @@ export default function DashboardNav() {
       name: "Drive de Arquivos",
       href: "/dashboard/documentos",
       icon: FileText,
+      allowedRoles: ["ADMIN", "COORDINATOR", "VIEWER"],
+      minLevel: 3,
+    },
+    {
+      name: "Atividades",
+      href: "/dashboard/atividades",
+      icon: Activity,
       allowedRoles: ["ADMIN", "COORDINATOR", "VIEWER"],
       minLevel: 3,
     },
