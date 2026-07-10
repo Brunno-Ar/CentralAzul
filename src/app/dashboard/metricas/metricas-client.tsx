@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, memo } from "react";
+import { useMemo, useState, useEffect, memo } from "react";
 import {
   DollarSign,
   CalendarDays,
@@ -46,12 +46,14 @@ interface MetricasClientProps {
   userRole: string;
   userLevel: number;
   data: DashboardMockData;
+  unitOptions: { value: string; label: string }[];
 }
 
 export default function MetricasClient({
   userRole,
   userLevel,
   data: initialData,
+  unitOptions,
 }: MetricasClientProps) {
   return (
     <MetricasFiltersProvider>
@@ -59,6 +61,7 @@ export default function MetricasClient({
         userRole={userRole}
         userLevel={userLevel}
         initialData={initialData}
+        unitOptions={unitOptions}
       />
     </MetricasFiltersProvider>
   );
@@ -68,30 +71,69 @@ function MetricasClientContent({
   userRole,
   userLevel,
   initialData,
+  unitOptions,
 }: {
   userRole: string;
   userLevel: number;
   initialData: DashboardMockData;
+  unitOptions: { value: string; label: string }[];
 }) {
   const { filters } = useMetricasFilters();
+  const [data, setData] = useState<DashboardMockData>(initialData);
+  const [loading, setLoading] = useState(false);
 
-  // Regenera os dados mock quando os filtros mudam.
-  // Em producão, isto seria substituído por fetch a API com cache.
-  const data = useMemo(
-    () => generateDashboardMockData(filters),
-    [filters],
+  // Estado para a selecao de unidades no comparativo (Bloco 5.5).
+  // Inicia com todas as unidades selecionadas.
+  const [comparisonSelectedSlugs, setComparisonSelectedSlugs] = useState<string[]>(
+    initialData.unitMetrics.map((u) => u.slug),
   );
 
-  // Se os filtros ainda sao os padrao, usa os dados iniciais do server
-  // para evitar recompute desnecessario.
-  const displayData =
-    filters.period === initialData.filters.period &&
-    filters.unit === initialData.filters.unit &&
-    filters.platform === initialData.filters.platform &&
-    filters.period !== "custom"
-      ? initialData
-      : data;
+  useEffect(() => {
+    // Se os filtros ainda sao os padrao (iguais aos do initialData), usa os dados iniciais do server
+    const isInitial =
+      filters.period === initialData.filters.period &&
+      filters.unit === initialData.filters.unit &&
+      filters.platform === initialData.filters.platform &&
+      filters.period !== "custom";
 
+    if (isInitial) {
+      setData(initialData);
+      setComparisonSelectedSlugs(initialData.unitMetrics.map((u) => u.slug));
+      return;
+    }
+
+    const fetchMetrics = async () => {
+      setLoading(true);
+      try {
+        const queryParams = new URLSearchParams({
+          period: String(filters.period),
+          unit: filters.unit,
+          platform: filters.platform,
+        });
+        if (filters.customStartDate) {
+          queryParams.set("customStartDate", filters.customStartDate);
+        }
+        if (filters.customEndDate) {
+          queryParams.set("customEndDate", filters.customEndDate);
+        }
+
+        const res = await fetch(`/api/analytics/metrics?${queryParams.toString()}`);
+        if (res.ok) {
+          const fetchedData = await res.json();
+          setData(fetchedData);
+          setComparisonSelectedSlugs(fetchedData.unitMetrics.map((u: { slug: string }) => u.slug));
+        }
+      } catch (err) {
+        console.error("Erro ao buscar metricas via API:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMetrics();
+  }, [filters, initialData]);
+
+  const displayData = data;
   const k = displayData.kpis;
 
   // Alturas responsivas para graficos (Bloco 5.7 - Performance)
@@ -101,12 +143,6 @@ function MetricasClientContent({
   const radarHeight = useChartHeight(320);
   const donutHeight = useChartHeight(280);
   const stackedBarHeight = useChartHeight(200);
-
-  // Estado para a selecao de unidades no comparativo (Bloco 5.5).
-  // Inicia com todas as unidades selecionadas.
-  const [comparisonSelectedSlugs, setComparisonSelectedSlugs] = useState<string[]>(
-    displayData.unitMetrics.map((u) => u.slug),
-  );
 
   return (
     <PageWrapper title="Metricas">
@@ -120,7 +156,9 @@ function MetricasClientContent({
 
       <div
         id="metricas-conteudo"
-        className="space-y-8 text-brand-terciar"
+        className={`space-y-8 text-brand-terciar transition-opacity duration-200 ease-in-out transform-gpu ${
+          loading ? "opacity-60 pointer-events-none" : "opacity-100"
+        }`}
         role="main"
         aria-label="Dashboard de Metricas e Desempenho"
       >
@@ -143,7 +181,7 @@ function MetricasClientContent({
         </div>
 
         {/* Filtros Globais - Bloco 5.3 */}
-        <FiltersBar />
+        <FiltersBar unitOptions={unitOptions} />
 
         {/* KPI Grid - 8 cards com icone, valor, comparacao e indicador */}
         <KpiGrid kpis={k} />
