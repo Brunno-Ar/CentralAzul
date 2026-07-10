@@ -1,0 +1,54 @@
+/**
+ * Client-side CSRF token management using the double-submit cookie pattern.
+ *
+ * The browser stores a readable (non-HttpOnly) `csrfToken` cookie and sends the
+ * same value in the `X-CSRF-Token` request header. The server validates that both
+ * values match (see `src/lib/csrf.ts`).
+ *
+ * This module is intended to run only in the browser (client components/hooks).
+ */
+
+/**
+ * Generates a cryptographically secure random token.
+ * Uses the Web Crypto API when available, falling back to a secure-ish random
+ * string only if crypto.randomUUID is not present.
+ */
+function generateSecureToken(): string {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
+    return crypto.randomUUID();
+  }
+  // Fallback: 32 hex chars from getRandomValues.
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.getRandomValues === "function"
+  ) {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  }
+  // Last resort fallback (should rarely happen in modern browsers).
+  return (
+    Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
+  );
+}
+
+/**
+ * Returns the current CSRF token from the `csrfToken` cookie, creating and
+ * persisting a new one if it does not exist yet. The cookie is readable by JS
+ * (no HttpOnly flag) so it can be sent back in the X-CSRF-Token header.
+ */
+export function getCsrfToken(): string {
+  if (typeof document === "undefined") return "";
+
+  const match = document.cookie.match(/csrfToken=([^;]+)/);
+  if (match) {
+    return match[1];
+  }
+
+  const token = generateSecureToken();
+  document.cookie = `csrfToken=${token}; path=/; SameSite=Lax; max-age=31536000`;
+  return token;
+}

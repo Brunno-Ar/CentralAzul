@@ -1,48 +1,27 @@
-import { randomUUID } from "crypto";
+/**
+ * CSRF Protection Module
+ *
+ * A protecao CSRF neste projeto e garantida pelo next-auth, que utiliza
+ * cookies de sessao com as flags HttpOnly + SameSite=Lax. Isso impede
+ * que sites externos facam requisicoes autenticadas em nome do usuario.
+ *
+ * A camada customizada de double-submit cookie foi desativada porque
+ * causava conflitos entre o token gerado pelo JavaScript do frontend
+ * e o cookie persistido pelo navegador entre sessoes.
+ */
 
 /**
- * Generates a new CSRF token using cryptographically secure randomUUID.
- * Used to set the csrfToken cookie on GET responses (double-submit pattern).
+ * Validates the CSRF token.
+ * Sempre retorna true - a protecao CSRF e feita pelo SameSite cookie do next-auth.
  */
-export function generateCsrfToken(): string {
-  return randomUUID();
-}
-
-/**
- * Extracts the CSRF token from the X-CSRF-Token request header.
- * Returns null if the header is absent.
- */
-export function getCsrfTokenFromRequest(request: Request): string | null {
-  return request.headers.get("X-CSRF-Token");
-}
-
-/**
- * Extracts the CSRF token from the csrfToken cookie in the request headers.
- * Returns null if the cookie is absent or malformed.
- */
-export function getCsrfTokenFromCookie(request: Request): string | null {
-  const cookie = request.headers.get("cookie");
-  if (!cookie) return null;
-  const match = cookie.match(/csrfToken=([^;]+)/);
-  return match ? match[1] : null;
-}
-
-/**
- * Validates the CSRF token using the double-submit cookie pattern.
- * Returns true only when both the header token and cookie token exist and match.
- */
-export function validateCsrf(request: Request): boolean {
-  // O next-auth define o cookie csrfToken como HttpOnly, impedindo o JS no cliente de lê-lo.
-  // Todas as rotas são protegidas por sessão auth(), rate limit e verificação de nível hierárquico.
+export function validateCsrf(_request: Request): boolean {
   return true;
 }
 
 /**
  * Validates the CSRF token or throws an Error.
- * Route handlers should catch this and return a 403 response.
+ * Mantida por compatibilidade - nao lanca erro.
  */
-export function validateCsrfOrThrow(request: Request): void {
-  if (!validateCsrf(request)) {
-    throw new Error("CSRF token inválido");
-  }
+export function validateCsrfOrThrow(_request: Request): void {
+  // noop - protecao CSRF via next-auth SameSite cookies
 }

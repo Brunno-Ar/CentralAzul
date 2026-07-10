@@ -4,6 +4,31 @@ import { authConfig } from "./auth.config";
 import { db } from "./lib/db";
 import { verifyTotp } from "./lib/mfa";
 
+async function getAuthDefaults(userRole?: string | null, userLevel?: number | null, userCompany?: string | null) {
+  const defaults = await db.getAuthDefaults();
+  let role = userRole || defaults.defaultRole;
+  let hierarchyLevel = userLevel;
+  let company = userCompany;
+
+  // Resolve hierarchy level from role if not set or dynamic sync
+  if (hierarchyLevel === null || hierarchyLevel === undefined) {
+    try {
+      const roles = await db.getRoles();
+      const dbRole = roles.find((r: any) => r.name === role);
+      hierarchyLevel = dbRole ? dbRole.hierarchyLevel : defaults.defaultHierarchyLevel;
+    } catch {
+      hierarchyLevel = defaults.defaultHierarchyLevel;
+    }
+  }
+
+  // Resolve company if not set
+  if (!company) {
+    company = defaults.defaultCompany;
+  }
+
+  return { role, hierarchyLevel, company };
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   providers: [
@@ -107,10 +132,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.name = u.name;
         token.email = u.email;
         token.picture = u.image;
-        token.role = u.role || "VIEWER";
-        token.hierarchyLevel = u.hierarchyLevel || 3;
-        token.company = u.company || "CENTRAL";
         token.status = u.status || "ACTIVE";
+
+        const defaults = await getAuthDefaults(u.role, u.hierarchyLevel, u.company);
+        token.role = defaults.role;
+        token.hierarchyLevel = defaults.hierarchyLevel;
+        token.company = defaults.company;
       }
 
       // Handle updating the session on profile/role changes in the UI
