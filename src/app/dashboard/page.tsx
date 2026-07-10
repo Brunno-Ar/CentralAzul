@@ -76,7 +76,7 @@ export default async function DashboardHome() {
     db.getUsers().catch(() => []),
     db.getPanels().catch(() => []),
     db.getDocuments(userLevel, userCompany).catch(() => []),
-    db.getBusinessUnitsForHome().catch(() => []),
+    db.getBusinessUnits().catch(() => []),
     db.getCompanies().catch(() => []),
   ]);
 
@@ -135,16 +135,8 @@ export default async function DashboardHome() {
 
   let activeCompanies: DashboardCompany[] = fallbackCompanies;
   if (Array.isArray(businessUnitsData) && businessUnitsData.length > 0) {
-    const mappedCompanies: DashboardCompany[] = (businessUnitsData as Array<{
-      id: string;
-      name: string;
-      slug: string;
-      company: string;
-      description: string | null;
-      order: number;
-      isActive: boolean;
-      showOnHome: boolean;
-    }>).map((bu) => {
+    const homeUnits = (businessUnitsData as any[]).filter(bu => bu.isActive && bu.showOnHome);
+    const mappedCompanies: DashboardCompany[] = homeUnits.map((bu) => {
       const comp = companiesList.find((c) => c.slug === bu.company);
       const compColor = (comp?.color || bu.company).toUpperCase();
 
