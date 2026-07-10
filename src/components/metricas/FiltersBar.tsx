@@ -5,7 +5,6 @@ import { Calendar, Building2, Smartphone, X, Check } from "lucide-react";
 import { useMetricasFilters } from "./use-metricas-filters";
 import {
   PERIOD_LABELS,
-  UNIT_OPTIONS,
   PLATFORM_OPTIONS,
   type PeriodFilter,
 } from "@/lib/mock/dashboard-metrics";
@@ -13,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 const PERIOD_VALUES: Exclude<PeriodFilter, "custom">[] = [7, 30, 90, 365];
 
-export function FiltersBar() {
+export function FiltersBar({ unitOptions }: { unitOptions: { value: string; label: string }[] }) {
   const { filters, setPeriod, setUnit, setPlatform, setCustomDateRange, resetFilters } =
     useMetricasFilters();
   const [showCustomDate, setShowCustomDate] = useState(filters.period === "custom");
@@ -117,7 +116,7 @@ export function FiltersBar() {
             aria-label="Filtrar por unidade de negocio"
             className="flex-1 text-xs font-semibold text-brand-terciar bg-transparent focus:outline-none cursor-pointer"
           >
-            {UNIT_OPTIONS.map((opt) => (
+            {unitOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
@@ -152,7 +151,7 @@ export function FiltersBar() {
           <div className="flex items-center gap-2 text-[10px] font-mono text-brand-terciar/50">
             <Check className="w-3 h-3 text-brand-secundar" />
             <span>
-              Filtros ativos: {getActiveFiltersText(filters)}
+              Filtros ativos: {getActiveFiltersText(filters, unitOptions)}
             </span>
           </div>
           <button
@@ -170,7 +169,7 @@ export function FiltersBar() {
 
 const DEFAULT_PERIOD: PeriodFilter = 30;
 
-function getActiveFiltersText(filters: { period: PeriodFilter; unit: string; platform: string }): string {
+function getActiveFiltersText(filters: { period: PeriodFilter; unit: string; platform: string }, unitOptions: { value: string; label: string }[]): string {
   const parts: string[] = [];
   if (filters.period === "custom") {
     parts.push("Período personalizado");
@@ -178,7 +177,7 @@ function getActiveFiltersText(filters: { period: PeriodFilter; unit: string; pla
     parts.push(PERIOD_LABELS[filters.period as 7 | 30 | 90 | 365]);
   }
   if (filters.unit !== "all") {
-    const unit = UNIT_OPTIONS.find((u) => u.value === filters.unit);
+    const unit = unitOptions.find((u) => u.value === filters.unit);
     parts.push(unit?.label ?? filters.unit);
   }
   if (filters.platform !== "all") {
