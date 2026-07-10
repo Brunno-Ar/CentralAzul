@@ -82,7 +82,7 @@ export function ChartTooltip({
   const rawValue = item.value;
   const formattedValue = valueFormatter
     ? valueFormatter(rawValue ?? 0)
-    : (rawValue?.toString() ?? "—");
+    : (rawValue?.toString() ?? "-");
 
   return (
     <div className="px-3 py-2 rounded-lg border border-brand-terciar/15 bg-white shadow-lg text-xs space-y-1">

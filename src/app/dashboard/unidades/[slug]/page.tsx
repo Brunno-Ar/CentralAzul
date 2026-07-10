@@ -697,7 +697,7 @@ export default function BusinessUnitDetailPage() {
                   icon={Users}
                   label="Seguidores (Meta)"
                   value={
-                    latestMeta ? formatNumber(latestMeta.followersCount) : "—"
+                    latestMeta ? formatNumber(latestMeta.followersCount) : "-"
                   }
                   iconColor="text-pink-600 bg-pink-50"
                 />
@@ -707,7 +707,7 @@ export default function BusinessUnitDetailPage() {
                   value={
                     latestAnalytics
                       ? formatNumber(latestAnalytics.pageViews)
-                      : "—"
+                      : "-"
                   }
                   iconColor="text-blue-600 bg-blue-50"
                 />
@@ -717,7 +717,7 @@ export default function BusinessUnitDetailPage() {
                   value={
                     latestMeta
                       ? `${latestMeta.engagementRate.toFixed(1)}%`
-                      : "—"
+                      : "-"
                   }
                   iconColor="text-emerald-600 bg-emerald-50"
                 />
@@ -725,7 +725,7 @@ export default function BusinessUnitDetailPage() {
                   icon={DollarSign}
                   label="Faturamento"
                   value={
-                    latestRevenue ? formatCurrency(latestRevenue.amount) : "—"
+                    latestRevenue ? formatCurrency(latestRevenue.amount) : "-"
                   }
                   iconColor="text-amber-600 bg-amber-50"
                 />
@@ -736,22 +736,22 @@ export default function BusinessUnitDetailPage() {
                 <ContactItem
                   icon={MapPin}
                   label="Endereço"
-                  value={businessUnit.address || "—"}
+                  value={businessUnit.address || "-"}
                 />
                 <ContactItem
                   icon={Phone}
                   label="Telefone"
-                  value={businessUnit.phone || "—"}
+                  value={businessUnit.phone || "-"}
                 />
                 <ContactItem
                   icon={Mail}
                   label="E-mail"
-                  value={businessUnit.email || "—"}
+                  value={businessUnit.email || "-"}
                 />
                 <ContactItem
                   icon={Globe}
                   label="Website"
-                  value={businessUnit.website ? "Acessar site" : "—"}
+                  value={businessUnit.website ? "Acessar site" : "-"}
                 />
               </div>
 
@@ -874,7 +874,7 @@ export default function BusinessUnitDetailPage() {
                   value={
                     latestAnalytics
                       ? formatNumber(latestAnalytics.pageViews)
-                      : "—"
+                      : "-"
                   }
                   iconColor="text-blue-600 bg-blue-50"
                 />
@@ -884,7 +884,7 @@ export default function BusinessUnitDetailPage() {
                   value={
                     latestAnalytics
                       ? formatNumber(latestAnalytics.uniqueVisitors)
-                      : "—"
+                      : "-"
                   }
                   iconColor="text-purple-600 bg-purple-50"
                 />
@@ -894,7 +894,7 @@ export default function BusinessUnitDetailPage() {
                   value={
                     latestAnalytics
                       ? formatNumber(latestAnalytics.sessions)
-                      : "—"
+                      : "-"
                   }
                   iconColor="text-emerald-600 bg-emerald-50"
                 />
@@ -904,7 +904,7 @@ export default function BusinessUnitDetailPage() {
                   value={
                     latestAnalytics
                       ? `${latestAnalytics.bounceRate.toFixed(1)}%`
-                      : "—"
+                      : "-"
                   }
                   iconColor="text-amber-600 bg-amber-50"
                 />
@@ -992,20 +992,20 @@ export default function BusinessUnitDetailPage() {
                   icon={DollarSign}
                   label="Último Período"
                   value={
-                    latestRevenue ? formatCurrency(latestRevenue.amount) : "—"
+                    latestRevenue ? formatCurrency(latestRevenue.amount) : "-"
                   }
                   iconColor="text-amber-600 bg-amber-50"
                 />
                 <StatCard
                   icon={TrendingUp}
                   label="Tipo"
-                  value={latestRevenue ? latestRevenue.type : "—"}
+                  value={latestRevenue ? latestRevenue.type : "-"}
                   iconColor="text-blue-600 bg-blue-50"
                 />
                 <StatCard
                   icon={Settings}
                   label="Fonte"
-                  value={latestRevenue ? latestRevenue.source : "—"}
+                  value={latestRevenue ? latestRevenue.source : "-"}
                   iconColor="text-emerald-600 bg-emerald-50"
                 />
               </div>
@@ -1057,7 +1057,7 @@ export default function BusinessUnitDetailPage() {
                             {r.source}
                           </td>
                           <td className="py-2 text-brand-terciar/70 text-xs">
-                            {r.notes || "—"}
+                            {r.notes || "-"}
                           </td>
                           {userLevel <= 2 && (
                             <td className="py-2 text-right">

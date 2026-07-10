@@ -98,9 +98,10 @@ const getCsrfToken = () => {
 interface UnidadesClientProps {
   initialBusinessUnits: BusinessUnit[];
   userLevel: number;
+  companies: { value: string; label: string }[];
 }
 
-export default function UnidadesClient({ initialBusinessUnits, userLevel }: UnidadesClientProps) {
+export default function UnidadesClient({ initialBusinessUnits, userLevel, companies }: UnidadesClientProps) {
   const router = useRouter();
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>(initialBusinessUnits);
   const [loading, setLoading] = useState(false);
@@ -187,12 +188,6 @@ export default function UnidadesClient({ initialBusinessUnits, userLevel }: Unid
       setMessage({ type: "error", text: "Erro de conexao" });
     }
   };
-
-  const companies = [
-    { value: "BORGO", label: "Borgo del Vin" },
-    { value: "MAPLE_BEAR", label: "Maple Bear" },
-    { value: "AZUL", label: "Azul Incorporacoes" },
-  ];
 
   return (
     <PageWrapper title="Unidades de Negocio">
@@ -671,7 +666,7 @@ export default function UnidadesClient({ initialBusinessUnits, userLevel }: Unid
                       <p className="text-sm font-bold text-brand-extra1">
                         {getLatestMeta(bu)
                           ? formatNumber(getLatestMeta(bu)!.followersCount)
-                          : "—"}
+                          : "-"}
                       </p>
                     </div>
                     <div className="text-right">
@@ -681,7 +676,7 @@ export default function UnidadesClient({ initialBusinessUnits, userLevel }: Unid
                       <p className="text-sm font-bold text-brand-extra1">
                         {getLatestAnalytics(bu)
                           ? formatNumber(getLatestAnalytics(bu)!.pageViews)
-                          : "—"}
+                          : "-"}
                       </p>
                     </div>
                     <div className="text-right">
@@ -691,7 +686,7 @@ export default function UnidadesClient({ initialBusinessUnits, userLevel }: Unid
                       <p className="text-sm font-bold text-brand-extra1">
                         {getLatestRevenue(bu)
                           ? `R$ ${formatNumber(getLatestRevenue(bu)!.amount)}`
-                          : "—"}
+                          : "-"}
                       </p>
                     </div>
                   </div>
