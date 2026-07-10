@@ -2,7 +2,6 @@
 // Centralized validation layer for consistency and maintainability
 
 import { z } from "zod";
-import { Company } from "@prisma/client";
 
 // ============================================
 // COMMON SCHEMAS
@@ -59,7 +58,7 @@ export const createUserSchema = z.object({
   email: z.string().email("Email invalido"),
   role: userRoleEnum.default("VIEWER"),
   hierarchyLevel: hierarchyLevelSchema.optional(),
-  company: z.nativeEnum(Company).default(Company.CENTRAL),
+  company: z.string().default("CENTRAL"),
   status: userStatusEnum.default("ACTIVE"),
 });
 
@@ -88,7 +87,7 @@ export const deleteRoleSchema = z.object({
 // PANEL/TOOL SCHEMAS
 // ============================================
 
-export const panelCategoryEnum = z.nativeEnum(Company);
+export const panelCategoryEnum = z.string();
 
 export const createPanelSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").max(100),

@@ -3,7 +3,6 @@ import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "./auth.config";
 import { db } from "./lib/db";
 import { verifyTotp } from "./lib/mfa";
-import { Company } from "@prisma/client";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -101,7 +100,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           image?: string | null;
           role?: string;
           hierarchyLevel?: number;
-          company?: Company;
+          company?: string;
           status?: string;
         };
         token.id = u.id;
@@ -110,7 +109,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.picture = u.image;
         token.role = u.role || "VIEWER";
         token.hierarchyLevel = u.hierarchyLevel || 3;
-        token.company = u.company || Company.CENTRAL;
+        token.company = u.company || "CENTRAL";
         token.status = u.status || "ACTIVE";
       }
 
@@ -119,7 +118,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const sessionData = session as {
           role?: string;
           hierarchyLevel?: number;
-          company?: Company;
+          company?: string;
           user?: { name?: string | null; image?: string | null };
         };
         token.role = sessionData.role ?? token.role;
@@ -142,7 +141,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           image?: string | null;
           role?: string;
           hierarchyLevel?: number;
-          company?: Company;
+          company?: string;
           status?: string;
         };
         u.id = token.id as string;
@@ -151,7 +150,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         u.image = token.picture as string | null | undefined;
         u.role = token.role as string;
         u.hierarchyLevel = token.hierarchyLevel as number;
-        u.company = token.company as Company;
+        u.company = token.company as string;
         u.status = token.status as string;
       }
       return session;
