@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, memo } from "react";
+import { useState, useEffect, memo } from "react";
 import {
   DollarSign,
   CalendarDays,
@@ -38,7 +38,6 @@ import {
   useMetricasFilters,
 } from "@/components/metricas/use-metricas-filters";
 import {
-  generateDashboardMockData,
   type DashboardMockData,
 } from "@/lib/mock/dashboard-metrics";
 
@@ -97,8 +96,10 @@ function MetricasClientContent({
       filters.period !== "custom";
 
     if (isInitial) {
-      setData(initialData);
-      setComparisonSelectedSlugs(initialData.unitMetrics.map((u) => u.slug));
+      Promise.resolve().then(() => {
+        setData(initialData);
+        setComparisonSelectedSlugs(initialData.unitMetrics.map((u) => u.slug));
+      });
       return;
     }
 

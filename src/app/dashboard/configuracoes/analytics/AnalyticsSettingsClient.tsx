@@ -81,7 +81,9 @@ export default function AnalyticsSettingsClient() {
   }, []);
 
   useEffect(() => {
-    fetchConfig();
+    Promise.resolve().then(() => {
+      fetchConfig();
+    });
   }, [fetchConfig]);
 
   const handleSyncAll = async () => {

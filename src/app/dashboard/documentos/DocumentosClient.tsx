@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import * as LucideIcons from "lucide-react";
+import { useCompanies } from "@/hooks/useCompanies";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   FileText, 
@@ -41,12 +43,20 @@ interface DocumentosClientProps {
   userLevel: number;
 }
 
+interface DocumentType {
+  id: string;
+  name: string;
+  icon: string;
+  isActive: boolean;
+}
+
 export default function DocumentosClient({
   documents: initialDocuments,
   isUploadAllowed,
   userLevel,
 }: DocumentosClientProps) {
   const [documents, setDocuments] = useState<DocumentItem[]>(initialDocuments);
+  const { companies } = useCompanies();
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<string>("ALL");
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -62,6 +72,22 @@ export default function DocumentosClient({
   const [extFileType, setExtFileType] = useState("link");
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [docTypes, setDocTypes] = useState<DocumentType[]>([]);
+
+  useEffect(() => {
+    const fetchDocTypes = async () => {
+      try {
+        const res = await fetch("/api/document-types");
+        if (res.ok) {
+          const data = await res.json();
+          setDocTypes(data);
+        }
+      } catch (err) {
+        console.error("Erro ao buscar tipos de documentos:", err);
+      }
+    };
+    fetchDocTypes();
+  }, []);
 
   const reloadDocuments = useCallback(async () => {
     try {
@@ -175,9 +201,11 @@ export default function DocumentosClient({
   };
 
   const getCompanyBadgeColor = (cat: string) => {
-    switch (cat) {
-      case "BORGO": return "text-brand-terciar border-brand-terciar/20 bg-brand-terciar/10";
-      case "MAPLE_BEAR": return "text-brand-secundar border-brand-secundar/20 bg-brand-secundar/10";
+    const comp = companies.find((c) => c.slug === cat);
+    const color = comp?.color || "GOLD";
+    switch (color) {
+      case "WINE": return "text-brand-terciar border-brand-terciar/20 bg-brand-terciar/10";
+      case "RED": return "text-brand-secundar border-brand-secundar/20 bg-brand-secundar/10";
       case "AZUL": return "text-brand-extra2 border-brand-extra2/20 bg-brand-extra2/10";
       default: return "text-brand-extra1 border-brand-secundar/20 bg-brand-principal";
     }
@@ -186,6 +214,15 @@ export default function DocumentosClient({
   // Get matching icon based on file type
   const getFileIcon = (fileType: string) => {
     const type = fileType.toLowerCase();
+    const matchedType = docTypes.find(t => 
+      t.name.toLowerCase() === type ||
+      type.includes(t.name.toLowerCase())
+    );
+    if (matchedType) {
+      const IconComp = (LucideIcons[matchedType.icon as keyof typeof LucideIcons] as React.ComponentType<{ className?: string }>) || LucideIcons.FileText;
+      return <IconComp className="w-5 h-5 text-brand-extra2" />;
+    }
+
     if (type.includes("video") || type === "video") return <Video className="w-5 h-5 text-brand-extra2" />;
     if (type.includes("spreadsheet") || type.includes("excel") || type.includes("csv") || type.includes("sheet")) {
       return <FileSpreadsheet className="w-5 h-5 text-emerald-600" />;
@@ -335,10 +372,11 @@ export default function DocumentosClient({
                     onChange={(e) => setCategory(e.target.value)}
                     className="w-full px-3 py-2 bg-brand-principal/30 border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar focus:outline-none focus:border-brand-secundar focus:bg-white transition-colors cursor-pointer"
                   >
-                    <option value="CENTRAL">Central / Geral</option>
-                    <option value="BORGO">Borgo del Vin</option>
-                    <option value="MAPLE_BEAR">Maple Bear</option>
-                    <option value="AZUL">Azul Incorporacoes</option>
+                    {companies.map((c) => (
+                      <option key={c.slug} value={c.slug}>
+                        {c.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -471,46 +509,19 @@ export default function DocumentosClient({
           >
             Todos
           </button>
-          <button
-            onClick={() => setActiveFilter("BORGO")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border whitespace-nowrap transition-all cursor-pointer ${
-              activeFilter === "BORGO"
-                ? "bg-brand-secundar text-white border-brand-secundar shadow-sm"
-                : "bg-white border-brand-terciar/10 text-brand-terciar/60 hover:text-brand-secundar hover:bg-brand-principal/20"
-            }`}
-          >
-            Borgo del Vin
-          </button>
-          <button
-            onClick={() => setActiveFilter("MAPLE_BEAR")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border whitespace-nowrap transition-all cursor-pointer ${
-              activeFilter === "MAPLE_BEAR"
-                ? "bg-brand-secundar text-white border-brand-secundar shadow-sm"
-                : "bg-white border-brand-terciar/10 text-brand-terciar/60 hover:text-brand-secundar hover:bg-brand-principal/20"
-            }`}
-          >
-            Maple Bear
-          </button>
-          <button
-            onClick={() => setActiveFilter("AZUL")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border whitespace-nowrap transition-all cursor-pointer ${
-              activeFilter === "AZUL"
-                ? "bg-brand-secundar text-white border-brand-secundar shadow-sm"
-                : "bg-white border-brand-terciar/10 text-brand-terciar/60 hover:text-brand-secundar hover:bg-brand-principal/20"
-            }`}
-          >
-            Azul Incorp
-          </button>
-          <button
-            onClick={() => setActiveFilter("CENTRAL")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border whitespace-nowrap transition-all cursor-pointer ${
-              activeFilter === "CENTRAL"
-                ? "bg-brand-secundar text-white border-brand-secundar shadow-sm"
-                : "bg-white border-brand-terciar/10 text-brand-terciar/60 hover:text-brand-secundar hover:bg-brand-principal/20"
-            }`}
-          >
-            Geral
-          </button>
+          {companies.map((comp) => (
+            <button
+              key={comp.slug}
+              onClick={() => setActiveFilter(comp.slug)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border whitespace-nowrap transition-all cursor-pointer ${
+                activeFilter === comp.slug
+                  ? "bg-brand-secundar text-white border-brand-secundar shadow-sm"
+                  : "bg-white border-brand-terciar/10 text-brand-terciar/60 hover:text-brand-secundar hover:bg-brand-principal/20"
+              }`}
+            >
+              {comp.name}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -534,7 +545,7 @@ export default function DocumentosClient({
                 <div className="space-y-3">
                   <div className="flex items-start justify-between w-full">
                     <span className={`text-[9px] font-bold border px-2 py-0.5 rounded ${getCompanyBadgeColor(doc.category)}`}>
-                      {doc.category === "MAPLE_BEAR" ? "Maple Bear" : doc.category === "BORGO" ? "Borgo del Vin" : doc.category === "AZUL" ? "Azul Incorp" : "Central"}
+                      {companies.find((c) => c.slug === doc.category)?.name || doc.category}
                     </span>
                     
                     <div className="flex gap-1.5 items-center">

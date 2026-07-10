@@ -55,12 +55,7 @@ interface BusinessUnitConfig {
   company: string;
 }
 
-interface CompanyConfig {
-  id: string;
-  name: string;
-  slug: string;
-  color: string;
-}
+import type { CompanyConfig } from "@/types/company";
 
 interface FerramentasClientProps {
   initialPanels: SystemPanel[];
@@ -215,7 +210,7 @@ export default function FerramentasClient({
         }
         setPanels(data);
       }
-    } catch (err) {
+    } catch {
       setMessage({ type: "error", text: "Erro ao criar ferramenta" });
     } finally {
       setSubmitting(false);
@@ -262,17 +257,7 @@ export default function FerramentasClient({
     const matchedUnit = businessUnits.find((bu) => bu.slug.toUpperCase() === slugUpper);
     if (matchedUnit) return matchedUnit.name;
 
-    // Fallbacks para compatibilidade
-    switch (slugUpper) {
-      case "BORGO":
-        return "Borgo del Vino";
-      case "MAPLE_BEAR":
-        return "Maple Bear";
-      case "AZUL":
-        return "Azul Incorporacoes";
-      default:
-        return companySlug || cat || "Grupo Azul Central";
-    }
+    return companySlug || cat || "Grupo Azul Central";
   };
 
   return (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { useCompanies } from "@/hooks/useCompanies";
 import { useParams, useRouter } from "next/navigation";
 import NextImage from "next/image";
 import { useSession } from "next-auth/react";
@@ -135,9 +136,9 @@ export default function BusinessUnitDetailPage() {
   const slug = params.slug as string;
   const { data: session } = useSession();
   const user = session?.user as SessionUser | undefined;
-  const userRole = user?.role || "VIEWER";
   const userLevel = user?.hierarchyLevel || 3;
   const [businessUnit, setBusinessUnit] = useState<BusinessUnit | null>(null);
+  const { companies } = useCompanies();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<
@@ -187,7 +188,7 @@ export default function BusinessUnitDetailPage() {
       } else {
         try {
           const err = await res.json();
-          setMessage({ type: "error", text: err.error || "Erro ao editar item" });
+          setMessage({ type: "error", text: err.details ? `${err.error}: ${err.details}` : (err.error || "Erro ao editar item") });
         } catch {
           setMessage({ type: "error", text: "Erro ao editar item" });
         }
@@ -234,7 +235,7 @@ export default function BusinessUnitDetailPage() {
       } else {
         try {
           const err = await res.json();
-          setMessage({ type: "error", text: err.error || "Erro ao adicionar item" });
+          setMessage({ type: "error", text: err.details ? `${err.error}: ${err.details}` : (err.error || "Erro ao adicionar item") });
         } catch {
           setMessage({ type: "error", text: "Erro ao adicionar item" });
         }
@@ -1273,9 +1274,11 @@ export default function BusinessUnitDetailPage() {
                       defaultValue={businessUnit.company}
                       className="w-full px-3 py-2 bg-brand-principal/30 border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar focus:outline-none focus:border-brand-secundar focus:bg-white transition-colors cursor-pointer"
                     >
-                      <option value="BORGO">Borgo del Vin</option>
-                      <option value="MAPLE_BEAR">Maple Bear</option>
-                      <option value="AZUL">Azul Incorporações</option>
+                      {companies.map((c) => (
+                        <option key={c.slug} value={c.slug}>
+                          {c.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
 

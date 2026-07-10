@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useCompanies } from "@/hooks/useCompanies";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
@@ -80,21 +81,7 @@ const priorityOptions = [
   },
 ];
 
-const companyOptions = [
-  { value: "ALL", label: "Todas as empresas" },
-  { value: "CENTRAL", label: "Central / Geral" },
-  { value: "BORGO", label: "Borgo del Vin" },
-  { value: "MAPLE_BEAR", label: "Maple Bear" },
-  { value: "AZUL", label: "Azul Incorporacoes" },
-];
 
-const companyColors: Record<string, string> = {
-  CENTRAL: "text-brand-extra1 bg-brand-principal/20 border-brand-secundar/30",
-  BORGO: "text-brand-terciar bg-brand-terciar/10 border-brand-terciar/30",
-  MAPLE_BEAR:
-    "text-brand-secundar bg-brand-secundar/10 border-brand-secundar/30",
-  AZUL: "text-brand-extra2 bg-brand-extra2/10 border-brand-extra2/30",
-};
 
 const formSchema = z.object({
   title: z.string().min(2, "Titulo deve ter pelo menos 2 caracteres"),
@@ -112,6 +99,28 @@ export default function ComunicadosClient({
   initialAnnouncements,
   userLevel,
 }: ComunicadosClientProps) {
+  const { companies } = useCompanies();
+  const companyOptions = [
+    { value: "ALL", label: "Todas as empresas" },
+    ...companies.map((c) => ({ value: c.slug, label: c.name })),
+  ];
+  const companyColors = new Proxy({} as Record<string, string>, {
+    get: (target, name: string) => {
+      if (typeof name !== "string") return undefined;
+      const clean = name.trim().toUpperCase();
+      const comp = companies.find(c => 
+        c.slug.toUpperCase() === clean || 
+        c.name.toUpperCase() === clean
+      );
+      const color = comp?.color || "GOLD";
+      switch (color) {
+        case "WINE": return "text-brand-terciar bg-brand-terciar/10 border-brand-terciar/30";
+        case "RED": return "text-brand-secundar bg-brand-secundar/10 border-brand-secundar/30";
+        case "AZUL": return "text-brand-extra2 bg-brand-extra2/10 border-brand-extra2/30";
+        default: return "text-brand-extra1 bg-brand-principal/20 border-brand-secundar/30";
+      }
+    }
+  });
   const [announcements, setAnnouncements] = useState<Announcement[]>(initialAnnouncements);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<string>("ALL");

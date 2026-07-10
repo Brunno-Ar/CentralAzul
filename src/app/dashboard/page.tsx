@@ -1,5 +1,5 @@
 import { auth } from "@/auth";
-import { db } from "@/lib/db";
+import { db, MockBusinessUnit, MockSystemPanel } from "@/lib/db";
 import DashboardHomeClient from "./DashboardHomeClient";
 
 interface DashboardCompany {
@@ -90,16 +90,16 @@ export default async function DashboardHome() {
 
   // Filtragem de ferramentas órfãs e unificação de ferramentas de unidades
   const validBusinessUnitToolIds = new Set(
-    (businessUnitsData as any[] || []).flatMap((bu) => (bu.tools || []).map((t: any) => t.id))
+    (businessUnitsData as MockBusinessUnit[] || []).flatMap((bu) => (bu.tools || []).map((t) => t.id))
   );
   const validBusinessUnitSlugs = new Set(
-    (businessUnitsData as any[] || []).map((bu) => bu.slug.toLowerCase())
+    (businessUnitsData as MockBusinessUnit[] || []).map((bu) => bu.slug.toLowerCase())
   );
   const validCompanySlugs = new Set(
     (companiesList || []).map((c) => c.slug.toLowerCase())
   );
 
-  const cleanPanels = (panelsData as any[] || []).filter((panel) => {
+  const cleanPanels = (panelsData as MockSystemPanel[] || []).filter((panel) => {
     if (panel.businessUnitToolId && !validBusinessUnitToolIds.has(panel.businessUnitToolId)) {
       return false;
     }
@@ -122,7 +122,7 @@ export default async function DashboardHome() {
   );
 
   let unlistedBuToolsCount = 0;
-  for (const bu of (businessUnitsData as any[] || [])) {
+  for (const bu of (businessUnitsData as MockBusinessUnit[] || [])) {
     if (!bu.tools) continue;
     for (const tool of bu.tools) {
       if (!syncedToolIds.has(tool.id)) {
@@ -135,7 +135,7 @@ export default async function DashboardHome() {
 
   let activeCompanies: DashboardCompany[] = fallbackCompanies;
   if (Array.isArray(businessUnitsData) && businessUnitsData.length > 0) {
-    const homeUnits = (businessUnitsData as any[]).filter(bu => bu.isActive && bu.showOnHome);
+    const homeUnits = (businessUnitsData as MockBusinessUnit[]).filter(bu => bu.isActive && bu.showOnHome);
     const mappedCompanies: DashboardCompany[] = homeUnits.map((bu) => {
       const comp = companiesList.find((c) => c.slug === bu.company);
       const compColor = (comp?.color || bu.company).toUpperCase();

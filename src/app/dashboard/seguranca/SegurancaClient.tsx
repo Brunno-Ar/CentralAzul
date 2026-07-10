@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -26,6 +26,9 @@ interface RoleConfig {
 
 interface MenuPermissionItem {
   href: string; name: string; minLevel: number;
+  icon?: string | null;
+  order?: number;
+  isActive?: boolean;
 }
 
 interface LevelItem {
@@ -84,6 +87,9 @@ export default function SegurancaClient({
   const [newMenuPermHref, setNewMenuPermHref] = useState("");
   const [newMenuPermName, setNewMenuPermName] = useState("");
   const [newMenuPermMinLevel, setNewMenuPermMinLevel] = useState(3);
+  const [newMenuPermIcon, setNewMenuPermIcon] = useState("");
+  const [newMenuPermOrder, setNewMenuPermOrder] = useState(0);
+  const [newMenuPermIsActive, setNewMenuPermIsActive] = useState(true);
   const [deletingMenuPermHref, setDeletingMenuPermHref] = useState<string | null>(null);
 
   const [levels, setLevels] = useState<LevelItem[]>(initialLevels);
@@ -150,11 +156,20 @@ export default function SegurancaClient({
       const res = await fetch("/api/menu-permissions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ href: newMenuPermHref, name: newMenuPermName, minLevel: newMenuPermMinLevel }),
+        body: JSON.stringify({
+          href: newMenuPermHref,
+          name: newMenuPermName,
+          minLevel: newMenuPermMinLevel,
+          icon: newMenuPermIcon || null,
+          order: newMenuPermOrder,
+          isActive: newMenuPermIsActive,
+        }),
       });
       if (res.ok) {
         setMenuPermMessage({ type: "success", text: "Permissao criada com sucesso" });
-        setNewMenuPermHref(""); setNewMenuPermName(""); setNewMenuPermMinLevel(3); setIsCreatingMenuPerm(false);
+        setNewMenuPermHref(""); setNewMenuPermName(""); setNewMenuPermMinLevel(3);
+        setNewMenuPermIcon(""); setNewMenuPermOrder(0); setNewMenuPermIsActive(true);
+        setIsCreatingMenuPerm(false);
         await Promise.all([loadMenuPermissions(), loadLogs()]);
       } else { const errData = await res.json(); setMenuPermMessage({ type: "error", text: errData.error || "Erro ao criar permissao" }); }
     } catch { setMenuPermMessage({ type: "error", text: "Erro na conexao com o servidor" }); }
@@ -266,10 +281,11 @@ export default function SegurancaClient({
     } catch { setUserMessage({ type: "error", text: "Erro na conexao com o servidor" }); }
   };
 
-  const handleUpdateMenuPermission = async (href: string, minLevel: number) => {
+  const handleUpdateMenuPermission = async (href: string, updates: Partial<MenuPermissionItem> | number) => {
     setUpdatingMenuHref(href); setMenuPermMessage(null);
+    const body = typeof updates === "number" ? { href, minLevel: updates } : { href, ...updates };
     try {
-      const res = await fetch("/api/menu-permissions", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ href, minLevel }) });
+      const res = await fetch("/api/menu-permissions", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (res.ok) { setMenuPermMessage({ type: "success", text: "Permissoes do menu salvas com sucesso" }); await Promise.all([loadMenuPermissions(), loadLogs()]); }
       else { const errData = await res.json(); setMenuPermMessage({ type: "error", text: errData.error || "Erro ao atualizar permissao" }); }
     } catch { setMenuPermMessage({ type: "error", text: "Erro na conexao com o servidor" }); }
@@ -573,10 +589,13 @@ export default function SegurancaClient({
               <motion.div id="new-menu-perm-form" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
                 <form onSubmit={handleCreateMenuPermission} className="p-4 rounded-xl bg-brand-principal/20 border border-brand-terciar/10 space-y-4">
                   <h3 className="text-xs font-bold text-brand-extra1">Adicionar Nova Permissao de Menu</h3>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-6">
                     <div className="space-y-1.5"><label className="text-[10px] text-brand-terciar/70 font-mono uppercase">Caminho (href)</label><input type="text" required value={newMenuPermHref} onChange={(e) => setNewMenuPermHref(e.target.value)} placeholder="Ex: /dashboard/relatorios" className="w-full px-3 py-1.5 bg-white border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar placeholder-brand-terciar/40 focus:outline-none focus:border-brand-secundar transition-colors" /></div>
-                    <div className="space-y-1.5"><label className="text-[10px] text-brand- Polem/70 font-mono uppercase">Nome</label><input type="text" required value={newMenuPermName} onChange={(e) => setNewMenuPermName(e.target.value)} placeholder="Ex: Relatorios" className="w-full px-3 py-1.5 bg-white border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar placeholder-brand-terciar/40 focus:outline-none focus:border-brand-secundar transition-colors" /></div>
+                    <div className="space-y-1.5"><label className="text-[10px] text-brand-terciar/70 font-mono uppercase">Nome</label><input type="text" required value={newMenuPermName} onChange={(e) => setNewMenuPermName(e.target.value)} placeholder="Ex: Relatorios" className="w-full px-3 py-1.5 bg-white border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar placeholder-brand-terciar/40 focus:outline-none focus:border-brand-secundar transition-colors" /></div>
                     <div className="space-y-1.5"><label className="text-[10px] text-brand-terciar/70 font-mono uppercase">Nivel Minimo</label><select value={newMenuPermMinLevel} onChange={(e) => setNewMenuPermMinLevel(parseInt(e.target.value, 10))} className="w-full px-3 py-1.5 bg-white border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar focus:outline-none focus:border-brand-secundar transition-colors cursor-pointer">{uniqueLevels.map((lvl) => <option key={lvl} value={lvl}>Nivel {lvl} ({getLevelLabel(lvl)})</option>)}</select></div>
+                    <div className="space-y-1.5"><label className="text-[10px] text-brand-terciar/70 font-mono uppercase">Icone</label><input type="text" value={newMenuPermIcon} onChange={(e) => setNewMenuPermIcon(e.target.value)} placeholder="Ex: Grid" className="w-full px-3 py-1.5 bg-white border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar focus:outline-none focus:border-brand-secundar transition-colors" /></div>
+                    <div className="space-y-1.5"><label className="text-[10px] text-brand-terciar/70 font-mono uppercase">Ordem</label><input type="number" value={newMenuPermOrder} onChange={(e) => setNewMenuPermOrder(parseInt(e.target.value, 10) || 0)} className="w-full px-3 py-1.5 bg-white border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar focus:outline-none focus:border-brand-secundar transition-colors" /></div>
+                    <div className="space-y-1.5"><label className="text-[10px] text-brand-terciar/70 font-mono uppercase">Ativo</label><select value={newMenuPermIsActive ? "true" : "false"} onChange={(e) => setNewMenuPermIsActive(e.target.value === "true")} className="w-full px-3 py-1.5 bg-white border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar focus:outline-none focus:border-brand-secundar transition-colors cursor-pointer"><option value="true">Ativo</option><option value="false">Inativo</option></select></div>
                   </div>
                   <div className="flex justify-end gap-2"><button type="button" onClick={() => setIsCreatingMenuPerm(false)} className="px-3 py-1.5 border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar/70 hover:bg-white cursor-pointer">Cancelar</button><button type="submit" className="px-3 py-1.5 bg-brand-secundar text-white font-bold rounded-lg text-xs hover:bg-brand-secundar/95 shadow-sm transition-colors cursor-pointer">Salvar Permissao</button></div>
                 </form>
@@ -586,13 +605,51 @@ export default function SegurancaClient({
           <div className="overflow-x-auto border border-brand-terciar/10 rounded-xl">
             {loadingMenuPerms ? (<div className="p-4 text-xs text-brand-terciar/50 text-center animate-pulse">Carregando permissoes...</div>) : (
               <table className="w-full text-left text-xs border-collapse">
-                <thead><tr className="border-b border-brand-terciar/10 bg-brand-principal/10 text-brand-terciar/60 font-mono text-[9px] uppercase tracking-wider"><th className="py-2.5 px-3">Nome</th><th className="py-2.5 px-3">Caminho</th><th className="py-2.5 px-3">Nivel Minimo</th><th className="py-2.5 px-3 text-right">Acoes</th></tr></thead>
+                <thead><tr className="border-b border-brand-terciar/10 bg-brand-principal/10 text-brand-terciar/60 font-mono text-[9px] uppercase tracking-wider"><th className="py-2.5 px-3">Nome</th><th className="py-2.5 px-3">Caminho</th><th className="py-2.5 px-3">Nivel Minimo</th><th className="py-2.5 px-3">Icone</th><th className="py-2.5 px-3">Ordem</th><th className="py-2.5 px-3">Status</th><th className="py-2.5 px-3 text-right">Acoes</th></tr></thead>
                 <tbody className="divide-y divide-brand-terciar/10">
                   {menuPermissions.map((item) => (
                     <tr key={item.href} className="hover:bg-brand-principal/10">
                       <td className="py-3 px-3 font-semibold text-brand-extra1">{item.name}</td>
                       <td className="py-3 px-3 font-mono text-xs text-brand-terciar/70">{item.href}</td>
                       <td className="py-3 px-3"><select value={item.minLevel} onChange={(e) => handleUpdateMenuPermission(item.href, parseInt(e.target.value, 10))} disabled={updatingMenuHref === item.href} aria-label={"Nivel minimo para " + item.name} className="px-2.5 py-1 bg-white border border-brand-terciar/20 rounded-lg text-xs text-brand-terciar focus:outline-none cursor-pointer focus:border-brand-secundar">{uniqueLevels.map((lvl) => <option key={lvl} value={lvl}>Nivel {lvl} ({getLevelLabel(lvl)})</option>)}</select></td>
+                      <td className="py-3 px-3">
+                        <input
+                          type="text"
+                          defaultValue={item.icon || ""}
+                          disabled={updatingMenuHref === item.href}
+                          onBlur={(e) => {
+                            if (e.target.value !== (item.icon || "")) {
+                              handleUpdateMenuPermission(item.href, { icon: e.target.value || null });
+                            }
+                          }}
+                          className="w-20 px-2 py-1 bg-white border border-brand-terciar/20 rounded text-xs text-brand-terciar focus:outline-none focus:border-brand-secundar"
+                        />
+                      </td>
+                      <td className="py-3 px-3">
+                        <input
+                          type="number"
+                          defaultValue={item.order ?? 0}
+                          disabled={updatingMenuHref === item.href}
+                          onBlur={(e) => {
+                            const val = parseInt(e.target.value, 10);
+                            if (val !== item.order) {
+                              handleUpdateMenuPermission(item.href, { order: val });
+                            }
+                          }}
+                          className="w-12 px-2 py-1 bg-white border border-brand-terciar/20 rounded text-xs text-brand-terciar focus:outline-none focus:border-brand-secundar"
+                        />
+                      </td>
+                      <td className="py-3 px-3">
+                        <select
+                          value={item.isActive !== false ? "true" : "false"}
+                          disabled={updatingMenuHref === item.href}
+                          onChange={(e) => handleUpdateMenuPermission(item.href, { isActive: e.target.value === "true" })}
+                          className="px-2 py-1 bg-white border border-brand-terciar/20 rounded-lg text-xs text-brand-terciar focus:outline-none cursor-pointer focus:border-brand-secundar"
+                        >
+                          <option value="true">Ativo</option>
+                          <option value="false">Inativo</option>
+                        </select>
+                      </td>
                       <td className="py-3 px-3 text-right">
                         {updatingMenuHref === item.href ? <span className="w-3.5 h-3.5 border border-brand-secundar border-t-transparent rounded-full animate-spin inline-block" /> : (
                           <button onClick={() => handleDeleteMenuPermission(item.href, item.name)} disabled={deletingMenuPermHref === item.href} className="p-1 text-red-650 bg-red-50 hover:bg-red-100 rounded border border-red-200 cursor-pointer" title="Excluir" aria-label={"Excluir " + item.name}><Trash2 className="w-3.5 h-3.5" /></button>

@@ -4,17 +4,7 @@ import { useState } from "react";
 import { Plus, X, Pencil, Trash2, Building2 } from "lucide-react";
 import { PageWrapper } from "@/components/PageWrapper";
 import { motion, AnimatePresence } from "framer-motion";
-
-interface Company {
-  id: string;
-  name: string;
-  slug: string;
-  color: string | null;
-  holding: string | null;
-  isActive: boolean;
-  showOnHome: boolean;
-  order: number;
-}
+import type { Company } from "@/types/company";
 
 interface EmpresasClientProps {
   initialCompanies: Company[];

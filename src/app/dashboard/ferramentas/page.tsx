@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import FerramentasClient from "./FerramentasClient";
+import type { CompanyConfig } from "@/types/company";
 
 interface SystemPanel {
   id: string;
@@ -35,13 +36,6 @@ interface BusinessUnit {
   slug: string;
   company: string;
   tools?: BusinessUnitTool[];
-}
-
-interface CompanyConfig {
-  id: string;
-  name: string;
-  slug: string;
-  color: string;
 }
 
 interface PageProps {

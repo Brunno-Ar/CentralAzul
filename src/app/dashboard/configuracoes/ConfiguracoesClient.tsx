@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { PageWrapper } from "@/components/PageWrapper";
-import { User, Key, Camera, Sliders, Building2, ChevronRight } from "lucide-react";
+import { User, Key, Camera, Sliders } from "lucide-react";
 import { SessionUser } from "@/types/auth";
 
 interface ConfiguracoesClientProps {

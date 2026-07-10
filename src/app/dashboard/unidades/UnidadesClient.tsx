@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useCompanies } from "@/hooks/useCompanies";
 import { useRouter } from "next/navigation";
 import NextImage from "next/image";
 import { motion } from "framer-motion";
@@ -63,20 +64,7 @@ interface BusinessUnit {
   revenueData: BusinessUnitRevenueSerialized[];
 }
 
-const companyColors: Record<string, string> = {
-  BORGO: "text-brand-terciar bg-brand-terciar/10 border-brand-terciar/30",
-  MAPLE_BEAR:
-    "text-brand-secundar bg-brand-secundar/10 border-brand-secundar/30",
-  AZUL: "text-brand-extra2 bg-brand-extra2/10 border-brand-extra2/30",
-  CENTRAL: "text-brand-extra1 bg-brand-principal/20 border-brand-secundar/30",
-};
-
-const companyLabels: Record<string, string> = {
-  BORGO: "Borgo del Vin",
-  MAPLE_BEAR: "Maple Bear",
-  AZUL: "Azul Incorporacoes",
-  CENTRAL: "Central / Geral",
-};
+// companyColors and companyLabels are now dynamically handled inside UnidadesClient component
 
 const formatNumber = (num: number) => {
   if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
@@ -86,14 +74,24 @@ const formatNumber = (num: number) => {
 
 const getCsrfToken = () => {
   if (typeof document === "undefined") return "";
+
+  const generateToken = () => {
+    return typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+  };
+
   const match = document.cookie.match(/csrfToken=([^;]+)/);
-  if (!match) {
-    const token = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
-    document.cookie = `csrfToken=${token}; path=/; SameSite=Lax;`;
-    return token;
+  if (match && match[1].length >= 16) {
+    return match[1];
   }
-  return match[1];
+
+  // Token ausente ou curto demais - gerar um novo
+  const token = generateToken();
+  document.cookie = `csrfToken=${token}; path=/; SameSite=Lax;`;
+  return token;
 };
+
 
 interface UnidadesClientProps {
   initialBusinessUnits: BusinessUnit[];
@@ -102,9 +100,46 @@ interface UnidadesClientProps {
 }
 
 export default function UnidadesClient({ initialBusinessUnits, userLevel, companies }: UnidadesClientProps) {
+  const { companies: dbCompanies } = useCompanies();
+  const companyColors = new Proxy({} as Record<string, string>, {
+    get: (target, name: string) => {
+      if (typeof name !== "string") return undefined;
+      const clean = name.trim().toUpperCase();
+      const comp = dbCompanies.find(c => 
+        c.slug.toUpperCase() === clean || 
+        c.name.toUpperCase() === clean
+      );
+      const color = comp?.color || "GOLD";
+      switch (color) {
+        case "WINE": return "text-brand-terciar bg-brand-terciar/10 border-brand-terciar/30";
+        case "RED": return "text-brand-secundar bg-brand-secundar/10 border-brand-secundar/30";
+        case "AZUL": return "text-brand-extra2 bg-brand-extra2/10 border-brand-extra2/30";
+        default: return "text-brand-extra1 bg-brand-principal/20 border-brand-secundar/30";
+      }
+    }
+  });
+
+  const companyLabels = new Proxy({} as Record<string, string>, {
+    get: (target, name: string) => {
+      if (typeof name !== "string") return undefined;
+      const clean = name.trim().toUpperCase();
+      const comp = dbCompanies.find(c => 
+        c.slug.toUpperCase() === clean || 
+        c.name.toUpperCase() === clean
+      );
+      return comp ? comp.name : name;
+    }
+  });
+
   const router = useRouter();
+
+  // Inicializar CSRF token ao montar o componente
+  useEffect(() => {
+    getCsrfToken();
+  }, []);
+
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>(initialBusinessUnits);
-  const [loading, setLoading] = useState(false);
+  const loading = false;
   const [search, setSearch] = useState("");
   const [companyFilter, setCompanyFilter] = useState<string>("ALL");
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -149,8 +184,6 @@ export default function UnidadesClient({ initialBusinessUnits, userLevel, compan
   const handleCreate = async (formData: FormData) => {
     const data = {
       name: formData.get("name"),
-      slug: formData.get("slug"),
-      company: formData.get("company"),
       description: formData.get("description") || "",
       address: formData.get("address") || "",
       phone: formData.get("phone") || "",
@@ -164,6 +197,7 @@ export default function UnidadesClient({ initialBusinessUnits, userLevel, compan
     try {
       const res = await fetch("/api/business-units", {
         method: "POST",
+        credentials: "same-origin",
         headers: { 
           "Content-Type": "application/json",
           "X-CSRF-Token": getCsrfToken()
@@ -181,7 +215,7 @@ export default function UnidadesClient({ initialBusinessUnits, userLevel, compan
         const err = await res.json();
         setMessage({
           type: "error",
-          text: err.error || "Erro ao criar unidade",
+          text: err.details ? `${err.error}: ${err.details}` : (err.error || "Erro ao criar unidade"),
         });
       }
     } catch {
@@ -309,35 +343,7 @@ export default function UnidadesClient({ initialBusinessUnits, userLevel, compan
                   />
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[10px] text-brand-terciar/70 font-mono uppercase">
-                    Slug *
-                  </label>
-                  <input
-                    name="slug"
-                    required
-                    placeholder="lugares-para-morar"
-                    className="w-full px-3 py-2 bg-brand-principal/30 border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar placeholder-brand-terciar/45 focus:outline-none focus:border-brand-secundar focus:bg-white transition-colors"
-                  />
-                </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[10px] text-brand-terciar/70 font-mono uppercase">
-                    Empresa *
-                  </label>
-                  <select
-                    name="company"
-                    required
-                    className="w-full px-3 py-2 bg-brand-principal/30 border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar focus:outline-none focus:border-brand-secundar focus:bg-white transition-colors cursor-pointer"
-                  >
-                    <option value="">Selecione</option>
-                    {companies.map((c) => (
-                      <option key={c.value} value={c.value}>
-                        {c.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
 
                 <div className="space-y-1.5">
                   <label className="text-[10px] text-brand-terciar/70 font-mono uppercase">

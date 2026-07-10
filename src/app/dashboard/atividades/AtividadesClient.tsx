@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PageWrapper } from "@/components/PageWrapper";
 import {
@@ -8,7 +8,7 @@ import {
   Activity,
   User,
   Calendar,
-  Layers,
+
   ChevronRight,
   Filter,
   RefreshCw,
@@ -69,7 +69,7 @@ export default function AtividadesClient({
   const [action, setAction] = useState("");
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchLogs = async (currentPage: number, append = false) => {
+  const fetchLogs = useCallback(async (currentPage: number, append = false) => {
     if (currentPage === 1) {
       setLoading(true);
     } else {
@@ -103,7 +103,7 @@ export default function AtividadesClient({
       setLoadingMore(false);
       setRefreshing(false);
     }
-  };
+  }, [search, action]);
 
   useEffect(() => {
     const delayDebounce = setTimeout(() => {
@@ -111,7 +111,7 @@ export default function AtividadesClient({
     }, 300);
 
     return () => clearTimeout(delayDebounce);
-  }, [search, action]);
+  }, [fetchLogs]);
 
   const handleLoadMore = () => {
     if (page < totalPages && !loadingMore) {
@@ -232,7 +232,7 @@ export default function AtividadesClient({
             </div>
           ) : (
             <AnimatePresence mode="popLayout">
-              {logs.map((item, idx) => {
+              {logs.map((item) => {
                 const Icon = getActionIcon(item.action);
                 const colorClass = getActionColor(item.action);
 
