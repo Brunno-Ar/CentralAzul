@@ -13,55 +13,80 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
-    const businessUnits = await db.getBusinessUnits();
+    // Busca todas as empresas e unidades do banco de dados para agregar dinamicamente
+    const [companies, businessUnits] = await Promise.all([
+      db.getCompanies().catch(() => []),
+      db.getBusinessUnits().catch(() => []),
+    ]);
 
-    const borgoUnit = businessUnits.find(bu => bu.company === "BORGO");
-    const mapleUnit = businessUnits.find(bu => bu.company === "MAPLE_BEAR");
-    const azulUnits = businessUnits.filter(bu => bu.company === "AZUL");
+    const activeCompanies = companies.filter((c) => c.isActive);
 
-    const borgoMetric = {
-      company: "BORGO",
-      isActive: true,
-      label: "88% dos Lotes Vendidos",
-      value: 88,
-      period: "2026",
-    };
+    const metrics = activeCompanies.map((comp) => {
+      const companyUnits = businessUnits.filter((bu) => bu.company === comp.slug);
+      const activeUnitsCount = companyUnits.filter((bu) => bu.isActive).length;
 
-    const mapleMetric = {
-      company: "MAPLE_BEAR",
-      isActive: true,
-      label: "420 Alunos Matriculados",
-      value: 92,
-      period: "2026",
-    };
+      // Estado inicial padrão para a métrica da empresa
+      const metric = {
+        company: comp.slug,
+        isActive: comp.isActive,
+        label: `${activeUnitsCount} ${activeUnitsCount === 1 ? "Unidade Ativa" : "Unidades Ativas"}`,
+        value: activeUnitsCount > 0 ? 80 : 0,
+        period: String(new Date().getFullYear()),
+      };
 
-    const activeAzulObras = azulUnits.filter(bu => bu.isActive).length;
-    const azulMetric = {
-      company: "AZUL",
-      isActive: true,
-      label: `${activeAzulObras} Empreendimentos Ativos`,
-      value: 74,
-      period: "2026",
-    };
+      // 1. Tentar agregar dados de faturamento (revenueData) das unidades
+      let totalRevenue = 0;
+      let hasRevenue = false;
+      companyUnits.forEach((bu) => {
+        if (bu.revenueData && bu.revenueData.length > 0) {
+          // Soma o faturamento mais recente de cada unidade
+          totalRevenue += bu.revenueData[0].amount;
+          hasRevenue = true;
+        }
+      });
 
-    if (borgoUnit && borgoUnit.revenueData && borgoUnit.revenueData.length > 0) {
-      const latestRev = borgoUnit.revenueData[0];
-      borgoMetric.label = `Faturamento: R$ ${latestRev.amount.toLocaleString("pt-BR")}`;
-    }
-    
-    if (mapleUnit && mapleUnit.socialLinks && mapleUnit.socialLinks.length > 0) {
-      const insta = mapleUnit.socialLinks.find(s => s.platform.toLowerCase() === "instagram");
-      if (insta) {
-        mapleMetric.label = `${insta.followersCount.toLocaleString("pt-BR")} Inscritos/Seguidores`;
+      if (hasRevenue && totalRevenue > 0) {
+        metric.label = `Faturamento: R$ ${totalRevenue.toLocaleString("pt-BR")}`;
+        metric.value = 90; // Proporcional/Progresso indicativo
+        return metric;
       }
-    }
 
-    return NextResponse.json([borgoMetric, mapleMetric, azulMetric]);
+      // 2. Tentar agregar seguidores das redes sociais (socialLinks)
+      let totalFollowers = 0;
+      let hasFollowers = false;
+      companyUnits.forEach((bu) => {
+        if (bu.socialLinks && bu.socialLinks.length > 0) {
+          const instagramLink = bu.socialLinks.find(
+            (s) => s.platform.toLowerCase() === "instagram" && s.isActive
+          );
+          if (instagramLink) {
+            totalFollowers += instagramLink.followersCount;
+            hasFollowers = true;
+          }
+        }
+      });
+
+      if (hasFollowers && totalFollowers > 0) {
+        metric.label = `${totalFollowers.toLocaleString("pt-BR")} Inscritos/Seguidores`;
+        metric.value = 85;
+        return metric;
+      }
+
+      // 3. Fallback personalizado para o Gran Reserva ou outras marcas
+      if (comp.slug === "COMP-GRAN-RESERVA") {
+        metric.label = "88% dos Lotes Vendidos";
+        metric.value = 88;
+      }
+
+      return metric;
+    });
+
+    return NextResponse.json(metrics);
   } catch (error) {
     console.error("Erro na rota api/company-metrics:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

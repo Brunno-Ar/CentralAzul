@@ -55,62 +55,86 @@ interface DashboardHomeClientProps {
 }
 
 const getCompanyStyle = (c: DashboardCompany) => {
+  const url = c.url || `/dashboard/ferramentas?company=${c.slug}`;
+  const desc = c.desc || `Painel corporativo e ferramentas integradas da divisao ${c.name}.`;
+  
+  // Ícone dinâmico baseado em palavra-chave
+  let icon = Building2;
+  if (c.iconName === "Wine") {
+    icon = Wine;
+  } else if (c.iconName === "GraduationCap") {
+    icon = GraduationCap;
+  } else {
+    const nameLower = (c.name || "").toLowerCase();
+    if (
+      nameLower.includes("wine") ||
+      nameLower.includes("vinho") ||
+      nameLower.includes("vinicola") ||
+      nameLower.includes("borgo") ||
+      nameLower.includes("reserva")
+    ) {
+      icon = Wine;
+    } else if (
+      nameLower.includes("bear") ||
+      nameLower.includes("maple") ||
+      nameLower.includes("school") ||
+      nameLower.includes("escola") ||
+      nameLower.includes("colegio") ||
+      nameLower.includes("educacao") ||
+      nameLower.includes("ensino")
+    ) {
+      icon = GraduationCap;
+    }
+  }
+
   if (c.colorClass) {
     return {
-      icon: c.iconName === "Wine" ? Wine : c.iconName === "GraduationCap" ? GraduationCap : Building2,
+      icon,
       color: c.colorClass,
       accent: c.accentClass || "text-brand-secundar",
-      url: c.url || "/dashboard/ferramentas",
-      desc: c.desc || "",
+      url,
+      desc,
     };
   }
 
-  const type = (c.color || "AZUL").toUpperCase();
-  const url = `/dashboard/ferramentas?company=${c.slug}`;
-  const desc = `Painel corporativo e ferramentas integradas da divisao ${c.name}.`;
+  // Fallback baseado no campo color cadastrado
+  const compColor = (c.color || "AZUL").toUpperCase();
+  let color = "from-brand-principal/20 to-brand-principal/40 border-brand-secundar/20";
+  let accent = "text-brand-secundar";
 
-  switch (type) {
-    case "BORGO":
-      return {
-        icon: Wine,
-        color: "from-brand-terciar/5 to-brand-terciar/15 border-brand-terciar/20",
-        accent: "text-brand-terciar",
-        url,
-        desc,
-      };
-    case "MAPLE_BEAR":
-      return {
-        icon: GraduationCap,
-        color: "from-brand-secundar/5 to-brand-secundar/15 border-brand-secundar/20",
-        accent: "text-brand-secundar",
-        url,
-        desc,
-      };
-    case "AZUL":
-      return {
-        icon: Building2,
-        color: "from-brand-extra2/5 to-brand-extra2/15 border-brand-extra2/20",
-        accent: "text-brand-extra2",
-        url,
-        desc,
-      };
-    case "CENTRAL":
-      return {
-        icon: Building2,
-        color: "from-brand-terciar/5 to-brand-terciar/15 border-brand-terciar/20",
-        accent: "text-brand-terciar",
-        url,
-        desc,
-      };
-    default:
-      return {
-        icon: Building2,
-        color: "from-brand-principal/20 to-brand-principal/40 border-brand-secundar/20",
-        accent: "text-brand-secundar",
-        url,
-        desc,
-      };
+  if (compColor === "WINE") {
+    color = "from-brand-terciar/5 to-brand-terciar/15 border-brand-terciar/20";
+    accent = "text-brand-terciar";
+  } else if (compColor === "RED") {
+    color = "from-brand-secundar/5 to-brand-secundar/15 border-brand-secundar/20";
+    accent = "text-brand-secundar";
+  } else if (compColor === "AZUL") {
+    color = "from-brand-extra2/5 to-brand-extra2/15 border-brand-extra2/20";
+    accent = "text-brand-extra2";
+  } else if (compColor === "GOLD") {
+    color = "from-brand-principal/20 to-brand-principal/40 border-brand-secundar/20";
+    accent = "text-brand-extra1";
+  } else if (compColor === "BRONZE") {
+    color = "from-amber-700/5 to-amber-700/15 border-amber-700/20";
+    accent = "text-amber-700";
+  } else if (compColor === "GREEN") {
+    color = "from-emerald-700/5 to-emerald-700/15 border-emerald-700/20";
+    accent = "text-emerald-700";
+  } else if (compColor === "BLUE") {
+    color = "from-blue-600/5 to-blue-600/15 border-blue-600/20";
+    accent = "text-blue-600";
+  } else if (compColor === "PURPLE") {
+    color = "from-purple-600/5 to-purple-600/15 border-purple-600/20";
+    accent = "text-purple-600";
   }
+
+  return {
+    icon,
+    color,
+    accent,
+    url,
+    desc,
+  };
 };
 
 export default function DashboardHomeClient({
