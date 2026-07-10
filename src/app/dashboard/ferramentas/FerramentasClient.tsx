@@ -86,13 +86,6 @@ export default function FerramentasClient({
     { value: "ShieldIcon", label: "ShieldIcon" },
   ];
 
-  const companyOptions = [
-    { value: "BORGO", label: "Borgo del Vino" },
-    { value: "MAPLE_BEAR", label: "Maple Bear" },
-    { value: "AZUL", label: "Azul Incorporacoes" },
-    { value: "GERAL", label: "Geral" },
-  ];
-
   const roleOptions = [
     { value: "VIEWER", label: "VIEWER" },
     { value: "COORDINATOR", label: "COORDINATOR" },
@@ -525,7 +518,10 @@ export default function FerramentasClient({
                       name="category"
                       className="w-full px-3 py-2 bg-brand-principal/30 border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar focus:outline-none focus:border-brand-secundar focus:bg-white transition-colors cursor-pointer"
                     >
-                      {companyOptions.map((opt) => (
+                      {[
+                        { value: "GERAL", label: "Geral" },
+                        ...companies.map((c) => ({ value: c.slug.toUpperCase(), label: c.name })),
+                      ].map((opt) => (
                         <option key={opt.value} value={opt.value}>
                           {opt.label}
                         </option>

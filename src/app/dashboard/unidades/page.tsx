@@ -76,6 +76,11 @@ export default async function UnidadesPage() {
   // Fetch business units server-side
   const businessUnitsData = await db.getBusinessUnits().catch(() => []);
 
+  const companiesData = await db.getCompanies().catch(() => []);
+  const companies = (companiesData as Array<{ slug: string; name: string }>)
+    .filter((c) => c.slug && c.name)
+    .map((c) => ({ value: c.slug, label: c.name }));
+
   // Serialize dates for client component
   const serializedBusinessUnits: BusinessUnit[] = (
     businessUnitsData as Array<{
@@ -127,6 +132,7 @@ export default async function UnidadesPage() {
     <UnidadesClient
       initialBusinessUnits={serializedBusinessUnits}
       userLevel={userLevel}
+      companies={companies}
     />
   );
 }
