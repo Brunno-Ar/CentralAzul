@@ -71,7 +71,7 @@ export default async function DashboardHome() {
   const userCompany = user?.company;
 
   // Fetch all dashboard data server-side in parallel
-  const [logs, users, panels, docs, businessUnitsData, companiesList] = await Promise.all([
+  const [logs, users, panelsData, docs, businessUnitsData, companiesList] = await Promise.all([
     db.getAuditLogs(userLevel, userCompany).catch(() => []),
     db.getUsers().catch(() => []),
     db.getPanels().catch(() => []),
@@ -86,8 +86,52 @@ export default async function DashboardHome() {
 
   const totalLogs = (logs as unknown[]).length;
   const activeUsers = (users as unknown[]).length;
-  const totalSistemas = (panels as unknown[]).length;
   const totalDocs = (docs as unknown[]).length;
+
+  // Filtragem de ferramentas órfãs e unificação de ferramentas de unidades
+  const validBusinessUnitToolIds = new Set(
+    (businessUnitsData as any[] || []).flatMap((bu) => (bu.tools || []).map((t: any) => t.id))
+  );
+  const validBusinessUnitSlugs = new Set(
+    (businessUnitsData as any[] || []).map((bu) => bu.slug.toLowerCase())
+  );
+  const validCompanySlugs = new Set(
+    (companiesList || []).map((c) => c.slug.toLowerCase())
+  );
+
+  const cleanPanels = (panelsData as any[] || []).filter((panel) => {
+    if (panel.businessUnitToolId && !validBusinessUnitToolIds.has(panel.businessUnitToolId)) {
+      return false;
+    }
+    if (panel.companySlug) {
+      const slugLower = panel.companySlug.toLowerCase();
+      if (slugLower.startsWith("comp-") && !validBusinessUnitSlugs.has(slugLower)) {
+        return false;
+      }
+      if (!validCompanySlugs.has(slugLower) && !validBusinessUnitSlugs.has(slugLower)) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  const syncedToolIds = new Set(
+    cleanPanels
+      .map((p) => p.businessUnitToolId)
+      .filter((id): id is string => !!id),
+  );
+
+  let unlistedBuToolsCount = 0;
+  for (const bu of (businessUnitsData as any[] || [])) {
+    if (!bu.tools) continue;
+    for (const tool of bu.tools) {
+      if (!syncedToolIds.has(tool.id)) {
+        unlistedBuToolsCount++;
+      }
+    }
+  }
+
+  const totalSistemas = cleanPanels.length + unlistedBuToolsCount;
 
   let activeCompanies: DashboardCompany[] = fallbackCompanies;
   if (Array.isArray(businessUnitsData) && businessUnitsData.length > 0) {
