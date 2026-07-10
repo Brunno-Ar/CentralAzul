@@ -48,6 +48,13 @@ interface SystemPanel {
   locked?: boolean;
 }
 
+interface BusinessUnitConfig {
+  id: string;
+  name: string;
+  slug: string;
+  company: string;
+}
+
 interface CompanyConfig {
   id: string;
   name: string;
@@ -58,6 +65,7 @@ interface CompanyConfig {
 interface FerramentasClientProps {
   initialPanels: SystemPanel[];
   companies: CompanyConfig[];
+  businessUnits: BusinessUnitConfig[];
   userLevel: number;
   initialCompanyFilter: string;
 }
@@ -65,6 +73,7 @@ interface FerramentasClientProps {
 export default function FerramentasClient({
   initialPanels,
   companies,
+  businessUnits,
   userLevel,
   initialCompanyFilter,
 }: FerramentasClientProps) {
@@ -214,14 +223,32 @@ export default function FerramentasClient({
   }
 
   const getCategoryColor = (cat: string, companySlug?: string | null) => {
-    const activeCat = (companySlug || cat).toUpperCase();
-    switch (activeCat) {
-      case "BORGO":
+    const slugUpper = (companySlug || cat).toUpperCase();
+    
+    // Tenta achar a empresa ou a empresa mãe da unidade
+    const matchedCompany = companies.find((c) => c.slug.toUpperCase() === slugUpper);
+    const matchedUnit = businessUnits.find((bu) => bu.slug.toUpperCase() === slugUpper);
+    const companyOfUnit = matchedUnit ? companies.find((c) => c.slug.toUpperCase() === matchedUnit.company.toUpperCase()) : null;
+    
+    const compColor = (matchedCompany?.color || companyOfUnit?.color || slugUpper).toUpperCase();
+
+    switch (compColor) {
+      case "WINE":
         return "text-brand-terciar bg-brand-terciar/10 border-brand-terciar/20";
-      case "MAPLE_BEAR":
+      case "RED":
         return "text-brand-secundar bg-brand-secundar/10 border-brand-secundar/20";
       case "AZUL":
         return "text-brand-extra2 bg-brand-extra2/10 border-brand-extra2/20";
+      case "GOLD":
+        return "text-brand-extra1 bg-brand-principal border-brand-secundar/20";
+      case "BRONZE":
+        return "text-amber-700 bg-amber-50 border-amber-200";
+      case "GREEN":
+        return "text-emerald-700 bg-emerald-50 border-emerald-200";
+      case "BLUE":
+        return "text-blue-600 bg-blue-50 border-blue-200";
+      case "PURPLE":
+        return "text-purple-600 bg-purple-50 border-purple-200";
       default:
         return "text-brand-extra1 bg-brand-principal border-brand-secundar/20";
     }
@@ -229,9 +256,13 @@ export default function FerramentasClient({
 
   const getCompanyLabel = (cat: string, companySlug?: string | null) => {
     const slugUpper = (companySlug || cat).toUpperCase();
-    const matched = companies.find((c) => c.slug.toUpperCase() === slugUpper);
-    if (matched) return matched.name;
+    const matchedCompany = companies.find((c) => c.slug.toUpperCase() === slugUpper);
+    if (matchedCompany) return matchedCompany.name;
 
+    const matchedUnit = businessUnits.find((bu) => bu.slug.toUpperCase() === slugUpper);
+    if (matchedUnit) return matchedUnit.name;
+
+    // Fallbacks para compatibilidade
     switch (slugUpper) {
       case "BORGO":
         return "Borgo del Vino";
@@ -564,13 +595,28 @@ export default function FerramentasClient({
 
                   <div className="space-y-1.5">
                     <label className="text-[10px] text-brand-terciar/70 font-mono uppercase">
-                      Company Slug
+                      Vincular a Empresa / Unidade de Negócio
                     </label>
-                    <input
+                    <select
                       name="companySlug"
-                      placeholder="Ex: borgo (opcional)"
-                      className="w-full px-3 py-2 bg-brand-principal/30 border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar placeholder-brand-terciar/45 focus:outline-none focus:border-brand-secundar focus:bg-white transition-colors"
-                    />
+                      className="w-full px-3 py-2 bg-brand-principal/30 border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar focus:outline-none focus:border-brand-secundar focus:bg-white transition-colors cursor-pointer"
+                    >
+                      <option value="">Nenhum (Geral / Holding)</option>
+                      <optgroup label="Empresas / Grupos">
+                        {companies.map((c) => (
+                          <option key={c.id} value={c.slug}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Unidades de Negócio">
+                        {businessUnits.map((bu) => (
+                          <option key={bu.id} value={bu.slug}>
+                            {bu.name} ({bu.company})
+                          </option>
+                        ))}
+                      </optgroup>
+                    </select>
                   </div>
                 </div>
 

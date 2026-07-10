@@ -128,6 +128,12 @@ export default async function FerramentasPage({ searchParams }: PageProps) {
     <FerramentasClient
       initialPanels={processedPanels}
       companies={companies}
+      businessUnits={businessUnits.map((bu) => ({
+        id: bu.id,
+        name: bu.name,
+        slug: bu.slug,
+        company: bu.company,
+      }))}
       userLevel={userLevel}
       initialCompanyFilter={initialCompanyFilter}
     />
