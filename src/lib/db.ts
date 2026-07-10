@@ -9,6 +9,7 @@ import { businessUnitsDb } from "./db/business-units";
 import { documentsDb } from "./db/documents";
 import { analyticsDb } from "./db/analytics";
 import { announcementsDb } from "./db/announcements";
+import { getAuthDefaults } from "./db/auth";
 
 const parseDbUrl = (urlStr: string) => {
   try {
@@ -99,7 +100,7 @@ try {
   );
 }
 
-export const prisma = prismaClient;
+export const prisma = prismaClient as PrismaClient;
 export const isDatabaseConnected = () => isDbConnected;
 
 // ============================================
@@ -186,7 +187,7 @@ export interface MockAnnouncement {
   title: string;
   content: string;
   priority: string;
-  targetCompanies: string;
+  targetCompanies: string | null;
   expiresAt: Date | null;
   isPinned: boolean;
   isActive: boolean;
@@ -593,7 +594,8 @@ export interface MockCompany {
   id: string;
   name: string;
   slug: string;
-  color: string;
+  color: string | null;
+  holding: string | null;
   isActive: boolean;
   showOnHome: boolean;
   order: number;
@@ -607,6 +609,7 @@ export const mockCompanies: MockCompany[] = globalThis.__mockCompanies ?? (globa
     name: "Borgo del Vino",
     slug: "BORGO",
     color: "WINE",
+    holding: null,
     isActive: true,
     showOnHome: true,
     order: 1,
@@ -618,6 +621,7 @@ export const mockCompanies: MockCompany[] = globalThis.__mockCompanies ?? (globa
     name: "Maple Bear",
     slug: "MAPLE_BEAR",
     color: "RED",
+    holding: null,
     isActive: true,
     showOnHome: true,
     order: 2,
@@ -629,6 +633,7 @@ export const mockCompanies: MockCompany[] = globalThis.__mockCompanies ?? (globa
     name: "Grupo Azul",
     slug: "AZUL",
     color: "AZUL",
+    holding: null,
     isActive: true,
     showOnHome: true,
     order: 3,
@@ -640,6 +645,7 @@ export const mockCompanies: MockCompany[] = globalThis.__mockCompanies ?? (globa
     name: "Central",
     slug: "CENTRAL",
     color: "GOLD",
+    holding: null,
     isActive: true,
     showOnHome: true,
     order: 4,
@@ -699,6 +705,22 @@ export const dbSim = {
   getDocuments: documentsDb.getDocuments,
 
   addDocument: documentsDb.addDocument,
+
+  getDocumentTypes: documentsDb.getDocumentTypes,
+
+  createDocumentType: documentsDb.createDocumentType,
+
+  updateDocumentType: documentsDb.updateDocumentType,
+
+  deleteDocumentType: documentsDb.deleteDocumentType,
+
+  getRolePermissions: permissionsDb.getRolePermissions,
+
+  createRolePermission: permissionsDb.createRolePermission,
+
+  deleteRolePermission: permissionsDb.deleteRolePermission,
+
+  getAuthDefaults: getAuthDefaults,
 
   getLogs: analyticsDb.getLogs,
 
@@ -793,6 +815,16 @@ export const dbSim = {
     };
     if (prismaClient && isDbConnected) {
       try {
+        // Garantir que a empresa correspondente exista (Unidade de Negocio = Empresa)
+        await prismaClient.company.upsert({
+          where: { slug: newBU.company },
+          update: { name: newBU.name },
+          create: {
+            slug: newBU.company,
+            name: newBU.name,
+          },
+        });
+
         const created = await prismaClient.businessUnit.create({
           data: {
             id: newBU.id,
@@ -2177,6 +2209,10 @@ export const db = {
   getDocuments: dbSim.getDocuments,
   addDocument: dbSim.addDocument,
   deleteDocument: dbSim.deleteDocument,
+  getDocumentTypes: dbSim.getDocumentTypes,
+  createDocumentType: dbSim.createDocumentType,
+  updateDocumentType: dbSim.updateDocumentType,
+  deleteDocumentType: dbSim.deleteDocumentType,
 
   // Announcements
   getAnnouncements: announcementsDb.getAnnouncements,
@@ -2252,6 +2288,11 @@ export const db = {
   createMenuPermission: dbSim.createMenuPermission,
   deleteMenuPermission: dbSim.deleteMenuPermission,
 
+  // Role Permissions
+  getRolePermissions: dbSim.getRolePermissions,
+  createRolePermission: dbSim.createRolePermission,
+  deleteRolePermission: dbSim.deleteRolePermission,
+
   // Account Lockout
   checkAccountLockout: dbSim.checkAccountLockout,
   recordFailedLoginAttempt: dbSim.recordFailedLoginAttempt,
@@ -2264,6 +2305,9 @@ export const db = {
   // User MFA
   getUserMfa: dbSim.getUserMfa,
   setUserMfa: dbSim.setUserMfa,
+
+  // Auth Defaults
+  getAuthDefaults: dbSim.getAuthDefaults,
 };
 
 // Type export for consumers

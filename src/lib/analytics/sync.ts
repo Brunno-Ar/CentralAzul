@@ -265,8 +265,7 @@ export async function syncBusinessUnit(
     : await registry.listConfigured();
 
   if (providers.length === 0) {
-    const mock = registry.get("mock");
-    if (mock) providers.push(mock);
+    return [];
   }
 
   const results: SyncResult[] = [];
