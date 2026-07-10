@@ -1,4 +1,4 @@
-import { PrismaClient, Company } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import DOMPurify from "isomorphic-dompurify";
 import { usersDb } from "./db/users";
@@ -127,7 +127,7 @@ export interface MockUser {
   password?: string;
   role: string;
   hierarchyLevel: number;
-  company: Company;
+  company: string;
   status: string;
   createdAt: Date;
 }
@@ -152,7 +152,7 @@ export interface MockDocument {
   fileUrl: string;
   fileSize: number;
   fileType: string;
-  category: Company;
+  category: string;
   minHierarchyLevel: number;
   uploadedById: string;
   uploadedByName: string;
@@ -204,7 +204,7 @@ export interface MockBusinessUnit {
   id: string;
   name: string;
   slug: string;
-  company: Company;
+  company: string;
   description: string;
   logo: string;
   coverImage: string;
@@ -364,7 +364,7 @@ export const mockUsers: MockUser[] = globalThis.__mockUsers ?? (globalThis.__moc
     password: "admin12345",
     role: "ADMIN",
     hierarchyLevel: 1,
-    company: Company.CENTRAL,
+    company: "CENTRAL",
     status: "ACTIVE",
     createdAt: new Date(),
   },
@@ -377,7 +377,7 @@ export const mockUsers: MockUser[] = globalThis.__mockUsers ?? (globalThis.__moc
     password: "gerente123",
     role: "COORDINATOR",
     hierarchyLevel: 2,
-    company: Company.CENTRAL,
+    company: "CENTRAL",
     status: "ACTIVE",
     createdAt: new Date(),
   },
@@ -390,7 +390,7 @@ export const mockUsers: MockUser[] = globalThis.__mockUsers ?? (globalThis.__moc
     password: "operador123",
     role: "VIEWER",
     hierarchyLevel: 3,
-    company: Company.CENTRAL,
+    company: "CENTRAL",
     status: "ACTIVE",
     createdAt: new Date(),
   },
@@ -466,7 +466,7 @@ export const mockDocuments: MockDocument[] = globalThis.__mockDocuments ?? (glob
     fileUrl: "#",
     fileSize: 2450000,
     fileType: "application/pdf",
-    category: Company.CENTRAL,
+    category: "CENTRAL",
     minHierarchyLevel: 3,
     uploadedById: "user-director",
     uploadedByName: "Diretor Grupo Azul",
@@ -480,7 +480,7 @@ export const mockDocuments: MockDocument[] = globalThis.__mockDocuments ?? (glob
     fileUrl: "#",
     fileSize: 4200000,
     fileType: "application/pdf",
-    category: Company.BORGO,
+    category: "BORGO",
     minHierarchyLevel: 2,
     uploadedById: "user-borgo",
     uploadedByName: "Gerente Borgo del Vin",
@@ -494,7 +494,7 @@ export const mockDocuments: MockDocument[] = globalThis.__mockDocuments ?? (glob
     fileUrl: "#",
     fileSize: 1800000,
     fileType: "application/pdf",
-    category: Company.MAPLE_BEAR,
+    category: "MAPLE_BEAR",
     minHierarchyLevel: 3,
     uploadedById: "user-maple",
     uploadedByName: "Coordenador Maple Bear",
@@ -1975,7 +1975,7 @@ export const dbSim = {
       id: u.id,
       name: u.name,
       slug: u.slug,
-      color: u.company === Company.BORGO ? "WINE" : u.company === Company.MAPLE_BEAR ? "RED" : u.company === Company.AZUL ? "AZUL" : "GOLD",
+      color: u.company === "BORGO" ? "WINE" : u.company === "MAPLE_BEAR" ? "RED" : u.company === "AZUL" ? "AZUL" : "GOLD",
       isActive: u.isActive,
       showOnHome: u.showOnHome,
       order: u.order,
@@ -2121,7 +2121,7 @@ export const mockBusinessUnits: MockBusinessUnit[] = globalThis.__mockBusinessUn
     id: "bu-1",
     name: "Borgo del Vino",
     slug: "BORGO",
-    company: Company.BORGO,
+    company: "BORGO",
     description:
       "Primeiro condomínio vinícola da Região Serrana e Sudeste. Inspirado nas vilas da Toscana, integrando vinhedos próprios, hotel boutique, spa, enoteca e restaurante em um cenário espetacular.",
     logo: "",
@@ -2176,7 +2176,7 @@ export const mockBusinessUnits: MockBusinessUnit[] = globalThis.__mockBusinessUn
     id: "bu-2",
     name: "Maple Bear",
     slug: "MAPLE_BEAR",
-    company: Company.MAPLE_BEAR,
+    company: "MAPLE_BEAR",
     description:
       "Rede de ensino bilíngue com metodologia canadense focada no desenvolvimento crítico.",
     logo: "",
@@ -2216,7 +2216,7 @@ export const mockBusinessUnits: MockBusinessUnit[] = globalThis.__mockBusinessUn
     id: "bu-3",
     name: "Grupo Azul",
     slug: "AZUL",
-    company: Company.AZUL,
+    company: "AZUL",
     description:
       "Incorporadora de alto padrão com portfólio de condomínios de luxo e prontos para morar.",
     logo: "",
@@ -2271,7 +2271,7 @@ export const mockBusinessUnits: MockBusinessUnit[] = globalThis.__mockBusinessUn
     id: "bu-5",
     name: "Gran Reserva",
     slug: "COMP-GRAN-RESERVA",
-    company: Company.BORGO,
+    company: "BORGO",
     description:
       "Lançamento de lotes exclusivos de alto padrão inserido no complexo Borgo del Vino.",
     logo: "",

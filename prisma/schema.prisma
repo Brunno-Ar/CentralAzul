@@ -15,11 +15,21 @@ model RoleConfig {
   updatedAt      DateTime @updatedAt
 }
 
-enum Company {
-  BORGO
-  MAPLE_BEAR
-  AZUL
-  CENTRAL
+model Company {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  color       String?
+  holding     String?  @default("CENTRAL")
+  isActive    Boolean  @default(true)
+  showOnHome  Boolean  @default(true)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  businessUnits BusinessUnit[] @relation("BusinessUnitCompany")
+  documents     Document[]     @relation("DocumentCompany")
+  users         User[]         @relation("UserCompany")
 }
 
 model User {
@@ -31,7 +41,8 @@ model User {
   password       String?
   role           String     @default("VIEWER") // References RoleConfig.name
   hierarchyLevel Int        @default(3)
-  company        Company    @default(CENTRAL)
+  company        String   @default("CENTRAL")
+  companyRef     Company?  @relation("UserCompany", fields: [company], references: [slug], onDelete: Restrict)
   status         String     @default("ACTIVE") // ACTIVE, BLOCKED
   failedLoginAttempts Int   @default(0)
   lockedUntil    DateTime?
@@ -77,7 +88,8 @@ model Document {
   fileUrl           String   @db.Text
   fileSize          Int?
   fileType          String?  // e.g. "pdf", "link", "video", "sharepoint"
-  category          Company
+  category          String
+  companyRef        Company  @relation("DocumentCompany", fields: [category], references: [slug], onDelete: Restrict)
   minHierarchyLevel Int      @default(3)
   uploadedById      String
   uploadedBy        User     @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
@@ -114,7 +126,8 @@ model BusinessUnit {
   id              String   @id @default(cuid())
   name            String   @unique
   slug            String   @unique
-  company         Company
+  company         String
+  companyRef      Company  @relation("BusinessUnitCompany", fields: [company], references: [slug], onDelete: Restrict)
   description     String?  @db.Text
   logo            String?
   coverImage      String?

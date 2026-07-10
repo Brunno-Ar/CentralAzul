@@ -1,10 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { Company } from "@prisma/client";
 
 /**
  * T2 - Test: seed de unidades agregadoras
  *
- * Verifica que para cada valor do enum Company existe >=1 BusinessUnit
+ * Verifica que para cada valor de company existe >=1 BusinessUnit
  * com showOnHome=true, testando:
  * 1. A configuracao de seed (aggregatingUnits)
  * 2. Os mockBusinessUnits em fallback
@@ -15,30 +14,30 @@ const aggregatingUnits = [
   {
     slug: "BORGO",
     name: "Borgo del Vino",
-    company: Company.BORGO,
+    company: "BORGO",
     showOnHome: true,
   },
   {
     slug: "MAPLE_BEAR",
     name: "Maple Bear",
-    company: Company.MAPLE_BEAR,
+    company: "MAPLE_BEAR",
     showOnHome: true,
   },
   {
     slug: "AZUL",
     name: "Grupo Azul",
-    company: Company.AZUL,
+    company: "AZUL",
     showOnHome: true,
   },
   {
     slug: "COMP-GRAN-RESERVA",
     name: "Gran Reserva",
-    company: Company.BORGO,
+    company: "BORGO",
     showOnHome: true,
   },
 ] as const;
 
-const allCompanyValues = Object.values(Company).filter((c) => c !== Company.CENTRAL);
+const allCompanyValues = ["BORGO", "MAPLE_BEAR", "AZUL"];
 
 describe("T2: Business Unit seed - unidades agregadoras", () => {
   describe("aggregatingUnits (seed config)", () => {
