@@ -7,7 +7,11 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@azure/identity": "^4.13.1",
@@ -39,6 +43,7 @@
     "backblaze-b2": "^1.7.1",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
+    "dotenv": "^17.4.2",
     "framer-motion": "^12.40.0",
     "isomorphic-dompurify": "^3.18.0",
     "lucide-react": "^1.20.0",

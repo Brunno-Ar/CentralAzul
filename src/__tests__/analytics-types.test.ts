@@ -1,12 +1,10 @@
 import { describe, it, expect } from "vitest";
 import type {
-  AnalyticsProvider,
   ProviderId,
   UnifiedAnalyticsMetric,
   ProviderResult,
   ProviderStatus,
   SyncResult,
-  SyncStatus,
 } from "@/lib/analytics/types";
 
 describe("Analytics types - shape validation", () => {
