@@ -176,7 +176,7 @@ export default function DocumentosClient({
         const errData = await res.json();
         setMessage({ type: "error", text: errData.error || "Erro no envio do documento" });
       }
-    } catch {
+    } catch (e) { console.error(e);
       setMessage({ type: "error", text: "Erro na conexao com o servidor" });
     } finally {
       setUploading(false);

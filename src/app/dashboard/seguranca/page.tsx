@@ -98,7 +98,7 @@ export default async function SegurancaPage() {
       mfaRequired: mfaRequired === "true",
       sessionTimeout: sessionTimeout === "true",
     };
-  } catch {
+  } catch (e) { console.error(e);
     // Use defaults
   }
 

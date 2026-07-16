@@ -53,7 +53,9 @@ const getCsrfToken = () => {
   if (typeof document === "undefined") return "";
   const match = document.cookie.match(/csrfToken=([^;]+)/);
   if (!match) {
-    const token = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    const token = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
     document.cookie = `csrfToken=${token}; path=/; SameSite=Lax;`;
     return token;
   }
@@ -210,7 +212,7 @@ export default function ComunicadosClient({
           text: errData.error || "Erro ao salvar comunicado",
         });
       }
-    } catch {
+    } catch (e) { console.error(e);
       setMessage({ type: "error", text: "Erro na conexao com o servidor" });
     } finally {
       setSubmitting(false);
@@ -262,7 +264,7 @@ export default function ComunicadosClient({
           text: errData.error || "Erro ao remover comunicado",
         });
       }
-    } catch {
+    } catch (e) { console.error(e);
       setMessage({ type: "error", text: "Erro na conexao com o servidor" });
     }
   };

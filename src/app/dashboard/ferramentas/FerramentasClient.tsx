@@ -210,7 +210,7 @@ export default function FerramentasClient({
         }
         setPanels(data);
       }
-    } catch {
+    } catch (e) { console.error(e);
       setMessage({ type: "error", text: "Erro ao criar ferramenta" });
     } finally {
       setSubmitting(false);

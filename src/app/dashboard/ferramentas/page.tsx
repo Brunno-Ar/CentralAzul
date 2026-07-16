@@ -142,7 +142,7 @@ export default async function FerramentasPage({ searchParams }: PageProps) {
         ? "BORGO"
         : normalizedCompany;
     }
-  } catch {
+  } catch (e) { console.error(e);
     // ignore
   }
 

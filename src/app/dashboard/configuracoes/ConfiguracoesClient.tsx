@@ -73,7 +73,7 @@ export default function ConfiguracoesClient({ initialUser }: ConfiguracoesClient
         const errData = await res.json();
         setProfileMessage({ type: "error", text: errData.error || "Erro ao carregar foto" });
       }
-    } catch {
+    } catch (e) { console.error(e);
       setProfileMessage({ type: "error", text: "Erro ao enviar arquivo para o servidor" });
     } finally {
       setUploadingImage(false);
@@ -107,7 +107,7 @@ export default function ConfiguracoesClient({ initialUser }: ConfiguracoesClient
         const errData = await res.json();
         setProfileMessage({ type: "error", text: errData.error || "Erro ao atualizar perfil" });
       }
-    } catch {
+    } catch (e) { console.error(e);
       setProfileMessage({ type: "error", text: "Erro de conexao com o servidor" });
     } finally {
       setUpdatingProfile(false);
@@ -146,7 +146,7 @@ export default function ConfiguracoesClient({ initialUser }: ConfiguracoesClient
         const errData = await res.json();
         setPasswordMessage({ type: "error", text: errData.error || "Erro ao alterar senha" });
       }
-    } catch {
+    } catch (e) { console.error(e);
       setPasswordMessage({ type: "error", text: "Erro de conexao com o servidor" });
     } finally {
       setUpdatingPassword(false);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import DOMPurify from "isomorphic-dompurify";
 import {
   Bold,
   Italic,
@@ -28,25 +29,56 @@ export default function RichTextEditor({
   const editorRef = useRef<HTMLDivElement>(null);
   const [isFocused, setIsFocused] = useState(false);
 
+  // Sanitize HTML on input to prevent XSS
+  const sanitizeHtml = (html: string): string => {
+    return DOMPurify.sanitize(html, {
+      ALLOWED_TAGS: [
+        "p",
+        "br",
+        "b",
+        "strong",
+        "i",
+        "em",
+        "u",
+        "h1",
+        "h2",
+        "h3",
+        "ul",
+        "ol",
+        "li",
+        "a",
+        "span",
+        "div",
+      ],
+      ALLOWED_ATTR: ["href", "target", "rel", "class", "style"],
+      ALLOW_DATA_ATTR: false,
+    });
+  };
+
   // Sincronizar o valor inicial do editor
   useEffect(() => {
     if (editorRef.current && editorRef.current.innerHTML !== value) {
-      editorRef.current.innerHTML = value || "";
+      // Sanitize the incoming value before setting
+      const sanitizedValue = sanitizeHtml(value || "");
+      editorRef.current.innerHTML = sanitizedValue;
     }
   }, [value]);
 
   const handleInput = () => {
     if (editorRef.current) {
       const html = editorRef.current.innerHTML;
+      // Sanitize before sending to parent
+      const sanitizedHtml = sanitizeHtml(html);
+
       // Se estiver vazio (ex: <p><br></p> ou apenas espaços), envia string vazia
       if (
-        html === "<p><br></p>" ||
-        html === "<br>" ||
+        sanitizedHtml === "<p><br></p>" ||
+        sanitizedHtml === "<br>" ||
         editorRef.current.innerText.trim() === ""
       ) {
         onChange("");
       } else {
-        onChange(html);
+        onChange(sanitizedHtml);
       }
     }
   };
@@ -106,6 +138,7 @@ export default function RichTextEditor({
           onClick={() => executeCommand("bold")}
           title="Negrito (Ctrl+B)"
           className="p-1.5 rounded-lg text-brand-terciar hover:bg-brand-principal hover:text-brand-secundar transition-colors transform-gpu"
+          aria-label="Negrito"
         >
           <Bold className="w-4 h-4" />
         </button>
@@ -115,6 +148,7 @@ export default function RichTextEditor({
           onClick={() => executeCommand("italic")}
           title="Itálico (Ctrl+I)"
           className="p-1.5 rounded-lg text-brand-terciar hover:bg-brand-principal hover:text-brand-secundar transition-colors transform-gpu"
+          aria-label="Itálico"
         >
           <Italic className="w-4 h-4" />
         </button>
@@ -126,6 +160,7 @@ export default function RichTextEditor({
           onClick={() => executeCommand("formatBlock", "<h1>")}
           title="Título Grande"
           className="p-1.5 rounded-lg text-brand-terciar hover:bg-brand-principal hover:text-brand-secundar transition-colors transform-gpu"
+          aria-label="Título grande"
         >
           <Heading1 className="w-4 h-4" />
         </button>
@@ -135,6 +170,7 @@ export default function RichTextEditor({
           onClick={() => executeCommand("formatBlock", "<h2>")}
           title="Título Médio"
           className="p-1.5 rounded-lg text-brand-terciar hover:bg-brand-principal hover:text-brand-secundar transition-colors transform-gpu"
+          aria-label="Título médio"
         >
           <Heading2 className="w-4 h-4" />
         </button>
@@ -146,6 +182,7 @@ export default function RichTextEditor({
           onClick={() => executeCommand("insertUnorderedList")}
           title="Lista com Marcadores"
           className="p-1.5 rounded-lg text-brand-terciar hover:bg-brand-principal hover:text-brand-secundar transition-colors transform-gpu"
+          aria-label="Lista com marcadores"
         >
           <List className="w-4 h-4" />
         </button>
@@ -155,6 +192,7 @@ export default function RichTextEditor({
           onClick={() => executeCommand("insertOrderedList")}
           title="Lista Numerada"
           className="p-1.5 rounded-lg text-brand-terciar hover:bg-brand-principal hover:text-brand-secundar transition-colors transform-gpu"
+          aria-label="Lista numerada"
         >
           <ListOrdered className="w-4 h-4" />
         </button>
@@ -166,6 +204,7 @@ export default function RichTextEditor({
           onClick={handleAddLink}
           title="Inserir Link"
           className="p-1.5 rounded-lg text-brand-terciar hover:bg-brand-principal hover:text-brand-secundar transition-colors transform-gpu"
+          aria-label="Inserir link"
         >
           <LinkIcon className="w-4 h-4" />
         </button>
@@ -175,6 +214,7 @@ export default function RichTextEditor({
           onClick={() => executeCommand("removeFormat")}
           title="Limpar Formatação"
           className="p-1.5 rounded-lg text-brand-terciar hover:bg-brand-principal hover:text-brand-secundar transition-colors transform-gpu"
+          aria-label="Limpar formatação"
         >
           <RotateCcw className="w-4 h-4" />
         </button>
@@ -193,6 +233,10 @@ export default function RichTextEditor({
         onKeyDown={handleKeyDown}
         className="w-full min-h-[160px] max-h-[300px] overflow-y-auto px-4 py-3 text-xs text-brand-terciar focus:outline-none prose prose-sm max-w-none focus:bg-white transition-colors"
         style={{ outline: "none" }}
+        role="textbox"
+        aria-multiline="true"
+        aria-label="Editor de texto rico"
+        data-placeholder={placeholder}
       />
 
       {/* Placeholder fallback using CSS/JS */}
@@ -200,6 +244,7 @@ export default function RichTextEditor({
         <div
           onClick={() => editorRef.current?.focus()}
           className="absolute mt-[-150px] ml-4 text-xs text-brand-terciar/45 pointer-events-none font-sans"
+          aria-hidden="true"
         >
           {placeholder}
         </div>

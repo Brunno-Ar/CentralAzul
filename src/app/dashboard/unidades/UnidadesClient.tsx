@@ -76,9 +76,9 @@ const getCsrfToken = () => {
   if (typeof document === "undefined") return "";
 
   const generateToken = () => {
-    return typeof crypto !== "undefined" && crypto.randomUUID
-      ? crypto.randomUUID()
-      : Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
   };
 
   const match = document.cookie.match(/csrfToken=([^;]+)/);
@@ -218,7 +218,7 @@ export default function UnidadesClient({ initialBusinessUnits, userLevel, compan
           text: err.details ? `${err.error}: ${err.details}` : (err.error || "Erro ao criar unidade"),
         });
       }
-    } catch {
+    } catch (e) { console.error(e);
       setMessage({ type: "error", text: "Erro de conexao" });
     }
   };
@@ -459,7 +459,7 @@ export default function UnidadesClient({ initialBusinessUnits, userLevel, compan
                                 const err = await res.json();
                                 alert(err.error || "Erro no upload");
                               }
-                            } catch {
+                            } catch (e) { console.error(e);
                               alert("Erro de conexao");
                             } finally {
                               setUploadingCover(false);
@@ -524,7 +524,7 @@ export default function UnidadesClient({ initialBusinessUnits, userLevel, compan
                                 const err = await res.json();
                                 alert(err.error || "Erro no upload");
                               }
-                            } catch {
+                            } catch (e) { console.error(e);
                               alert("Erro de conexao");
                             } finally {
                               setUploadingLogo(false);

@@ -1,19 +1,20 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { 
-  Building2, 
-  Wine, 
-  GraduationCap, 
-  ShieldCheck, 
-  FileText, 
-  Activity, 
-  Users, 
+import {
+  Building2,
+  Wine,
+  GraduationCap,
+  ShieldCheck,
+  FileText,
+  Activity,
+  Users,
   ChevronRight,
   TrendingUp
 } from "lucide-react";
 import Link from "next/link";
 import { PageWrapper } from "@/components/PageWrapper";
+import { getCompanyStyle } from "@/lib/company-colors";
 
 interface DashboardStats {
   totalSistemas: number;
@@ -54,88 +55,6 @@ interface DashboardHomeClientProps {
   companies: DashboardCompany[];
 }
 
-const getCompanyStyle = (c: DashboardCompany) => {
-  const url = c.url || `/dashboard/ferramentas?company=${c.slug}`;
-  const desc = c.desc || `Painel corporativo e ferramentas integradas da divisao ${c.name}.`;
-  
-  // Ícone dinâmico baseado em palavra-chave
-  let icon = Building2;
-  if (c.iconName === "Wine") {
-    icon = Wine;
-  } else if (c.iconName === "GraduationCap") {
-    icon = GraduationCap;
-  } else {
-    const nameLower = (c.name || "").toLowerCase();
-    if (
-      nameLower.includes("wine") ||
-      nameLower.includes("vinho") ||
-      nameLower.includes("vinicola") ||
-      nameLower.includes("borgo") ||
-      nameLower.includes("reserva")
-    ) {
-      icon = Wine;
-    } else if (
-      nameLower.includes("bear") ||
-      nameLower.includes("maple") ||
-      nameLower.includes("school") ||
-      nameLower.includes("escola") ||
-      nameLower.includes("colegio") ||
-      nameLower.includes("educacao") ||
-      nameLower.includes("ensino")
-    ) {
-      icon = GraduationCap;
-    }
-  }
-
-  if (c.colorClass) {
-    return {
-      icon,
-      color: c.colorClass,
-      accent: c.accentClass || "text-brand-secundar",
-      url,
-      desc,
-    };
-  }
-
-  // Fallback baseado no campo color cadastrado
-  const compColor = (c.color || "AZUL").toUpperCase();
-  let color = "from-brand-principal/20 to-brand-principal/40 border-brand-secundar/20";
-  let accent = "text-brand-secundar";
-
-  if (compColor === "WINE") {
-    color = "from-brand-terciar/5 to-brand-terciar/15 border-brand-terciar/20";
-    accent = "text-brand-terciar";
-  } else if (compColor === "RED") {
-    color = "from-brand-secundar/5 to-brand-secundar/15 border-brand-secundar/20";
-    accent = "text-brand-secundar";
-  } else if (compColor === "AZUL") {
-    color = "from-brand-extra2/5 to-brand-extra2/15 border-brand-extra2/20";
-    accent = "text-brand-extra2";
-  } else if (compColor === "GOLD") {
-    color = "from-brand-principal/20 to-brand-principal/40 border-brand-secundar/20";
-    accent = "text-brand-extra1";
-  } else if (compColor === "BRONZE") {
-    color = "from-amber-700/5 to-amber-700/15 border-amber-700/20";
-    accent = "text-amber-700";
-  } else if (compColor === "GREEN") {
-    color = "from-emerald-700/5 to-emerald-700/15 border-emerald-700/20";
-    accent = "text-emerald-700";
-  } else if (compColor === "BLUE") {
-    color = "from-blue-600/5 to-blue-600/15 border-blue-600/20";
-    accent = "text-blue-600";
-  } else if (compColor === "PURPLE") {
-    color = "from-purple-600/5 to-purple-600/15 border-purple-600/20";
-    accent = "text-purple-600";
-  }
-
-  return {
-    icon,
-    color,
-    accent,
-    url,
-    desc,
-  };
-};
 
 export default function DashboardHomeClient({
   userName,
@@ -169,7 +88,7 @@ export default function DashboardHomeClient({
           <h1 className="text-xl font-bold tracking-tight text-brand-extra1 sm:text-2xl">
             Ola, {userName || "Colaborador"}
           </h1>
-          <p className="text-xs text-brand-terciar/70 mt-1 leading-normal">
+          <p className="text-xs text-brand-terciar mt-1 leading-normal">
             Bem-vindo a central integrada do Grupo Azul. Seu nivel atual e Nivel {userLevel} ({userRole}).
           </p>
         </div>
@@ -191,78 +110,80 @@ export default function DashboardHomeClient({
           variants={itemVariants} 
           className="p-4 rounded-xl border border-brand-terciar/10 bg-white shadow-sm"
         >
-          <div className="flex justify-between items-center text-brand-terciar/60">
-            <span className="text-[10px] font-mono uppercase tracking-wider">Ferramentas</span>
+            <div className="flex justify-between items-center text-brand-terciar">
+              <span className="text-[10px] font-mono uppercase tracking-wider">Ferramentas</span>
             <Building2 className="w-3.5 h-3.5 text-brand-extra2" />
           </div>
           <p className="text-xl font-bold text-brand-extra1 mt-1 sm:text-2xl">{stats.totalSistemas}</p>
-          <p className="text-[9px] text-brand-terciar/50 mt-1">Ferramentas ativas</p>
+          <p className="text-[10px] text-brand-terciar mt-1">Ferramentas ativas</p>
         </motion.div>
 
         <motion.div 
           variants={itemVariants} 
           className="p-4 rounded-xl border border-brand-terciar/10 bg-white shadow-sm"
         >
-          <div className="flex justify-between items-center text-brand-terciar/60">
-            <span className="text-[10px] font-mono uppercase tracking-wider">Documentos & Midias</span>
+            <div className="flex justify-between items-center text-brand-terciar">
+                <span className="text-[10px] font-mono uppercase tracking-wider">Documentos & Midias</span>
             <FileText className="w-3.5 h-3.5 text-brand-terciar" />
           </div>
           <p className="text-xl font-bold text-brand-extra1 mt-1 sm:text-2xl">{stats.totalDocs}</p>
-          <p className="text-[9px] text-brand-terciar/50 mt-1">Armazenados com seguranca</p>
+          <p className="text-[10px] text-brand-terciar mt-1">Armazenados com seguranca</p>
         </motion.div>
 
         <motion.div 
           variants={itemVariants} 
           className="p-4 rounded-xl border border-brand-terciar/10 bg-white shadow-sm"
         >
-          <div className="flex justify-between items-center text-brand-terciar/60">
-            <span className="text-[10px] font-mono uppercase tracking-wider">Logs Auditoria</span>
+            <div className="flex justify-between items-center text-brand-terciar">
+              <span className="text-[10px] font-mono uppercase tracking-wider">Logs Auditoria</span>
             <Activity className="w-3.5 h-3.5 text-brand-terciar" />
           </div>
           <p className="text-xl font-bold text-brand-extra1 mt-1 sm:text-2xl">{stats.totalLogs}</p>
-          <p className="text-[9px] text-brand-terciar/50 mt-1">Registros na central</p>
+          <p className="text-[10px] text-brand-terciar mt-1">Registros na central</p>
         </motion.div>
 
         <motion.div 
           variants={itemVariants} 
           className="p-4 rounded-xl border border-brand-terciar/10 bg-white shadow-sm"
         >
-          <div className="flex justify-between items-center text-brand-terciar/60">
-            <span className="text-[10px] font-mono uppercase tracking-wider">Usuarios</span>
+            <div className="flex justify-between items-center text-brand-terciar">
+              <span className="text-[10px] font-mono uppercase tracking-wider">Usuarios</span>
             <Users className="w-3.5 h-3.5 text-emerald-600" />
           </div>
           <p className="text-xl font-bold text-brand-extra1 mt-1 sm:text-2xl">{stats.activeUsers}</p>
-          <p className="text-[9px] text-brand-terciar/50 mt-1">Contas configuradas</p>
+          <p className="text-[10px] text-brand-terciar mt-1">Contas configuradas</p>
         </motion.div>
       </motion.div>
 
       {/* Main Companies Overview - Mobile First */}
       <div className="space-y-4">
-        <h2 className="text-sm font-mono uppercase text-brand-terciar/60 tracking-wider">
+        <h2 className="text-sm font-mono uppercase text-brand-terciar tracking-wider">
           Divisoes do Grupo
         </h2>
         
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {companies.map((company, idx) => {
-            const style = getCompanyStyle(company);
-            const Icon = style.icon;
+            const { icon, colorClass, accentClass } = getCompanyStyle(company);
+            const Icon = icon;
+            const url = company.url || `/dashboard/ferramentas?company=${company.slug}`;
+            const desc = company.desc || `Painel corporativo e ferramentas integradas da divisao ${company.name}.`;
             return (
-              <Link href={style.url} key={company.name} className="block">
+              <Link href={url} key={company.name} className="block focus-visible:ring-2 focus-visible:ring-brand-secundar/40 focus-visible:outline-none rounded-2xl">
                 <motion.div
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 * idx, type: "spring" as const }}
-                  className={`flex flex-col justify-between p-5 rounded-2xl border bg-gradient-to-br ${style.color} shadow-sm transition-all hover:shadow-md hover:border-brand-secundar/40 hover:-translate-y-0.5 cursor-pointer h-full`}
+                  className={`flex flex-col justify-between p-5 rounded-2xl border bg-gradient-to-br ${colorClass} shadow-sm transition-all hover:shadow-md hover:border-brand-secundar/40 hover:-translate-y-0.5 transform-gpu cursor-pointer h-full`}
                 >
                   <div>
                     <div className="flex items-center justify-between w-full mb-4">
                       <span className="text-sm font-bold text-brand-extra1">{company.name}</span>
-                      <div className={`p-2 rounded-lg bg-white/80 shadow-sm ${style.accent}`}>
+                      <div className={`p-2 rounded-lg bg-white/80 shadow-sm ${accentClass}`}>
                         <Icon className="w-4 h-4" />
                       </div>
                     </div>
-                    <p className="text-xs text-brand-terciar/80 leading-relaxed">
-                      {style.desc}
+                    <p className="text-xs text-brand-terciar leading-relaxed">
+                      {desc}
                     </p>
                   </div>
                 </motion.div>
@@ -277,13 +198,13 @@ export default function DashboardHomeClient({
         {/* Real-time Security logs */}
         <div className="p-5 rounded-2xl border border-brand-terciar/10 bg-white shadow-sm lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-mono uppercase text-brand-terciar/60 tracking-wider flex items-center gap-2">
+            <h2 className="text-xs font-mono uppercase text-brand-terciar tracking-wider flex items-center gap-2">
               <Activity className="w-3.5 h-3.5 text-brand-terciar" />
               Auditoria de Seguranca Recente
             </h2>
             <Link 
               href="/dashboard/seguranca"
-              className="text-[10px] text-brand-secundar hover:text-brand-secundar/80 flex items-center gap-1 font-bold"
+              className="text-[10px] text-brand-secundar hover:text-brand-secundar/80 flex items-center gap-1 font-bold focus-visible:ring-2 focus-visible:ring-brand-secundar/40 focus-visible:outline-none rounded px-1"
             >
               Ver Tudo
               <ChevronRight className="w-3 h-3" />
@@ -292,7 +213,7 @@ export default function DashboardHomeClient({
 
           <div className="space-y-3">
             {recentLogs.length === 0 ? (
-              <p className="text-xs text-brand-terciar/50 py-4 text-center">Nenhum evento registrado ainda.</p>
+              <p className="text-xs text-brand-terciar py-4 text-center">Nenhum evento registrado ainda.</p>
             ) : (
               recentLogs.map((log) => (
                 <div 
@@ -306,9 +227,9 @@ export default function DashboardHomeClient({
                         {log.action}
                       </span>
                     </div>
-                    <p className="text-brand-terciar/80 mt-1 leading-normal">{log.details}</p>
+                    <p className="text-brand-terciar mt-1 leading-normal">{log.details}</p>
                   </div>
-                  <span className="text-[9px] font-mono text-brand-terciar/45 whitespace-nowrap self-center">
+                  <span className="text-[10px] font-mono text-brand-terciar whitespace-nowrap self-center">
                     {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                   </span>
                 </div>
@@ -319,7 +240,7 @@ export default function DashboardHomeClient({
 
         {/* Notices/Announcements */}
         <div className="p-5 rounded-2xl border border-brand-terciar/10 bg-white shadow-sm space-y-4">
-          <h2 className="text-xs font-mono uppercase text-brand-terciar/60 tracking-wider flex items-center gap-2">
+            <h2 className="text-xs font-mono uppercase text-brand-terciar tracking-wider flex items-center gap-2">
             <TrendingUp className="w-3.5 h-3.5 text-brand-extra2" />
             Avisos da Central
           </h2>
@@ -328,7 +249,7 @@ export default function DashboardHomeClient({
             <div className="p-3.5 rounded-xl border border-brand-terciar/10 bg-brand-principal/20 space-y-1">
               <span className="text-[9px] font-mono text-brand-extra2 font-bold">IMPORTANTE</span>
               <p className="text-xs font-bold text-brand-extra1">Nova integracao de Seguranca</p>
-              <p className="text-[10px] text-brand-terciar/70 leading-relaxed">
+              <p className="text-[11px] text-brand-terciar leading-relaxed">
                 Todas as credenciais de ferramentas agora estao integradas com o token ativo do Outlook profissional.
               </p>
             </div>
@@ -336,7 +257,7 @@ export default function DashboardHomeClient({
             <div className="p-3.5 rounded-xl border border-brand-terciar/10 bg-brand-principal/20 space-y-1">
               <span className="text-[9px] font-mono text-brand-terciar font-bold">AVISO</span>
               <p className="text-xs font-bold text-brand-extra1">Manutencao Hostinger MySQL</p>
-              <p className="text-[10px] text-brand-terciar/70 leading-relaxed">
+              <p className="text-[11px] text-brand-terciar leading-relaxed">
                 Manutencao programada do banco de dados na madrugada de domingo das 02:00 as 04:00.
               </p>
             </div>

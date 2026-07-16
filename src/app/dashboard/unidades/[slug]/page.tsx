@@ -123,7 +123,9 @@ const getCsrfToken = () => {
   if (typeof document === "undefined") return "";
   const match = document.cookie.match(/csrfToken=([^;]+)/);
   if (!match) {
-    const token = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    const token = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
     document.cookie = `csrfToken=${token}; path=/; SameSite=Lax;`;
     return token;
   }
@@ -189,12 +191,12 @@ export default function BusinessUnitDetailPage() {
         try {
           const err = await res.json();
           setMessage({ type: "error", text: err.details ? `${err.error}: ${err.details}` : (err.error || "Erro ao editar item") });
-        } catch {
+        } catch (e) { console.error(e);
           setMessage({ type: "error", text: "Erro ao editar item" });
         }
         return false;
       }
-    } catch {
+    } catch (e) { console.error(e);
       setMessage({ type: "error", text: "Erro na conexão" });
       return false;
     }
@@ -228,7 +230,7 @@ export default function BusinessUnitDetailPage() {
           } else {
             setMessage({ type: "error", text: err.error || "Erro ao adicionar item" });
           }
-        } catch {
+        } catch (e) { console.error(e);
           setMessage({ type: "error", text: "Funcao em desenvolvimento" });
         }
         return false;
@@ -236,12 +238,12 @@ export default function BusinessUnitDetailPage() {
         try {
           const err = await res.json();
           setMessage({ type: "error", text: err.details ? `${err.error}: ${err.details}` : (err.error || "Erro ao adicionar item") });
-        } catch {
+        } catch (e) { console.error(e);
           setMessage({ type: "error", text: "Erro ao adicionar item" });
         }
         return false;
       }
-    } catch {
+    } catch (e) { console.error(e);
       setMessage({ type: "error", text: "Erro na conexão" });
       return false;
     }
@@ -274,18 +276,18 @@ export default function BusinessUnitDetailPage() {
           } else {
             setMessage({ type: "error", text: err.error || "Erro ao remover item" });
           }
-        } catch {
+        } catch (e) { console.error(e);
           setMessage({ type: "error", text: "Funcao em desenvolvimento" });
         }
       } else {
         try {
           const err = await res.json();
           setMessage({ type: "error", text: err.error || "Erro ao remover item" });
-        } catch {
+        } catch (e) { console.error(e);
           setMessage({ type: "error", text: "Erro ao remover item" });
         }
       }
-    } catch {
+    } catch (e) { console.error(e);
       setMessage({ type: "error", text: "Erro na conexão" });
     }
   };
@@ -332,18 +334,18 @@ export default function BusinessUnitDetailPage() {
           } else {
             setMessage({ type: "error", text: err.error || "Erro ao atualizar unidade" });
           }
-        } catch {
+        } catch (e) { console.error(e);
           setMessage({ type: "error", text: "Funcao em desenvolvimento" });
         }
       } else {
         try {
           const err = await res.json();
           setMessage({ type: "error", text: err.error || "Erro ao atualizar unidade" });
-        } catch {
+        } catch (e) { console.error(e);
           setMessage({ type: "error", text: "Erro ao atualizar unidade" });
         }
       }
-    } catch {
+    } catch (e) { console.error(e);
       setMessage({ type: "error", text: "Erro na conexão" });
     }
   };
@@ -387,18 +389,18 @@ export default function BusinessUnitDetailPage() {
           } else {
             setMessage({ type: "error", text: err.error || "Erro ao sincronizar dados" });
           }
-        } catch {
+        } catch (e) { console.error(e);
           setMessage({ type: "error", text: "Funcao em desenvolvimento" });
         }
       } else {
         try {
           const err = await res.json();
           setMessage({ type: "error", text: err.error || "Erro ao sincronizar dados" });
-        } catch {
+        } catch (e) { console.error(e);
           setMessage({ type: "error", text: "Erro ao sincronizar dados" });
         }
       }
-    } catch {
+    } catch (e) { console.error(e);
       setMessage({ type: "error", text: "Erro na conexão de sincronização" });
     } finally {
       setIsSyncing(false);
@@ -418,7 +420,7 @@ export default function BusinessUnitDetailPage() {
         } else {
           setError("Erro ao carregar unidade de negócio");
         }
-      } catch {
+      } catch (e) { console.error(e);
         setError("Erro de conexão");
       } finally {
         setLoading(false);
@@ -447,18 +449,18 @@ export default function BusinessUnitDetailPage() {
           } else {
             setMessage({ type: "error", text: err.error || "Erro ao remover unidade" });
           }
-        } catch {
+        } catch (e) { console.error(e);
           setMessage({ type: "error", text: "Funcao em desenvolvimento" });
         }
       } else {
         try {
           const err = await res.json();
           setMessage({ type: "error", text: err.error || "Erro ao remover unidade" });
-        } catch {
+        } catch (e) { console.error(e);
           setMessage({ type: "error", text: "Erro ao remover unidade" });
         }
       }
-    } catch {
+    } catch (e) { console.error(e);
       setMessage({ type: "error", text: "Erro de conexão" });
     }
   };
@@ -1401,7 +1403,7 @@ export default function BusinessUnitDetailPage() {
                                   const err = await res.json();
                                   alert(err.error || "Erro no upload");
                                 }
-                              } catch {
+                              } catch (e) { console.error(e);
                                 alert("Erro de conexão");
                               } finally {
                                 setUploadingCover(false);
@@ -1466,7 +1468,7 @@ export default function BusinessUnitDetailPage() {
                                   const err = await res.json();
                                   alert(err.error || "Erro no upload");
                                 }
-                              } catch {
+                              } catch (e) { console.error(e);
                                 alert("Erro de conexão");
                               } finally {
                                 setUploadingLogo(false);
