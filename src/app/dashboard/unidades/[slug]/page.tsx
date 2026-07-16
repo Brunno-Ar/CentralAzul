@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { useCompanies } from "@/hooks/useCompanies";
 import { useParams, useRouter } from "next/navigation";
 import NextImage from "next/image";
 import { useSession } from "next-auth/react";
@@ -31,6 +32,11 @@ import {
   Upload,
 } from "lucide-react";
 import { SessionUser } from "@/types/auth";
+import type {
+  BusinessUnitAnalyticsSerialized,
+  BusinessUnitMetaDataSerialized,
+  BusinessUnitRevenueSerialized,
+} from "@/types/analytics";
 import FocusLock from "react-focus-lock";
 
 interface BusinessUnit {
@@ -51,9 +57,9 @@ interface BusinessUnit {
   updatedAt: string;
   tools: BusinessUnitTool[];
   socialLinks: BusinessUnitSocialLink[];
-  analytics: BusinessUnitAnalytics[];
-  metaData: BusinessUnitMetaData[];
-  revenueData: BusinessUnitRevenue[];
+  analytics: BusinessUnitAnalyticsSerialized[];
+  metaData: BusinessUnitMetaDataSerialized[];
+  revenueData: BusinessUnitRevenueSerialized[];
 }
 
 interface BusinessUnitTool {
@@ -79,46 +85,6 @@ interface BusinessUnitSocialLink {
   handle: string;
   followersCount: number;
   isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface BusinessUnitAnalytics {
-  id: string;
-  businessUnitId: string;
-  date: string;
-  pageViews: number;
-  uniqueVisitors: number;
-  sessions: number;
-  bounceRate: number;
-  avgSessionDuration: number;
-  source: string;
-  createdAt: string;
-}
-
-interface BusinessUnitMetaData {
-  id: string;
-  businessUnitId: string;
-  date: string;
-  platform: string;
-  followersCount: number;
-  followingCount: number;
-  postsCount: number;
-  engagementRate: number;
-  reach: number;
-  impressions: number;
-  createdAt: string;
-}
-
-interface BusinessUnitRevenue {
-  id: string;
-  businessUnitId: string;
-  period: string;
-  amount: number;
-  currency: string;
-  type: string;
-  source: string;
-  notes: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -157,7 +123,9 @@ const getCsrfToken = () => {
   if (typeof document === "undefined") return "";
   const match = document.cookie.match(/csrfToken=([^;]+)/);
   if (!match) {
-    const token = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    const token = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
     document.cookie = `csrfToken=${token}; path=/; SameSite=Lax;`;
     return token;
   }
@@ -169,7 +137,10 @@ export default function BusinessUnitDetailPage() {
   const router = useRouter();
   const slug = params.slug as string;
   const { data: session } = useSession();
+  const user = session?.user as SessionUser | undefined;
+  const userLevel = user?.hierarchyLevel || 3;
   const [businessUnit, setBusinessUnit] = useState<BusinessUnit | null>(null);
+  const { companies } = useCompanies();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<
@@ -219,13 +190,13 @@ export default function BusinessUnitDetailPage() {
       } else {
         try {
           const err = await res.json();
-          setMessage({ type: "error", text: err.error || "Erro ao editar item" });
-        } catch {
+          setMessage({ type: "error", text: err.details ? `${err.error}: ${err.details}` : (err.error || "Erro ao editar item") });
+        } catch (e) { console.error(e);
           setMessage({ type: "error", text: "Erro ao editar item" });
         }
         return false;
       }
-    } catch {
+    } catch (e) { console.error(e);
       setMessage({ type: "error", text: "Erro na conexão" });
       return false;
     }
@@ -259,20 +230,20 @@ export default function BusinessUnitDetailPage() {
           } else {
             setMessage({ type: "error", text: err.error || "Erro ao adicionar item" });
           }
-        } catch {
+        } catch (e) { console.error(e);
           setMessage({ type: "error", text: "Funcao em desenvolvimento" });
         }
         return false;
       } else {
         try {
           const err = await res.json();
-          setMessage({ type: "error", text: err.error || "Erro ao adicionar item" });
-        } catch {
+          setMessage({ type: "error", text: err.details ? `${err.error}: ${err.details}` : (err.error || "Erro ao adicionar item") });
+        } catch (e) { console.error(e);
           setMessage({ type: "error", text: "Erro ao adicionar item" });
         }
         return false;
       }
-    } catch {
+    } catch (e) { console.error(e);
       setMessage({ type: "error", text: "Erro na conexão" });
       return false;
     }
@@ -305,18 +276,18 @@ export default function BusinessUnitDetailPage() {
           } else {
             setMessage({ type: "error", text: err.error || "Erro ao remover item" });
           }
-        } catch {
+        } catch (e) { console.error(e);
           setMessage({ type: "error", text: "Funcao em desenvolvimento" });
         }
       } else {
         try {
           const err = await res.json();
           setMessage({ type: "error", text: err.error || "Erro ao remover item" });
-        } catch {
+        } catch (e) { console.error(e);
           setMessage({ type: "error", text: "Erro ao remover item" });
         }
       }
-    } catch {
+    } catch (e) { console.error(e);
       setMessage({ type: "error", text: "Erro na conexão" });
     }
   };
@@ -363,24 +334,22 @@ export default function BusinessUnitDetailPage() {
           } else {
             setMessage({ type: "error", text: err.error || "Erro ao atualizar unidade" });
           }
-        } catch {
+        } catch (e) { console.error(e);
           setMessage({ type: "error", text: "Funcao em desenvolvimento" });
         }
       } else {
         try {
           const err = await res.json();
           setMessage({ type: "error", text: err.error || "Erro ao atualizar unidade" });
-        } catch {
+        } catch (e) { console.error(e);
           setMessage({ type: "error", text: "Erro ao atualizar unidade" });
         }
       }
-    } catch {
+    } catch (e) { console.error(e);
       setMessage({ type: "error", text: "Erro na conexão" });
     }
   };
 
-  const user = session?.user as SessionUser | undefined;
-  const userLevel = user?.hierarchyLevel || 3;
   const isAdmin = userLevel === 1;
 
   const syncSteps = [
@@ -420,18 +389,18 @@ export default function BusinessUnitDetailPage() {
           } else {
             setMessage({ type: "error", text: err.error || "Erro ao sincronizar dados" });
           }
-        } catch {
+        } catch (e) { console.error(e);
           setMessage({ type: "error", text: "Funcao em desenvolvimento" });
         }
       } else {
         try {
           const err = await res.json();
           setMessage({ type: "error", text: err.error || "Erro ao sincronizar dados" });
-        } catch {
+        } catch (e) { console.error(e);
           setMessage({ type: "error", text: "Erro ao sincronizar dados" });
         }
       }
-    } catch {
+    } catch (e) { console.error(e);
       setMessage({ type: "error", text: "Erro na conexão de sincronização" });
     } finally {
       setIsSyncing(false);
@@ -451,7 +420,7 @@ export default function BusinessUnitDetailPage() {
         } else {
           setError("Erro ao carregar unidade de negócio");
         }
-      } catch {
+      } catch (e) { console.error(e);
         setError("Erro de conexão");
       } finally {
         setLoading(false);
@@ -480,18 +449,18 @@ export default function BusinessUnitDetailPage() {
           } else {
             setMessage({ type: "error", text: err.error || "Erro ao remover unidade" });
           }
-        } catch {
+        } catch (e) { console.error(e);
           setMessage({ type: "error", text: "Funcao em desenvolvimento" });
         }
       } else {
         try {
           const err = await res.json();
           setMessage({ type: "error", text: err.error || "Erro ao remover unidade" });
-        } catch {
+        } catch (e) { console.error(e);
           setMessage({ type: "error", text: "Erro ao remover unidade" });
         }
       }
-    } catch {
+    } catch (e) { console.error(e);
       setMessage({ type: "error", text: "Erro de conexão" });
     }
   };
@@ -732,7 +701,7 @@ export default function BusinessUnitDetailPage() {
                   icon={Users}
                   label="Seguidores (Meta)"
                   value={
-                    latestMeta ? formatNumber(latestMeta.followersCount) : "—"
+                    latestMeta ? formatNumber(latestMeta.followersCount) : "-"
                   }
                   iconColor="text-pink-600 bg-pink-50"
                 />
@@ -742,7 +711,7 @@ export default function BusinessUnitDetailPage() {
                   value={
                     latestAnalytics
                       ? formatNumber(latestAnalytics.pageViews)
-                      : "—"
+                      : "-"
                   }
                   iconColor="text-blue-600 bg-blue-50"
                 />
@@ -752,7 +721,7 @@ export default function BusinessUnitDetailPage() {
                   value={
                     latestMeta
                       ? `${latestMeta.engagementRate.toFixed(1)}%`
-                      : "—"
+                      : "-"
                   }
                   iconColor="text-emerald-600 bg-emerald-50"
                 />
@@ -760,7 +729,7 @@ export default function BusinessUnitDetailPage() {
                   icon={DollarSign}
                   label="Faturamento"
                   value={
-                    latestRevenue ? formatCurrency(latestRevenue.amount) : "—"
+                    latestRevenue ? formatCurrency(latestRevenue.amount) : "-"
                   }
                   iconColor="text-amber-600 bg-amber-50"
                 />
@@ -771,22 +740,22 @@ export default function BusinessUnitDetailPage() {
                 <ContactItem
                   icon={MapPin}
                   label="Endereço"
-                  value={businessUnit.address || "—"}
+                  value={businessUnit.address || "-"}
                 />
                 <ContactItem
                   icon={Phone}
                   label="Telefone"
-                  value={businessUnit.phone || "—"}
+                  value={businessUnit.phone || "-"}
                 />
                 <ContactItem
                   icon={Mail}
                   label="E-mail"
-                  value={businessUnit.email || "—"}
+                  value={businessUnit.email || "-"}
                 />
                 <ContactItem
                   icon={Globe}
                   label="Website"
-                  value={businessUnit.website ? "Acessar site" : "—"}
+                  value={businessUnit.website ? "Acessar site" : "-"}
                 />
               </div>
 
@@ -824,6 +793,68 @@ export default function BusinessUnitDetailPage() {
                       <Phone className="w-3.5 h-3.5" />
                       Ligar
                     </a>
+                  )}
+
+                  {/* Ações administrativas para Nível 1 e 2 */}
+                  {userLevel <= 2 && (
+                    <>
+                      <button
+                        onClick={() => {
+                          setActiveTab("revenue");
+                          setShowAddRevenueModal(true);
+                        }}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-xs font-semibold hover:bg-amber-100 transition-colors cursor-pointer"
+                      >
+                        <DollarSign className="w-3.5 h-3.5 text-amber-700" />
+                        Registrar Faturamento
+                      </button>
+                      <button
+                        onClick={() => {
+                          setActiveTab("analytics");
+                          setShowAddAnalyticsModal(true);
+                        }}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-blue-50 text-blue-800 border border-blue-200 rounded-lg text-xs font-semibold hover:bg-blue-100 transition-colors cursor-pointer"
+                      >
+                        <BarChart3 className="w-3.5 h-3.5 text-blue-700" />
+                        Registrar Analytics
+                      </button>
+                      <button
+                        onClick={() => {
+                          setActiveTab("tools");
+                          setShowAddToolModal(true);
+                        }}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-purple-50 text-purple-800 border border-purple-200 rounded-lg text-xs font-semibold hover:bg-purple-100 transition-colors cursor-pointer"
+                      >
+                        <Settings className="w-3.5 h-3.5 text-purple-700" />
+                        Adicionar Ferramenta
+                      </button>
+                      <button
+                        onClick={() => {
+                          setActiveTab("social");
+                          setShowAddSocialModal(true);
+                        }}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-pink-50 text-pink-800 border border-pink-200 rounded-lg text-xs font-semibold hover:bg-pink-100 transition-colors cursor-pointer"
+                      >
+                        <Users className="w-3.5 h-3.5 text-pink-700" />
+                        Vincular Redes Sociais
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowEditModal(true);
+                        }}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-gray-50 text-gray-800 border border-gray-200 rounded-lg text-xs font-semibold hover:bg-gray-100 transition-colors cursor-pointer"
+                      >
+                        <Edit2 className="w-3.5 h-3.5 text-gray-700" />
+                        Editar Cadastro
+                      </button>
+                    </>
+                  )}
+
+                  {/* Fallback se não houver nenhuma ação disponível para Nível 3 */}
+                  {userLevel > 2 && !businessUnit.website && !businessUnit.email && !businessUnit.phone && (
+                    <span className="text-xs text-brand-terciar/50 italic">
+                      Nenhuma ação rápida disponível para esta unidade.
+                    </span>
                   )}
                 </div>
               </div>
@@ -909,7 +940,7 @@ export default function BusinessUnitDetailPage() {
                   value={
                     latestAnalytics
                       ? formatNumber(latestAnalytics.pageViews)
-                      : "—"
+                      : "-"
                   }
                   iconColor="text-blue-600 bg-blue-50"
                 />
@@ -919,7 +950,7 @@ export default function BusinessUnitDetailPage() {
                   value={
                     latestAnalytics
                       ? formatNumber(latestAnalytics.uniqueVisitors)
-                      : "—"
+                      : "-"
                   }
                   iconColor="text-purple-600 bg-purple-50"
                 />
@@ -929,7 +960,7 @@ export default function BusinessUnitDetailPage() {
                   value={
                     latestAnalytics
                       ? formatNumber(latestAnalytics.sessions)
-                      : "—"
+                      : "-"
                   }
                   iconColor="text-emerald-600 bg-emerald-50"
                 />
@@ -939,7 +970,7 @@ export default function BusinessUnitDetailPage() {
                   value={
                     latestAnalytics
                       ? `${latestAnalytics.bounceRate.toFixed(1)}%`
-                      : "—"
+                      : "-"
                   }
                   iconColor="text-amber-600 bg-amber-50"
                 />
@@ -1027,20 +1058,20 @@ export default function BusinessUnitDetailPage() {
                   icon={DollarSign}
                   label="Último Período"
                   value={
-                    latestRevenue ? formatCurrency(latestRevenue.amount) : "—"
+                    latestRevenue ? formatCurrency(latestRevenue.amount) : "-"
                   }
                   iconColor="text-amber-600 bg-amber-50"
                 />
                 <StatCard
                   icon={TrendingUp}
                   label="Tipo"
-                  value={latestRevenue ? latestRevenue.type : "—"}
+                  value={latestRevenue ? latestRevenue.type : "-"}
                   iconColor="text-blue-600 bg-blue-50"
                 />
                 <StatCard
                   icon={Settings}
                   label="Fonte"
-                  value={latestRevenue ? latestRevenue.source : "—"}
+                  value={latestRevenue ? latestRevenue.source : "-"}
                   iconColor="text-emerald-600 bg-emerald-50"
                 />
               </div>
@@ -1092,7 +1123,7 @@ export default function BusinessUnitDetailPage() {
                             {r.source}
                           </td>
                           <td className="py-2 text-brand-terciar/70 text-xs">
-                            {r.notes || "—"}
+                            {r.notes || "-"}
                           </td>
                           {userLevel <= 2 && (
                             <td className="py-2 text-right">
@@ -1245,9 +1276,11 @@ export default function BusinessUnitDetailPage() {
                       defaultValue={businessUnit.company}
                       className="w-full px-3 py-2 bg-brand-principal/30 border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar focus:outline-none focus:border-brand-secundar focus:bg-white transition-colors cursor-pointer"
                     >
-                      <option value="BORGO">Borgo del Vin</option>
-                      <option value="MAPLE_BEAR">Maple Bear</option>
-                      <option value="AZUL">Azul Incorporações</option>
+                      {companies.map((c) => (
+                        <option key={c.slug} value={c.slug}>
+                          {c.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
 
@@ -1370,7 +1403,7 @@ export default function BusinessUnitDetailPage() {
                                   const err = await res.json();
                                   alert(err.error || "Erro no upload");
                                 }
-                              } catch {
+                              } catch (e) { console.error(e);
                                 alert("Erro de conexão");
                               } finally {
                                 setUploadingCover(false);
@@ -1435,7 +1468,7 @@ export default function BusinessUnitDetailPage() {
                                   const err = await res.json();
                                   alert(err.error || "Erro no upload");
                                 }
-                              } catch {
+                              } catch (e) { console.error(e);
                                 alert("Erro de conexão");
                               } finally {
                                 setUploadingLogo(false);

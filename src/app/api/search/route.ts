@@ -56,9 +56,9 @@ export async function GET(request: NextRequest) {
 
     // Documentos - filtrar por hierarquia
     const filteredDocs = (documents as MockDocument[])
-      .filter((doc: MockDocument) => userLevel <= doc.minHierarchyLevel)
+      .filter((doc) => userLevel <= doc.minHierarchyLevel)
       .filter(
-        (doc: MockDocument) =>
+        (doc) =>
           doc.title.toLowerCase().includes(query) ||
           doc.description?.toLowerCase().includes(query),
       )
@@ -80,11 +80,11 @@ export async function GET(request: NextRequest) {
     // Ferramentas/Paineis - filtrar por hierarquia
     const filteredPanels = (panels as MockSystemPanel[])
       .filter(
-        (panel: MockSystemPanel) =>
+        (panel) =>
           panel.isActive && userLevel <= panel.minHierarchy,
       )
       .filter(
-        (panel: MockSystemPanel) =>
+        (panel) =>
           panel.name.toLowerCase().includes(query) ||
           panel.description.toLowerCase().includes(query),
       )
@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
     if (userLevel <= 2) {
       const filteredUsers = (users as MockUser[])
         .filter(
-          (u: MockUser) =>
+          (u) =>
             u.name?.toLowerCase().includes(query) ||
             u.email?.toLowerCase().includes(query),
         )

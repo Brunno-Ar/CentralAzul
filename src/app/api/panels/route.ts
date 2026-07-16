@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { hasPermission } from "@/lib/auth/permissions";
 import { SessionUser } from "@/types/auth";
 import {
   validateSearchParams,
@@ -32,11 +33,41 @@ export async function GET(request: NextRequest) {
     const user = session.user as SessionUser;
     const userLevel = user.hierarchyLevel || 3;
 
-    const panels = await db.getPanels();
+    const [panels, companies, businessUnits] = await Promise.all([
+      db.getPanels(),
+      db.getCompanies(),
+      db.getBusinessUnits(),
+    ]);
+
+    const validBusinessUnitToolIds = new Set(
+      businessUnits.flatMap((bu) => (bu.tools || []).map((t) => t.id))
+    );
+    const validBusinessUnitSlugs = new Set(
+      businessUnits.map((bu) => bu.slug.toLowerCase())
+    );
+    const validCompanySlugs = new Set(
+      companies.map((c) => c.slug.toLowerCase())
+    );
+
+    const cleanPanels = panels.filter((panel) => {
+      if (panel.businessUnitToolId && !validBusinessUnitToolIds.has(panel.businessUnitToolId)) {
+        return false;
+      }
+      if (panel.companySlug) {
+        const slugLower = panel.companySlug.toLowerCase();
+        if (slugLower.startsWith("comp-") && !validBusinessUnitSlugs.has(slugLower)) {
+          return false;
+        }
+        if (!validCompanySlugs.has(slugLower) && !validBusinessUnitSlugs.has(slugLower)) {
+          return false;
+        }
+      }
+      return true;
+    });
 
     // Return ALL panels with locked flag based on user's hierarchy
     // Mask sensitive data (url, description) for locked panels
-    const responsePanels = panels.map(p => {
+    const responsePanels = cleanPanels.map(p => {
       const locked = userLevel > p.minHierarchy;
       return {
         id: p.id,
@@ -47,6 +78,7 @@ export async function GET(request: NextRequest) {
         minHierarchy: p.minHierarchy,
         companySlug: p.companySlug,
         isActive: p.isActive,
+        businessUnitToolId: (p as unknown as Record<string, unknown>).businessUnitToolId ?? null,
         locked,
         url: locked ? null : p.url,
         description: locked ? null : p.description,
@@ -71,9 +103,9 @@ export async function POST(request: NextRequest) {
     }
 
     const user = session.user as SessionUser;
-    if (user.hierarchyLevel !== 1 && user.role !== "ADMIN") {
+    if (!await hasPermission(user.role || "VIEWER", "panel:create")) {
       return NextResponse.json(
-        { error: "Acesso negado. Apenas Nivel 1." },
+        { error: "Acesso negado. Permissao insuficiente." },
         { status: 403 }
       );
     }
@@ -122,9 +154,9 @@ export async function PUT(request: NextRequest) {
     }
 
     const user = session.user as SessionUser;
-    if (user.hierarchyLevel !== 1 && user.role !== "ADMIN") {
+    if (!await hasPermission(user.role || "VIEWER", "panel:create")) {
       return NextResponse.json(
-        { error: "Acesso negado. Apenas Nivel 1." },
+        { error: "Acesso negado. Permissao insuficiente." },
         { status: 403 }
       );
     }
@@ -173,9 +205,9 @@ export async function DELETE(request: NextRequest) {
     }
 
     const user = session.user as SessionUser;
-    if (user.hierarchyLevel !== 1 && user.role !== "ADMIN") {
+    if (!await hasPermission(user.role || "VIEWER", "panel:create")) {
       return NextResponse.json(
-        { error: "Acesso negado. Apenas Nivel 1." },
+        { error: "Acesso negado. Permissao insuficiente." },
         { status: 403 }
       );
     }

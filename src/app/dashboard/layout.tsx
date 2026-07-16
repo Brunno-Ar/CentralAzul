@@ -30,8 +30,10 @@ export default function DashboardLayout({
     if (typeof document !== "undefined") {
       const match = document.cookie.match(/csrfToken=([^;]+)/);
       if (!match) {
-        const token = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
-        document.cookie = `csrfToken=${token}; path=/; SameSite=Lax;`;
+        // Use crypto API for secure token generation
+        const token = crypto.getRandomValues(new Uint8Array(16));
+        const tokenStr = Array.from(token, (b) => b.toString(16).padStart(2, "0")).join("");
+        document.cookie = `csrfToken=${tokenStr}; path=/; SameSite=Lax;`;
       }
     }
   }, []);

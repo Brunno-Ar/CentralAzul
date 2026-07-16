@@ -16,8 +16,23 @@ import {
   Sliders,
   Bell,
   Building2,
+  BarChart3,
+  Activity,
 } from "lucide-react";
 import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
+
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  Grid: Grid,
+  Sliders: Sliders,
+  Bell: Bell,
+  Building2: Building2,
+  BarChart3: BarChart3,
+  FileText: FileText,
+  Activity: Activity,
+  ShieldAlert: ShieldAlert,
+  Shield: Shield,
+  User: User,
+};
 
 export default function DashboardNav() {
   const { data: session } = useSession();
@@ -47,79 +62,37 @@ export default function DashboardNav() {
     fetchUnread();
   }, []);
 
-  const [menuPermissions, setMenuPermissions] = useState<Record<string, number>>({});
+  const [navItems, setNavItems] = useState<Array<{
+    name: string;
+    href: string;
+    icon: React.ComponentType<{ className?: string }>;
+    minLevel: number;
+    badge?: number;
+  }>>([]);
 
   useEffect(() => {
-    const fetchPermissions = async () => {
+    const fetchMenu = async () => {
       try {
         const res = await fetch("/api/menu-permissions");
         if (res.ok) {
           const data = await res.json();
-          const mappings: Record<string, number> = {};
-          data.forEach((p: { href: string; minLevel: number }) => {
-            mappings[p.href] = p.minLevel;
-          });
-          setMenuPermissions(mappings);
+          const sortedItems = data
+            .filter((p: { isActive: boolean }) => p.isActive !== false)
+            .map((p: { name: string; href: string; icon: string; minLevel: number }) => ({
+              name: p.name,
+              href: p.href,
+              icon: iconMap[p.icon || ""] || Grid,
+              minLevel: p.minLevel,
+              badge: p.href === "/dashboard/comunicados" && unreadCount > 0 ? unreadCount : undefined,
+            }));
+          setNavItems(sortedItems);
         }
       } catch (err) {
-        console.error("Erro ao buscar permissoes do menu:", err);
+        console.error("Erro ao buscar itens de menu:", err);
       }
     };
-    fetchPermissions();
-  }, []);
-
-  const navItems = [
-    {
-      name: "Painel Principal",
-      href: "/dashboard",
-      icon: Grid,
-      allowedRoles: ["ADMIN", "COORDINATOR", "VIEWER"],
-      minLevel: 3,
-    },
-    {
-      name: "Ferramentas",
-      href: "/dashboard/ferramentas",
-      icon: Sliders,
-      allowedRoles: ["ADMIN", "COORDINATOR", "VIEWER"],
-      minLevel: 3,
-    },
-    {
-      name: "Comunicados",
-      href: "/dashboard/comunicados",
-      icon: Bell,
-      allowedRoles: ["ADMIN", "COORDINATOR", "VIEWER"],
-      minLevel: 3,
-      badge: unreadCount > 0 ? unreadCount : undefined,
-    },
-    {
-      name: "Unidades de Negócio",
-      href: "/dashboard/unidades",
-      icon: Building2,
-      allowedRoles: ["ADMIN", "COORDINATOR", "VIEWER"],
-      minLevel: 3,
-    },
-    {
-      name: "Drive de Arquivos",
-      href: "/dashboard/documentos",
-      icon: FileText,
-      allowedRoles: ["ADMIN", "COORDINATOR", "VIEWER"],
-      minLevel: 3,
-    },
-    {
-      name: "Seguranca & Niveis",
-      href: "/dashboard/seguranca",
-      icon: ShieldAlert,
-      allowedRoles: ["ADMIN"],
-      minLevel: 1,
-    },
-    {
-      name: "Configuracoes",
-      href: "/dashboard/configuracoes",
-      icon: Sliders,
-      allowedRoles: ["ADMIN", "COORDINATOR", "VIEWER"],
-      minLevel: 99,
-    },
-  ];
+    fetchMenu();
+  }, [unreadCount]);
 
   return (
     <Sidebar open={open} setOpen={setOpen}>
@@ -132,8 +105,7 @@ export default function DashboardNav() {
           <div className="mt-8 flex flex-col gap-1.5">
             {navItems
               .filter((item) => {
-                const requiredLevel = menuPermissions[item.href] ?? item.minLevel;
-                return userLevel <= requiredLevel;
+                return userLevel <= item.minLevel;
               })
               .map((item, idx) => {
                 const isActive = pathname === item.href;

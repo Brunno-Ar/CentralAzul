@@ -2,15 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { uploadToB2 } from "@/lib/b2";
 import { db } from "@/lib/db";
-import { Company } from "@prisma/client";
 import { SessionUser } from "@/types/auth";
 import { createDocumentSchema } from "@/lib/validation";
 import { rateLimit } from "@/lib/rate-limit";
 import { validateExternalUrl } from "@/lib/ssrf";
 import { randomUUID } from "crypto";
 
-// Max file size: 10GB
-const MAX_FILE_SIZE = 10 * 1024 * 1024 * 1024;
+// Dynamic max file size configured in SystemConfig
 
 // MIME type allowlist
 const ALLOWED_MIME_TYPES = [
@@ -106,7 +104,7 @@ export async function POST(request: NextRequest) {
     const externalUrl = formData.get("externalUrl") as string | null;
     const title = formData.get("title") as string | null;
     const description = formData.get("description") as string | null;
-    const category = (formData.get("category") as Company | null) || Company.CENTRAL;
+    const category = (formData.get("category") as string | null) || "CENTRAL";
     
     // Only Level 1 users can set a minimum hierarchy level other than 3
     const sessionLevel = (session.user as SessionUser).hierarchyLevel;
@@ -173,9 +171,12 @@ export async function POST(request: NextRequest) {
       }
 
       // Validate file size
-      if (file.size > MAX_FILE_SIZE) {
+      const maxFileConfig = await db.getSystemConfig("maxFileSizeBytes");
+      const maxFileSize = parseInt(maxFileConfig || "10737418240", 10);
+      if (file.size > maxFileSize) {
+        const maxGb = (maxFileSize / (1024 * 1024 * 1024)).toFixed(0);
         return NextResponse.json(
-          { error: `Arquivo muito grande. Tamanho maximo: 10GB` },
+          { error: `Arquivo muito grande. Tamanho maximo: ${maxGb}GB` },
           { status: 400 }
         );
       }

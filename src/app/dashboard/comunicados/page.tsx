@@ -1,26 +1,19 @@
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { Company } from "@prisma/client";
 import ComunicadosClient from "./ComunicadosClient";
+import { SessionUser } from "@/types/auth";
 
 export default async function ComunicadosPage() {
   const session = await auth();
-  const user = session?.user as
-    | {
-        id?: string;
-        name?: string | null;
-        role?: string;
-        hierarchyLevel?: number;
-        company?: Company;
-      }
-    | undefined;
+  const user = session?.user as SessionUser | undefined;
 
   const userId = user?.id || "";
   const userLevel = user?.hierarchyLevel || 3;
+  const companySlug = user?.company;
 
   // Fetch announcements server-side
   const [announcementsData, readsData] = await Promise.all([
-    db.getAnnouncements().catch(() => []),
+    db.getAnnouncements(userLevel, companySlug).catch(() => []),
     db.getAnnouncementReadsByUser(userId).catch(() => []),
   ]);
 

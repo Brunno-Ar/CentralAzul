@@ -15,11 +15,21 @@ model RoleConfig {
   updatedAt      DateTime @updatedAt
 }
 
-enum Company {
-  BORGO
-  MAPLE_BEAR
-  AZUL
-  CENTRAL
+model Company {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  color       String?
+  holding     String?  @default("CENTRAL")
+  isActive    Boolean  @default(true)
+  showOnHome  Boolean  @default(true)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  businessUnits BusinessUnit[] @relation("BusinessUnitCompany")
+  documents     Document[]     @relation("DocumentCompany")
+  users         User[]         @relation("UserCompany")
 }
 
 model User {
@@ -29,10 +39,11 @@ model User {
   emailVerified  DateTime?
   image          String?
   password       String?
-  role           String     @default("VIEWER") // References RoleConfig.name
+  role           String     // References RoleConfig.name
   hierarchyLevel Int        @default(3)
-  company        Company    @default(CENTRAL)
-  status         String     @default("ACTIVE") // ACTIVE, BLOCKED
+  company        String
+  companyRef     Company?  @relation("UserCompany", fields: [company], references: [slug], onDelete: Restrict)
+  status         String     // ACTIVE, BLOCKED
   failedLoginAttempts Int   @default(0)
   lockedUntil    DateTime?
   createdAt      DateTime   @default(now())
@@ -45,17 +56,18 @@ model User {
 }
 
 model SystemPanel {
-  id            String   @id @default(cuid())
-  name          String
-  description   String
-  url           String
-  icon          String
-  category      String
-  minRole       String   @default("VIEWER")
-  minHierarchy  Int      @default(3)
-  isActive      Boolean  @default(true)
-  companySlug   String?
-  createdAt     DateTime @default(now())
+  id                  String   @id @default(cuid())
+  name                String
+  description         String
+  url                 String
+  icon                String
+  category            String
+  minRole             String   @default("VIEWER")
+  minHierarchy        Int      @default(3)
+  isActive            Boolean  @default(true)
+  companySlug         String?
+  businessUnitToolId  String?  @unique
+  createdAt           DateTime @default(now())
 }
 
 model AuditLog {
@@ -76,7 +88,8 @@ model Document {
   fileUrl           String   @db.Text
   fileSize          Int?
   fileType          String?  // e.g. "pdf", "link", "video", "sharepoint"
-  category          Company
+  category          String
+  companyRef        Company  @relation("DocumentCompany", fields: [category], references: [slug], onDelete: Restrict)
   minHierarchyLevel Int      @default(3)
   uploadedById      String
   uploadedBy        User     @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
@@ -113,7 +126,8 @@ model BusinessUnit {
   id              String   @id @default(cuid())
   name            String   @unique
   slug            String   @unique
-  company         Company
+  company         String
+  companyRef      Company  @relation("BusinessUnitCompany", fields: [company], references: [slug], onDelete: Restrict)
   description     String?  @db.Text
   logo            String?
   coverImage      String?
@@ -215,12 +229,68 @@ model SystemConfig {
   updatedAt DateTime @updatedAt
 }
 
+/// Credenciais OAuth para integracoes de analytics.
+/// Armazena tokens de acesso e refresh criptografados com AES-256-GCM.
+model IntegrationCredential {
+  id                    String    @id @default(cuid())
+  provider              String    @unique // "google_analytics" | "meta" | "youtube_analytics"
+  encryptedAccessToken  String    @db.Text
+  encryptedRefreshToken String?   @db.Text
+  expiresAt             DateTime?
+  scopes                String?   // separados por espaco
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
 model UserMfa {
   id        String   @id @default(cuid())
   userId    String   @unique
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   secret    String   @db.Text
   enabled   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Persisted hierarchy levels for access control.
+/// Level 1 = highest (Direcao Geral), 3 = lowest (Operacional).
+model LevelConfig {
+  id        String   @id @default(cuid())
+  level     Int      @unique
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Persisted menu item access permissions.
+/// Controls which hierarchy level can see each menu item in the sidebar.
+model MenuPermission {
+  id        String   @id @default(cuid())
+  href      String   @unique
+  name      String
+  minLevel  Int
+  icon      String?
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RolePermission {
+  id        String   @id @default(cuid())
+  role      String   // References RoleConfig.name or represents the role name
+  action    String   // e.g. "panel:create", "document:upload", etc.
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([role, action])
+}
+
+model DocumentType {
+  id        String   @id @default(cuid())
+  name      String   @unique // e.g. "pdf", "link", "video", "sharepoint"
+  icon      String   // lucide icon name
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

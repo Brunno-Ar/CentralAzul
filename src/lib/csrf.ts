@@ -1,48 +1,123 @@
-import { randomUUID } from "crypto";
+/**
+ * CSRF Protection Module
+ *
+ * Implements Double Submit Cookie pattern for CSRF protection.
+ * NextAuth v5 with JWT strategy doesn't automatically provide CSRF protection
+ * for API routes, so we implement our own.
+ *
+ * The token is stored in an HttpOnly cookie and also sent in a custom header
+ * or form field. Both must match for the request to be valid.
+ */
+
+import { cookies } from "next/headers";
+
+const CSRF_COOKIE_NAME = "csrf_token";
+const CSRF_HEADER_NAME = "x-csrf-token";
+const CSRF_TOKEN_LENGTH = 32;
 
 /**
- * Generates a new CSRF token using cryptographically secure randomUUID.
- * Used to set the csrfToken cookie on GET responses (double-submit pattern).
+ * Generates a cryptographically secure CSRF token
  */
 export function generateCsrfToken(): string {
-  return randomUUID();
+  const bytes = new Uint8Array(CSRF_TOKEN_LENGTH);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 /**
- * Extracts the CSRF token from the X-CSRF-Token request header.
- * Returns null if the header is absent.
+ * Sets the CSRF token cookie
  */
-export function getCsrfTokenFromRequest(request: Request): string | null {
-  return request.headers.get("X-CSRF-Token");
+export async function setCsrfTokenCookie(token: string): Promise<void> {
+  const cookieStore = await cookies();
+  cookieStore.set(CSRF_COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24, // 24 hours
+    path: "/",
+  });
 }
 
 /**
- * Extracts the CSRF token from the csrfToken cookie in the request headers.
- * Returns null if the cookie is absent or malformed.
+ * Gets the CSRF token from the cookie
  */
-export function getCsrfTokenFromCookie(request: Request): string | null {
-  const cookie = request.headers.get("cookie");
-  if (!cookie) return null;
-  const match = cookie.match(/csrfToken=([^;]+)/);
-  return match ? match[1] : null;
+export async function getCsrfTokenFromCookie(): Promise<string | undefined> {
+  const cookieStore = await cookies();
+  return cookieStore.get(CSRF_COOKIE_NAME)?.value;
 }
 
 /**
- * Validates the CSRF token using the double-submit cookie pattern.
- * Returns true only when both the header token and cookie token exist and match.
+ * Validates the CSRF token from the request
+ * Checks both the header and the cookie
  */
-export function validateCsrf(request: Request): boolean {
-  // O next-auth define o cookie csrfToken como HttpOnly, impedindo o JS no cliente de lê-lo.
-  // Todas as rotas são protegidas por sessão auth(), rate limit e verificação de nível hierárquico.
-  return true;
-}
-
-/**
- * Validates the CSRF token or throws an Error.
- * Route handlers should catch this and return a 403 response.
- */
-export function validateCsrfOrThrow(request: Request): void {
-  if (!validateCsrf(request)) {
-    throw new Error("CSRF token inválido");
+export async function validateCsrf(request: Request): Promise<boolean> {
+  // Only validate mutating requests
+  if (!["POST", "PUT", "PATCH", "DELETE"].includes(request.method)) {
+    return true;
   }
+
+  const cookieStore = await cookies();
+  const cookieToken = cookieStore.get(CSRF_COOKIE_NAME)?.value;
+
+  if (!cookieToken) {
+    return false;
+  }
+
+  // Check header first (for fetch/ajax requests)
+  const headerToken = request.headers.get(CSRF_HEADER_NAME);
+
+  // Check form data (for form submissions)
+  let formToken: string | null = null;
+  const contentType = request.headers.get("content-type") || "";
+  if (contentType.includes("application/x-www-form-urlencoded") || contentType.includes("multipart/form-data")) {
+    try {
+      const formData = await request.clone().formData();
+      formToken = formData.get("csrf_token") as string | null;
+    } catch {
+      // Ignore form parsing errors
+    }
+  }
+
+  const providedToken = headerToken || formToken;
+
+  if (!providedToken) {
+    return false;
+  }
+
+  // Use timing-safe comparison
+  return timingSafeEqual(cookieToken, providedToken);
+}
+
+/**
+ * Validates CSRF token and throws if invalid
+ */
+export async function validateCsrfOrThrow(request: Request): Promise<void> {
+  const isValid = await validateCsrf(request);
+  if (!isValid) {
+    throw new Error("CSRF token invalido ou ausente");
+  }
+}
+
+/**
+ * Timing-safe string comparison to prevent timing attacks
+ */
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
+/**
+ * Middleware helper to add CSRF token to response headers
+ * for client-side access
+ */
+export async function addCsrfTokenToResponse(): Promise<string> {
+  const token = generateCsrfToken();
+  await setCsrfTokenCookie(token);
+  return token;
 }

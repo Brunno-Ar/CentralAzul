@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { db, MockAnnouncement, MockAnnouncementRead } from "@/lib/db";
+import { db, MockAnnouncement } from "@/lib/db";
 import { SessionUser } from "@/types/auth";
 import { 
   validateRequest, 
@@ -31,14 +31,9 @@ async function handleGet(request: NextRequest) {
     }
 
     // Buscar do banco
-    let announcements: Array<
-      { targetCompanies: string | null } & Omit<
-        MockAnnouncement,
-        "targetCompanies"
-      >
-    > = [];
+    let announcements: MockAnnouncement[] = [];
     if (db.getAnnouncements) {
-      announcements = await db.getAnnouncements();
+      announcements = await db.getAnnouncements(user.hierarchyLevel, user.company);
     }
 
     // Filtrar por empresa, expiração e status ativo
@@ -60,7 +55,7 @@ async function handleGet(request: NextRequest) {
     const readIds = new Set<string>();
     if (db.getAnnouncementReadsByUser) {
       const reads = await db.getAnnouncementReadsByUser(userId);
-      reads.forEach((r: MockAnnouncementRead) => readIds.add(r.announcementId));
+      reads.forEach((r) => readIds.add(r.announcementId));
     }
 
     const result = filtered.map((a) => ({

@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { SessionUser } from "@/types/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { validateRequest, createBusinessUnitItemSchema, createBusinessUnitToolSchema, createBusinessUnitSocialLinkSchema, createBusinessUnitAnalyticsSchema, createBusinessUnitRevenueSchema, updateBusinessUnitToolSchema, updateBusinessUnitSocialLinkSchema } from "@/lib/validation";
+import { syncToolToPanel, syncToolUpdateToPanel, syncToolDeleteFromPanel } from "@/lib/tool-sync";
 
 export async function POST(
   request: NextRequest,
@@ -43,25 +44,25 @@ export async function POST(
     if (type === "tool") {
       const sub = createBusinessUnitToolSchema.pick({ name: true, description: true, url: true, icon: true, category: true }).safeParse(rawData);
       if (!sub.success) {
-        return NextResponse.json({ error: "Dados invalidos", details: sub.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") }, { status: 400 });
+        return NextResponse.json({ error: "Dados inválidos", details: sub.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") }, { status: 400 });
       }
       validatedData = sub.data as unknown as Record<string, unknown>;
     } else if (type === "social") {
       const sub = createBusinessUnitSocialLinkSchema.pick({ platform: true, handle: true, url: true, followersCount: true }).safeParse(rawData);
       if (!sub.success) {
-        return NextResponse.json({ error: "Dados invalidos", details: sub.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") }, { status: 400 });
+        return NextResponse.json({ error: "Dados inválidos", details: sub.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") }, { status: 400 });
       }
       validatedData = sub.data as unknown as Record<string, unknown>;
     } else if (type === "analytics") {
       const sub = createBusinessUnitAnalyticsSchema.pick({ date: true, pageViews: true, uniqueVisitors: true, avgSessionDuration: true, bounceRate: true }).safeParse(rawData);
       if (!sub.success) {
-        return NextResponse.json({ error: "Dados invalidos", details: sub.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") }, { status: 400 });
+        return NextResponse.json({ error: "Dados inválidos", details: sub.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") }, { status: 400 });
       }
       validatedData = sub.data as unknown as Record<string, unknown>;
     } else if (type === "revenue") {
       const sub = createBusinessUnitRevenueSchema.pick({ month: true, amount: true, currency: true }).safeParse(rawData);
       if (!sub.success) {
-        return NextResponse.json({ error: "Dados invalidos", details: sub.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") }, { status: 400 });
+        return NextResponse.json({ error: "Dados inválidos", details: sub.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") }, { status: 400 });
       }
       validatedData = sub.data as unknown as Record<string, unknown>;
     }
@@ -80,6 +81,35 @@ export async function POST(
 
     if (!result) {
       return NextResponse.json({ error: "Erro ao adicionar item" }, { status: 500 });
+    }
+
+    // Sincroniza a ferramenta recem-criada na aba global Ferramentas (SystemPanel)
+    if (type === "tool" && result) {
+      try {
+        await syncToolToPanel(
+          {
+            id: (result as Record<string, unknown>).id as string,
+            name: (result as Record<string, unknown>).name as string,
+            url: (result as Record<string, unknown>).url as string,
+            icon: ((result as Record<string, unknown>).icon as string) || null,
+            description:
+              ((result as Record<string, unknown>).description as string) || null,
+            category:
+              ((result as Record<string, unknown>).category as string) ||
+              businessUnit.company,
+            isActive:
+              ((result as Record<string, unknown>).isActive as boolean) ??
+              true,
+          },
+          {
+            id: businessUnit.id,
+            slug: businessUnit.slug,
+            company: businessUnit.company,
+          },
+        );
+      } catch (syncError) {
+        console.error("[items POST] Erro ao sincronizar ferramenta:", syncError);
+      }
     }
 
     await db.addLog(
@@ -164,6 +194,15 @@ export async function DELETE(
       return NextResponse.json({ error: "Erro ao remover item ou item não encontrado" }, { status: 500 });
     }
 
+    // Propaga a exclusao para a aba global Ferramentas (SystemPanel)
+    if (type === "tool") {
+      try {
+        await syncToolDeleteFromPanel(id);
+      } catch (syncError) {
+        console.error("[items DELETE] Erro ao sincronizar exclusao:", syncError);
+      }
+    }
+
     await db.addLog(
       user.id,
       "REMOVER_SUB_ITEM",
@@ -225,6 +264,7 @@ export async function PUT(
     }
 
     let result = null;
+    let toolUpdateData: Record<string, unknown> | null = null;
 
     if (type === "tool") {
       const sub = updateBusinessUnitToolSchema.omit({ id: true }).safeParse(rawData);
@@ -237,6 +277,7 @@ export async function PUT(
           { status: 400 },
         );
       }
+      toolUpdateData = sub.data as Record<string, unknown>;
       result = await db.updateBusinessUnitTool(id, sub.data);
     } else if (type === "social") {
       const sub = updateBusinessUnitSocialLinkSchema.omit({ id: true }).safeParse(rawData);
@@ -256,6 +297,23 @@ export async function PUT(
 
     if (!result) {
       return NextResponse.json({ error: "Erro ao editar item" }, { status: 500 });
+    }
+
+    // Propaga a edicao para a aba global Ferramentas (SystemPanel)
+    if (type === "tool" && result && toolUpdateData) {
+      try {
+        await syncToolUpdateToPanel(
+          id,
+          toolUpdateData as Parameters<typeof syncToolUpdateToPanel>[1],
+          {
+            id: businessUnit.id,
+            slug: businessUnit.slug,
+            company: businessUnit.company,
+          },
+        );
+      } catch (syncError) {
+        console.error("[items PUT] Erro ao sincronizar edicao:", syncError);
+      }
     }
 
     await db.addLog(

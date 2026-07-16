@@ -3,7 +3,13 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { SessionUser } from "@/types/auth";
 import { rateLimit } from "@/lib/rate-limit";
-import { validateParams, createLevelSchema, deleteLevelSchema } from "@/lib/validation";
+import {
+  validateParams,
+  validateRequest,
+  createLevelSchema,
+  deleteLevelSchema,
+  updateLevelSchema,
+} from "@/lib/validation";
 
 async function handleGet() {
   try {
@@ -55,6 +61,43 @@ async function handlePost(request: NextRequest) {
   }
 }
 
+async function handlePut(request: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Nao autorizado" }, { status: 401 });
+    }
+    const user = session.user as SessionUser;
+    if ((user.hierarchyLevel ?? 99) !== 1) {
+      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+    }
+
+    const validation = await validateRequest(request, updateLevelSchema);
+    if (!validation.success) {
+      return validation.error;
+    }
+
+    const { id, level, name } = validation.data;
+
+    const updated = await db.updateLevel(id, {
+      ...(level !== undefined ? { level } : {}),
+      ...(name !== undefined ? { name } : {}),
+    });
+    if (!updated) {
+      return NextResponse.json({ error: "Nivel nao encontrado" }, { status: 404 });
+    }
+
+    const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+    const userAgent = request.headers.get("user-agent") || "Browser";
+    await db.addLog(user.id, "ALTERAR_NIVEL", `Atualizou nivel ${id} (${name || ""})`, ip, userAgent);
+
+    return NextResponse.json(updated);
+  } catch (error) {
+    console.error("Erro ao atualizar nivel:", error);
+    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });
+  }
+}
+
 async function handleDelete(request: NextRequest) {
   try {
     const session = await auth();
@@ -100,6 +143,12 @@ export async function POST(request: NextRequest) {
   const limiterResponse = await rateLimit(request, "mutation");
   if (limiterResponse) return limiterResponse;
   return handlePost(request);
+}
+
+export async function PUT(request: NextRequest) {
+  const limiterResponse = await rateLimit(request, "mutation");
+  if (limiterResponse) return limiterResponse;
+  return handlePut(request);
 }
 
 export async function DELETE(request: NextRequest) {

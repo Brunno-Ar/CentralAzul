@@ -1,5 +1,3 @@
-import { Company } from "@prisma/client";
-
 export interface SessionUser {
   id: string;
   name?: string | null;
@@ -7,6 +5,6 @@ export interface SessionUser {
   image?: string | null;
   role: string;
   hierarchyLevel: number;
-  company: Company;
+  company: string;
   status: string;
 }

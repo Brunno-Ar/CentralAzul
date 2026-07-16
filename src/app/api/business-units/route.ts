@@ -75,13 +75,26 @@ async function handlePost(request: NextRequest) {
     }
 
     const { 
-      name, slug, company, description, logo, coverImage, 
+      name, description, logo, coverImage, 
       address, phone, email, website, isActive, order, showOnHome 
     } = validation.data;
 
+    // Gerar slug automaticamente a partir do nome
+    const slug = validation.data.slug || name
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9\s-]/g, "")
+      .trim()
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-");
+
+    // Unidade de Negocio = Empresa (company recebe o slug da unidade)
+    const company = slug;
+
     if (!db.createBusinessUnit) {
       return NextResponse.json(
-        { error: "Função não implementada" },
+        { error: "Funcao nao implementada" },
         { status: 500 },
       );
     }
@@ -106,7 +119,7 @@ async function handlePost(request: NextRequest) {
     await db.addLog(
       user.id,
       "CRIAR_UNIDADE_NEGOCIO",
-      `Criou unidade de negócio: ${name} (${company})`,
+      `Criou unidade de negocio: ${name} (${slug})`,
       request.headers.get("x-forwarded-for") || "127.0.0.1",
       request.headers.get("user-agent") || "Browser",
     );

@@ -37,7 +37,7 @@ export async function PUT(
     const { id } = await params;
 
     // Fetch original announcement first to verify existence and ownership
-    const announcement = await db.getAnnouncements().then(list => list.find(a => a.id === id));
+    const announcement = await db.getAnnouncements(user.hierarchyLevel, user.company).then(list => list.find(a => a.id === id));
     if (!announcement) {
       return NextResponse.json(
         { error: "Anúncio não encontrado" },
