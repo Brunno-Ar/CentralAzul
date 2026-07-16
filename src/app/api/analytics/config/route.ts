@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
 
   try {
     body = await request.json();
-  } catch {
+  } catch (e) { console.error(e);
     return NextResponse.json({ error: "Body invalido" }, { status: 400 });
   }
 

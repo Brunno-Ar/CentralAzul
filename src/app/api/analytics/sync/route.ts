@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
   try {
     body = await request.json();
-  } catch {
+  } catch (e) { console.error(e);
     // empty body is ok (sync all with default params)
   }
 
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       after(() => {
         try {
           revalidateTag("analytics", "max");
-        } catch {
+        } catch (e) { console.error(e);
           // revalidateTag may not be available in all environments
         }
       });
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     after(() => {
       try {
         revalidateTag("analytics", "max");
-      } catch {
+      } catch (e) { console.error(e);
         // ignore
       }
     });

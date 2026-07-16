@@ -73,7 +73,7 @@ export default function AnalyticsSettingsClient() {
         const data = (await res.json()) as ApiConfigResponse;
         setProviders(data.providers || []);
       }
-    } catch {
+    } catch (e) { console.error(e);
       setMessage({ type: "error", text: "Erro ao carregar configuracoes" });
     } finally {
       setLoading(false);
@@ -110,7 +110,7 @@ export default function AnalyticsSettingsClient() {
           text: data.error || "Erro na sincronizacao",
         });
       }
-    } catch {
+    } catch (e) { console.error(e);
       setMessage({ type: "error", text: "Erro de comunicacao com o servidor" });
     } finally {
       setSyncing(false);
@@ -131,7 +131,7 @@ export default function AnalyticsSettingsClient() {
       } else {
         setMessage({ type: "error", text: data.message || data.error || "Erro no teste" });
       }
-    } catch {
+    } catch (e) { console.error(e);
       setMessage({ type: "error", text: "Erro de comunicacao" });
     }
   };

@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     after(() => {
       try {
         revalidateTag("analytics", "max");
-      } catch {
+      } catch (e) { console.error(e);
         // ignore
       }
     });
