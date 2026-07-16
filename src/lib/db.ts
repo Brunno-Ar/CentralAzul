@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import DOMPurify from "isomorphic-dompurify";
+import { generateSecureId } from "./crypto-utils";
 import { usersDb } from "./db/users";
 import { rolesDb } from "./db/roles";
 import { permissionsDb } from "./db/permissions";
@@ -363,9 +364,12 @@ export const mockUsers: MockUser[] = globalThis.__mockUsers ?? (globalThis.__moc
     name: "Administrador Central",
     email: "admin@grupoazul.com.br",
     image:
-      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120",
-    password: "admin12345",
-    role: "ADMIN",
+  // DEVELOPMENT ONLY - bcrypt hashed passwords for demo users
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120",
+  // DEVELOPMENT ONLY - bcrypt hashed passwords for demo users
+      password: "$2b$10$JuveFUXufkiuaM6ZTuWPzui5gP1J3FAVrBwVKCPuNIBptVXaCk4Wm",
+  // DEVELOPMENT ONLY - bcrypt hashed passwords for demo users
+      role: "ADMIN",
     hierarchyLevel: 1,
     company: "CENTRAL",
     status: "ACTIVE",
@@ -377,7 +381,7 @@ export const mockUsers: MockUser[] = globalThis.__mockUsers ?? (globalThis.__moc
     email: "gerente@grupoazul.com.br",
     image:
       "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120",
-    password: "gerente123",
+    password: "$2b$10$qsnTgJibxH84iBTq31h65OP7WwVStvqVf162S9jSQS92Xk9RX5K6u",
     role: "COORDINATOR",
     hierarchyLevel: 2,
     company: "CENTRAL",
@@ -390,7 +394,7 @@ export const mockUsers: MockUser[] = globalThis.__mockUsers ?? (globalThis.__moc
     email: "operador@grupoazul.com.br",
     image:
       "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=120",
-    password: "operador123",
+    password: "$2b$10$sWU1t4RK3PG3rUrdFbXTVOO62lVXihwFpSo8ldUhG6RbPkULZEaCu",
     role: "VIEWER",
     hierarchyLevel: 3,
     company: "CENTRAL",
@@ -809,7 +813,7 @@ export const dbSim = {
   ) => {
     const newBU: MockBusinessUnit = {
       ...bu,
-      id: "bu-" + Math.random().toString(36).substr(2, 9),
+      id: generateSecureId("bu-"),
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -1314,7 +1318,7 @@ export const dbSim = {
   ) => {
     const newSocial = {
       ...social,
-      id: "social-" + Math.random().toString(36).substr(2, 9),
+      id: generateSecureId("social-"),
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -1372,7 +1376,7 @@ export const dbSim = {
   ) => {
     const newAnalytics = {
       ...analytics,
-      id: "analytic-" + Math.random().toString(36).substr(2, 9),
+      id: generateSecureId("analytic-"),
       createdAt: new Date(),
     };
     if (prismaClient && isDbConnected) {
@@ -1435,7 +1439,7 @@ export const dbSim = {
   ) => {
     const newRevenue = {
       ...revenue,
-      id: "revenue-" + Math.random().toString(36).substr(2, 9),
+      id: generateSecureId("revenue-"),
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -1690,7 +1694,7 @@ export const dbSim = {
   ) => {
     const newMeta = {
       ...meta,
-      id: "meta-" + Math.random().toString(36).substr(2, 9),
+      id: generateSecureId("meta-"),
       createdAt: new Date(),
     };
     if (prismaClient && isDbConnected) {
@@ -1868,7 +1872,7 @@ export const dbSim = {
   ) => {
     const newCompany: MockCompany = {
       ...company,
-      id: "comp-" + Math.random().toString(36).substr(2, 9),
+      id: generateSecureId("comp-"),
       createdAt: new Date(),
       updatedAt: new Date(),
     };

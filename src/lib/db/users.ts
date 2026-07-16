@@ -5,6 +5,7 @@
  */
 
 import { prisma, getSystemConfig } from "../db";
+import { generateSecureId } from "../crypto-utils";
 
 export interface MockUserMfa {
   id: string;
@@ -107,7 +108,7 @@ export const usersDb = {
     password?: string;
   }) => {
     try {
-      const generatedId = "user-" + Math.random().toString(36).substr(2, 9);
+      const generatedId = generateSecureId("user-");
       const defaultImage = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120";
       return await prisma.user.create({
         data: {

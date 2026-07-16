@@ -6,6 +6,7 @@
 
 import DOMPurify from "isomorphic-dompurify";
 import { prisma } from "../db";
+import { generateSecureId } from "../crypto-utils";
 
 export const announcementsDb = {
   getAnnouncements: async (userLevel?: number, userCompany?: string) => {
@@ -76,7 +77,7 @@ export const announcementsDb = {
       createdById: string;
     }
   ) => {
-    const id = "ann-" + Math.random().toString(36).substr(2, 9);
+    const id = generateSecureId("ann-");
     try {
       const created = await prisma.announcement.create({
         data: {
@@ -166,7 +167,7 @@ export const announcementsDb = {
   },
 
   markAnnouncementAsRead: async (announcementId: string, userId: string) => {
-    const id = "read-" + Math.random().toString(36).substr(2, 9);
+    const id = generateSecureId("read-");
     try {
       const created = await prisma.announcementRead.create({
         data: {

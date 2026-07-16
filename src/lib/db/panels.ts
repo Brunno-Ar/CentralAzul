@@ -5,6 +5,7 @@
  */
 
 import { prisma } from "../db";
+import { generateSecureId } from "../crypto-utils";
 
 export const panelsDb = {
   getPanels: async () => {
@@ -42,7 +43,7 @@ export const panelsDb = {
     businessUnitToolId?: string | null;
   }) => {
     try {
-      const generatedId = "panel-" + Math.random().toString(36).substr(2, 9);
+      const generatedId = generateSecureId("panel-");
       return await prisma.systemPanel.create({
         data: {
           id: generatedId,

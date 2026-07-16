@@ -22,6 +22,7 @@
 
 import type { MockBusinessUnitTool } from "../db";
 import { prisma, isDatabaseConnected, mockBusinessUnits } from "../db";
+import { generateSecureId } from "../crypto-utils";
 
 export type { MockBusinessUnitTool };
 
@@ -32,7 +33,7 @@ export const businessUnitsDb = {
   ) => {
     const newTool = {
       ...tool,
-      id: "tool-" + Math.random().toString(36).substr(2, 9),
+      id: generateSecureId("tool-"),
       createdAt: new Date(),
       updatedAt: new Date(),
     };
