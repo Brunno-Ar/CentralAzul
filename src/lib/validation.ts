@@ -529,6 +529,18 @@ export const markReadParamsSchema = z.object({
 });
 
 // ============================================
+// METRICS QUERY SCHEMAS
+// ============================================
+
+export const metricsQuerySchema = z.object({
+  period: z.enum(["7", "30", "90", "365", "custom"]).default("30"),
+  unit: z.string().default("all"),
+  platform: z.enum(["all", "instagram", "facebook", "youtube", "tiktok", "site", "outros"]).default("all"),
+  customStartDate: z.string().date().optional(),
+  customEndDate: z.string().date().optional(),
+}).strict();
+
+// ============================================
 // AUDIT LOG SCHEMAS
 // ============================================
 
