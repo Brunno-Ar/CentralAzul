@@ -99,7 +99,6 @@ export default function SegurancaClient({
   const [newLevelName, setNewLevelName] = useState("");
   const [editingLevelId, setEditingLevelId] = useState<string | null>(null);
   const [editLevelName, setEditLevelName] = useState("");
-  const [updatingLevelId, setUpdatingLevelId] = useState<string | null>(null);
   const [levelMessage, setLevelMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const [restrictDomain, setRestrictDomain] = useState(initialConfig.restrictDomain);
@@ -206,7 +205,6 @@ export default function SegurancaClient({
   };
 
   const handleUpdateLevel = async (id: string, name: string) => {
-    setUpdatingLevelId(id);
     setLevelMessage(null);
     try {
       const res = await fetch("/api/levels", {
@@ -220,7 +218,6 @@ export default function SegurancaClient({
         await Promise.all([loadLevels(), loadLogs()]);
       } else { const errData = await res.json(); setLevelMessage({ type: "error", text: errData.error || "Erro ao atualizar nivel" }); }
     } catch { setLevelMessage({ type: "error", text: "Erro na conexao com o servidor" }); }
-    finally { setUpdatingLevelId(null); }
   };
 
   const handleDeleteLevel = async (id: string, name: string) => {

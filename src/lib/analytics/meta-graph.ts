@@ -29,13 +29,6 @@ const GRAPH_URL = `https://graph.facebook.com/${API_VERSION}`;
 // Tipos internos
 // ---------------------------------------------------------------
 
-interface MetaCredentialData {
-  encryptedAccessToken: string;
-  encryptedRefreshToken?: string;
-  expiresAt: string | null;
-  scopes?: string[];
-}
-
 interface MetaPageToken {
   page_id: string;
   page_name: string;
@@ -217,7 +210,7 @@ class MetaGraphProvider implements AnalyticsProvider {
     }
 
     // Recuperar refresh token para renovacao se necessario
-    let { prisma, isDatabaseConnected } = await import("../db");
+    const { prisma, isDatabaseConnected } = await import("../db");
     let refreshToken: string | null = null;
     if (prisma && isDatabaseConnected()) {
       try {

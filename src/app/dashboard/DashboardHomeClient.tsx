@@ -3,8 +3,6 @@
 import { motion } from "framer-motion";
 import {
   Building2,
-  Wine,
-  GraduationCap,
   ShieldCheck,
   FileText,
   Activity,

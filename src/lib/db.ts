@@ -1,6 +1,5 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
-import DOMPurify from "isomorphic-dompurify";
 import { generateSecureId } from "./crypto-utils";
 import { usersDb } from "./db/users";
 import { rolesDb } from "./db/roles";
@@ -545,7 +544,7 @@ export const mockLogs: MockAuditLog[] = globalThis.__mockLogs ?? (globalThis.__m
 ]);
 
 // Fase 1 - Mock Announcements
-const mockAnnouncements: MockAnnouncement[] = globalThis.__mockAnnouncements ?? (globalThis.__mockAnnouncements = [
+const _mockAnnouncements: MockAnnouncement[] = globalThis.__mockAnnouncements ?? (globalThis.__mockAnnouncements = [
   {
     id: "ann-1",
     title: "Nova integração de Segurança",
@@ -590,7 +589,7 @@ const mockAnnouncements: MockAnnouncement[] = globalThis.__mockAnnouncements ?? 
   },
 ]);
 
-const mockAnnouncementReads: MockAnnouncementRead[] = globalThis.__mockAnnouncementReads ?? (globalThis.__mockAnnouncementReads = []);
+const _mockAnnouncementReads: MockAnnouncementRead[] = globalThis.__mockAnnouncementReads ?? (globalThis.__mockAnnouncementReads = []);
 
 export const mockMfaUsers: MockUserMfa[] = globalThis.__mockMfaUsers ?? (globalThis.__mockMfaUsers = []);
 

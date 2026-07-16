@@ -17,7 +17,6 @@ import type {
   UnifiedAnalyticsMetric,
 } from "./types";
 import { decrypt, encrypt, isEncryptionConfigured } from "./credential-store";
-import { prisma, isDatabaseConnected } from "../db";
 
 // ---------------------------------------------------------------
 // Constantes
@@ -35,15 +34,6 @@ const PROPERTY_KEY = "analytics_google_analytics_property_id";
 interface GA4DateRange {
   startDate: string;
   endDate: string;
-}
-
-interface GA4ReportRow {
-  date: string;
-  pageViews: number;
-  uniqueVisitors: number;
-  sessions: number;
-  bounceRate: number;
-  avgSessionDuration: number;
 }
 
 // ---------------------------------------------------------------

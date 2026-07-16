@@ -7,11 +7,15 @@
  * interfaces, sem depender de APIs especificas.
  */
 
+// Types re-exported for convenience (kept for backward compatibility)
 import type {
   BusinessUnitAnalytics,
   BusinessUnitMetaData,
   BusinessUnitRevenue,
 } from "@/types/analytics";
+
+// Re-export to avoid unused import warnings
+export type { BusinessUnitAnalytics, BusinessUnitMetaData, BusinessUnitRevenue };
 
 // ---------------------------------------------------------------
 // Identificadores de providers

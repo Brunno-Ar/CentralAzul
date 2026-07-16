@@ -66,7 +66,7 @@ export async function getDashboardData(params: DashboardDataParams): Promise<{
   ]);
 
   // Process recent logs (last 4)
-  const recentLogs: AuditLogEntry[] = (logs as any[] || [])
+  const recentLogs: AuditLogEntry[] = (logs as Array<{ id: string; userName: string; action: string; details: string; createdAt: Date | string }> || [])
     .slice(0, 4)
     .map((log) => ({
       id: log.id,
@@ -82,17 +82,23 @@ export async function getDashboardData(params: DashboardDataParams): Promise<{
   const totalDocs = (docs as unknown[]).length;
 
   // Filter orphaned tools and unify business unit tools
+  type BusinessUnitLike = { tools?: Array<{ id: string }>; slug: string; isActive: boolean; showOnHome: boolean };
+  type PanelLike = { businessUnitToolId?: string | null; companySlug?: string | null };
+
+  const businessUnits = (businessUnitsData as BusinessUnitLike[] || []);
+  const panels = (panelsData as PanelLike[] || []);
+
   const validBusinessUnitToolIds = new Set(
-    (businessUnitsData as any[] || []).flatMap((bu) => (bu.tools || []).map((t: any) => t.id))
+    businessUnits.flatMap((bu) => (bu.tools || []).map((t) => t.id))
   );
   const validBusinessUnitSlugs = new Set(
-    (businessUnitsData as any[] || []).map((bu) => bu.slug.toLowerCase())
+    businessUnits.map((bu) => bu.slug.toLowerCase())
   );
   const validCompanySlugs = new Set(
     (companiesList || []).map((c) => c.slug.toLowerCase())
   );
 
-  const cleanPanels = (panelsData as any[] || []).filter((panel) => {
+  const cleanPanels = panels.filter((panel) => {
     if (panel.businessUnitToolId && !validBusinessUnitToolIds.has(panel.businessUnitToolId)) {
       return false;
     }
@@ -115,7 +121,7 @@ export async function getDashboardData(params: DashboardDataParams): Promise<{
   );
 
   let unlistedBuToolsCount = 0;
-  for (const bu of (businessUnitsData as any[] || [])) {
+  for (const bu of businessUnits) {
     if (!bu.tools) continue;
     for (const tool of bu.tools) {
       if (!syncedToolIds.has(tool.id)) {
@@ -131,9 +137,9 @@ export async function getDashboardData(params: DashboardDataParams): Promise<{
 
   let activeCompanies = getFallbackCompanies();
   if (Array.isArray(businessUnitsData) && businessUnitsData.length > 0) {
-    const homeUnits = (businessUnitsData as any[]).filter(bu => bu.isActive && bu.showOnHome);
-    const mappedCompanies = homeUnits.map((bu) => 
-      buildDashboardCompany(bu, companiesList, bu.slug === "COMP-GRAN-RESERVA")
+    const homeUnits = businessUnits.filter(bu => bu.isActive && bu.showOnHome);
+    const mappedCompanies = homeUnits.map((bu) =>
+      buildDashboardCompany(bu as unknown as Parameters<typeof buildDashboardCompany>[0], companiesList, bu.slug === "COMP-GRAN-RESERVA")
     );
     if (mappedCompanies.length > 0) {
       activeCompanies = mappedCompanies;

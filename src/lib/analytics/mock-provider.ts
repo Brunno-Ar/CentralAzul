@@ -109,9 +109,6 @@ class MockAnalyticsProvider implements AnalyticsProvider {
     endDate: Date,
   ): Promise<ProviderResult> {
     const seed = hashSeed(businessUnitId);
-    const rng = mulberry32(seed);
-
-    const fmtDate = (d: Date) => d.toISOString().split("T")[0];
 
     const metrics: UnifiedAnalyticsMetric[] = [];
 

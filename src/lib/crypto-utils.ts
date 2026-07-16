@@ -16,7 +16,6 @@ export function generateSecureToken(length: number = 32): string {
   }
   // Fallback for environments without crypto.getRandomValues (should not happen in modern browsers)
   const array = new Uint8Array(length);
-  // eslint-disable-next-line no-restricted-globals
   crypto.getRandomValues(array);
   return Array.from(array, (b) => b.toString(16).padStart(2, "0")).join("");
 }

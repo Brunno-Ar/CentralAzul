@@ -6,7 +6,7 @@ import { verifyTotp } from "./lib/mfa";
 
 async function getAuthDefaults(userRole?: string | null, userLevel?: number | null, userCompany?: string | null) {
   const defaults = await db.getAuthDefaults();
-  let role = userRole || defaults.defaultRole;
+  const role = userRole || defaults.defaultRole;
   let hierarchyLevel = userLevel;
   let company = userCompany;
 
@@ -14,7 +14,7 @@ async function getAuthDefaults(userRole?: string | null, userLevel?: number | nu
   if (hierarchyLevel === null || hierarchyLevel === undefined) {
     try {
       const roles = await db.getRoles();
-      const dbRole = roles.find((r: any) => r.name === role);
+      const dbRole = roles.find((r) => r.name === role);
       hierarchyLevel = dbRole ? dbRole.hierarchyLevel : defaults.defaultHierarchyLevel;
     } catch {
       hierarchyLevel = defaults.defaultHierarchyLevel;

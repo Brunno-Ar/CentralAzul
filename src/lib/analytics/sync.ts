@@ -11,7 +11,6 @@ import type {
   ProviderId,
   ProviderResult,
   SyncResult,
-  SyncStatus,
   UnifiedAnalyticsMetric,
 } from "./types";
 import { getProviderRegistry } from "./registry";
@@ -19,7 +18,6 @@ import { prisma, isDatabaseConnected } from "../db";
 
 const MAX_RETRIES = 3;
 const BASE_RETRY_DELAY_MS = 1000;
-const SYNC_LOG_PREFIX = "analytics_sync";
 
 // ---------------------------------------------------------------
 // Tipos internos
@@ -42,17 +40,6 @@ interface SyncLogRecord {
 }
 
 type BusinessUnitLookup = { id: string; slug: string }[];
-
-interface PersistedMetric {
-  businessUnitId: string;
-  date: Date;
-  pageViews?: number;
-  uniqueVisitors?: number;
-  sessions?: number;
-  bounceRate?: number;
-  avgSessionDuration?: number;
-  source: string;
-}
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));

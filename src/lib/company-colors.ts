@@ -60,7 +60,7 @@ export function getCompanyStyle(company: DashboardCompany): CompanyStyle {
   const compColor = (company.color || "AZUL").toUpperCase();
   let colorClass = "from-brand-principal/20 to-brand-principal/40 border-brand-secundar/20";
   let accentClass = "text-brand-secundar";
-  let icon = getIconByName(company.name, company.slug);
+  const icon = getIconByName(company.name, company.slug);
 
   switch (compColor) {
     case "WINE":

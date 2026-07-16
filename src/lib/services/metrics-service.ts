@@ -22,9 +22,7 @@ import {
   type MockUnitMetric,
   type MockPlatformDistribution,
   type MetricasFilters,
-  type PeriodFilter,
   type PlatformFilter,
-  type UnitFilter,
 } from "@/lib/mock/dashboard-metrics";
 
 /**
@@ -204,7 +202,6 @@ function aggregateKPIs(units: BusinessUnitForMetrics[], filters: MetricasFilters
   // --- Analytics (pageViews / sessions) ---
   let totalPageViews = 0;
   let totalSessions = 0;
-  let hasAnalytics = false;
 
   // --- Engagement (metaData) ---
   let engagementSum = 0;
@@ -237,7 +234,6 @@ function aggregateKPIs(units: BusinessUnitForMetrics[], filters: MetricasFilters
         if (filters.platform !== "all" && filters.platform !== "site" && a.source.toLowerCase() !== filters.platform.toLowerCase()) continue;
         totalPageViews += a.pageViews;
         totalSessions += a.sessions;
-        hasAnalytics = true;
       }
     }
 

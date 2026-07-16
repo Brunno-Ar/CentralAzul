@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
 
-const iconMap: Record<string, React.ComponentType<any>> = {
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Grid: Grid,
   Sliders: Sliders,
   Bell: Bell,
@@ -62,7 +62,13 @@ export default function DashboardNav() {
     fetchUnread();
   }, []);
 
-  const [navItems, setNavItems] = useState<any[]>([]);
+  const [navItems, setNavItems] = useState<Array<{
+    name: string;
+    href: string;
+    icon: React.ComponentType<{ className?: string }>;
+    minLevel: number;
+    badge?: number;
+  }>>([]);
 
   useEffect(() => {
     const fetchMenu = async () => {
@@ -71,8 +77,8 @@ export default function DashboardNav() {
         if (res.ok) {
           const data = await res.json();
           const sortedItems = data
-            .filter((p: any) => p.isActive !== false)
-            .map((p: any) => ({
+            .filter((p: { isActive: boolean }) => p.isActive !== false)
+            .map((p: { name: string; href: string; icon: string; minLevel: number }) => ({
               name: p.name,
               href: p.href,
               icon: iconMap[p.icon || ""] || Grid,
