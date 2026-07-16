@@ -4,7 +4,7 @@
  * Responsavel por todas as operacoes relacionadas a usuarios.
  */
 
-import { prisma, getSystemConfig } from "../db";
+import { prisma, getSystemConfig, isDatabaseConnected, mockUsers, MockUser } from "../db";
 import { generateSecureId } from "../crypto-utils";
 
 export interface MockUserMfa {
@@ -43,13 +43,17 @@ export const usersDb = {
 
   getUserByEmail: async (email: string) => {
     try {
-      return await prisma.user.findUnique({
-        where: { email },
-      });
+      if (isDatabaseConnected() && prisma) {
+        return await prisma.user.findUnique({
+          where: { email },
+        });
+      }
     } catch (e) {
-      console.error("Prisma error fetching user by email", e);
-      return null;
+      console.error("Prisma error fetching user by email, falling back to mock", e);
     }
+    // Fallback to mock users
+    const user = mockUsers.find((u) => u.email.toLowerCase() === email.toLowerCase());
+    return user || null;
   },
 
   getUserById: async (id: string) => {
