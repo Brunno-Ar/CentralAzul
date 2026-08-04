@@ -45,3 +45,10 @@ next-env.d.ts
 # agent rules
 AGENTS.md
 worklog.md
+
+# ide and tools cache / temporary logs
+.omo/
+.zcode/
+e2e-results/
+*.bak
+
