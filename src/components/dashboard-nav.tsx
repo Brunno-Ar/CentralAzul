@@ -16,6 +16,7 @@ import {
   Sliders,
   Bell,
   Building2,
+  BarChart3,
 } from "lucide-react";
 import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
 
@@ -51,6 +52,13 @@ export default function DashboardNav() {
       name: "Painel Principal",
       href: "/dashboard",
       icon: Grid,
+      allowedRoles: ["ADMIN", "COORDINATOR", "VIEWER"],
+      minLevel: 3,
+    },
+    {
+      name: "Métricas",
+      href: "/dashboard/metricas",
+      icon: BarChart3,
       allowedRoles: ["ADMIN", "COORDINATOR", "VIEWER"],
       minLevel: 3,
     },
@@ -108,13 +116,16 @@ export default function DashboardNav() {
                   userLevel <= item.minLevel,
               )
               .map((item, idx) => {
-                const isActive = pathname === item.href;
+                const isActive =
+                  pathname === item.href ||
+                  (item.href !== "/dashboard" && Boolean(pathname?.startsWith(item.href)));
+
                 const link = {
                   label: item.name,
                   href: item.href,
                   icon: (
                     <item.icon
-                      className={`w-5 h-5 shrink-0 ${isActive ? "text-brand-secundar" : "text-brand-terciar/60"}`}
+                      className={`w-5 h-5 shrink-0 ${isActive ? "text-brand-secundar font-bold" : "text-brand-terciar/60"}`}
                     />
                   ),
                 };
@@ -124,9 +135,9 @@ export default function DashboardNav() {
                     link={link}
                     className={`${
                       isActive
-                        ? "bg-brand-principal text-brand-secundar font-bold"
+                        ? "bg-brand-secundar/10 text-brand-secundar font-bold border-l-2 border-brand-secundar shadow-xs"
                         : "text-brand-terciar/75 hover:text-brand-secundar hover:bg-brand-principal/40"
-                    } ${open && isActive ? "border-l-2 border-brand-secundar" : ""}`}
+                    }`}
                   />
                 );
               })}
