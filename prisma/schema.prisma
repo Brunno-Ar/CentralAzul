@@ -109,6 +109,7 @@ model BusinessUnit {
   name            String   @unique
   slug            String   @unique
   company         Company
+  portalId        String?
   description     String?  @db.Text
   logo            String?
   coverImage      String?
