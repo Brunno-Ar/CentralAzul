@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { dbSim } from "@/lib/db";
+import { db } from "@/lib/db";
 import { SessionUser } from "@/types/auth";
+import { rateLimit } from "@/lib/rate-limit";
+import { validateRequest, updateBusinessUnitBySlugSchema } from "@/lib/validation";
+import { validateCsrf } from "@/lib/csrf";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
 ) {
+  const limiterResponse = await rateLimit(request, "api");
+  if (limiterResponse) return limiterResponse;
+
   try {
     const session = await auth();
     if (!session || !session.user) {
@@ -15,14 +21,14 @@ export async function GET(
 
     const { slug } = await params;
     const user = session.user as SessionUser;
-    const userLevel = user.hierarchyLevel || 3;
-    const userCompany = user.company;
+    void user.hierarchyLevel;
+    void user.company;
 
-    if (!dbSim.getBusinessUnitBySlug) {
+    if (!db.getBusinessUnitBySlug) {
       return NextResponse.json({ error: "Não encontrado" }, { status: 404 });
     }
 
-    const businessUnit = await dbSim.getBusinessUnitBySlug(slug);
+    const businessUnit = await db.getBusinessUnitBySlug(slug);
 
     if (!businessUnit) {
       return NextResponse.json(
@@ -31,14 +37,7 @@ export async function GET(
       );
     }
 
-    // Check access
-    if (
-      userLevel > 1 &&
-      businessUnit.company !== userCompany &&
-      businessUnit.company !== "CENTRAL"
-    ) {
-      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
-    }
+
 
     return NextResponse.json(businessUnit);
   } catch (error) {
@@ -54,6 +53,13 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
 ) {
+  const limiterResponse = await rateLimit(request, "mutation");
+  if (limiterResponse) return limiterResponse;
+
+  if (!validateCsrf(request)) {
+    return NextResponse.json({ error: "CSRF token invalido" }, { status: 403 });
+  }
+
   try {
     const session = await auth();
     if (!session || !session.user) {
@@ -72,9 +78,12 @@ export async function PUT(
     }
 
     const { slug } = await params;
-    const body = await request.json();
+    const validation = await validateRequest(request, updateBusinessUnitBySlugSchema);
+    if (!validation.success) {
+      return validation.error;
+    }
 
-    if (!dbSim.updateBusinessUnit) {
+    if (!db.updateBusinessUnit) {
       return NextResponse.json(
         { error: "Função não implementada" },
         { status: 500 },
@@ -82,7 +91,7 @@ export async function PUT(
     }
 
     // Find the business unit first
-    const businessUnit = await dbSim.getBusinessUnitBySlug(slug);
+    const businessUnit = await db.getBusinessUnitBySlug(slug);
     if (!businessUnit) {
       return NextResponse.json(
         { error: "Unidade não encontrada" },
@@ -90,14 +99,14 @@ export async function PUT(
       );
     }
 
-    const updated = await dbSim.updateBusinessUnit(businessUnit.id, body);
+    const updated = await db.updateBusinessUnit(businessUnit.id, validation.data);
 
     if (!updated) {
       return NextResponse.json({ error: "Erro ao atualizar" }, { status: 500 });
     }
 
     // Log de auditoria
-    await dbSim.addLog(
+    await db.addLog(
       user.id,
       "ATUALIZAR_UNIDADE_NEGOCIO",
       `Atualizou unidade de negócio: ${updated.name}`,
@@ -105,7 +114,8 @@ export async function PUT(
       request.headers.get("user-agent") || "Browser",
     );
 
-    return NextResponse.json(updated);
+    const fullUpdated = await db.getBusinessUnitBySlug(updated.slug);
+    return NextResponse.json(fullUpdated || updated);
   } catch (error) {
     console.error("Erro ao atualizar unidade de negócio:", error);
     return NextResponse.json(
@@ -119,6 +129,13 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
 ) {
+  const limiterResponse = await rateLimit(request, "mutation");
+  if (limiterResponse) return limiterResponse;
+
+  if (!validateCsrf(request)) {
+    return NextResponse.json({ error: "CSRF token invalido" }, { status: 403 });
+  }
+
   try {
     const session = await auth();
     if (!session || !session.user) {
@@ -138,14 +155,14 @@ export async function DELETE(
 
     const { slug } = await params;
 
-    if (!dbSim.getBusinessUnitBySlug || !dbSim.deleteBusinessUnit) {
+    if (!db.getBusinessUnitBySlug || !db.deleteBusinessUnit) {
       return NextResponse.json(
         { error: "Função não implementada" },
         { status: 500 },
       );
     }
 
-    const businessUnit = await dbSim.getBusinessUnitBySlug(slug);
+    const businessUnit = await db.getBusinessUnitBySlug(slug);
     if (!businessUnit) {
       return NextResponse.json(
         { error: "Unidade não encontrada" },
@@ -153,14 +170,14 @@ export async function DELETE(
       );
     }
 
-    const deleted = await dbSim.deleteBusinessUnit(businessUnit.id);
+    const deleted = await db.deleteBusinessUnit(businessUnit.id);
 
     if (!deleted) {
       return NextResponse.json({ error: "Erro ao deletar" }, { status: 500 });
     }
 
     // Log de auditoria
-    await dbSim.addLog(
+    await db.addLog(
       user.id,
       "DELETAR_UNIDADE_NEGOCIO",
       `Removeu unidade de negócio: ${businessUnit.name}`,

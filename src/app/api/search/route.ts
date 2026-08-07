@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { dbSim, MockDocument, MockSystemPanel, MockUser } from "@/lib/db";
+import { db, MockDocument, MockSystemPanel, MockUser } from "@/lib/db";
 import { SessionUser } from "@/types/auth";
+import { rateLimit } from "@/lib/rate-limit";
+import { validateSearchParams, searchQuerySchema } from "@/lib/validation";
 
 interface SearchResult {
   id: string;
@@ -17,6 +19,9 @@ interface SearchResult {
 }
 
 export async function GET(request: NextRequest) {
+  const limiterResponse = await rateLimit(request, "api");
+  if (limiterResponse) return limiterResponse;
+
   try {
     const session = await auth();
     if (!session || !session.user) {
@@ -24,8 +29,13 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const query = searchParams.get("q")?.toLowerCase().trim() || "";
-    const limit = parseInt(searchParams.get("limit") || "10");
+    const searchValidation = validateSearchParams(searchParams, searchQuerySchema);
+    if (!searchValidation.success) {
+      return searchValidation.error;
+    }
+
+    const query = searchValidation.data.q.toLowerCase().trim();
+    const limit = searchValidation.data.limit;
 
     if (!query || query.length < 2) {
       return NextResponse.json({ results: [] });
@@ -33,21 +43,22 @@ export async function GET(request: NextRequest) {
 
     const user = session.user as SessionUser;
     const userLevel = user.hierarchyLevel || 3;
+    const userCompany = user.company;
 
     // Buscar em paralelo (sem quicklinks)
     const [documents, panels, users] = await Promise.all([
-      dbSim.getDocuments?.() || [],
-      dbSim.getPanels?.() || [],
-      dbSim.getUsers?.() || [],
+      db.getDocuments?.(userLevel, userCompany) || [],
+      db.getPanels?.() || [],
+      db.getUsers?.() || [],
     ]);
 
     const results: SearchResult[] = [];
 
     // Documentos - filtrar por hierarquia
     const filteredDocs = (documents as MockDocument[])
-      .filter((doc: MockDocument) => userLevel <= doc.minHierarchyLevel)
+      .filter((doc) => userLevel <= doc.minHierarchyLevel)
       .filter(
-        (doc: MockDocument) =>
+        (doc) =>
           doc.title.toLowerCase().includes(query) ||
           doc.description?.toLowerCase().includes(query),
       )
@@ -69,11 +80,11 @@ export async function GET(request: NextRequest) {
     // Ferramentas/Paineis - filtrar por hierarquia
     const filteredPanels = (panels as MockSystemPanel[])
       .filter(
-        (panel: MockSystemPanel) =>
+        (panel) =>
           panel.isActive && userLevel <= panel.minHierarchy,
       )
       .filter(
-        (panel: MockSystemPanel) =>
+        (panel) =>
           panel.name.toLowerCase().includes(query) ||
           panel.description.toLowerCase().includes(query),
       )
@@ -96,7 +107,7 @@ export async function GET(request: NextRequest) {
     if (userLevel <= 2) {
       const filteredUsers = (users as MockUser[])
         .filter(
-          (u: MockUser) =>
+          (u) =>
             u.name?.toLowerCase().includes(query) ||
             u.email?.toLowerCase().includes(query),
         )

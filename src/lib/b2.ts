@@ -1,4 +1,6 @@
 import B2 from "backblaze-b2";
+import fs from "fs/promises";
+import path from "path";
 
 const b2KeyId = process.env.B2_APPLICATION_KEY_ID;
 const b2Key = process.env.B2_APPLICATION_KEY;
@@ -16,8 +18,28 @@ if (b2KeyId && b2Key && b2BucketId) {
     });
     isB2Configured = true;
   } catch (error) {
-    console.error("Erro ao instanciar Backblaze B2:", error);
+    console.error("Erro ao instanciar armazenamento:", error);
   }
+}
+
+async function saveLocally(
+  fileBuffer: Buffer,
+  fileName: string,
+  size: number
+): Promise<{ url: string; size: number }> {
+  const cleanName = fileName.replace(/\s+/g, "_");
+  const uniqueName = `${Date.now()}_${cleanName}`;
+  const uploadDir = path.join(process.cwd(), "public", "uploads");
+  try {
+    await fs.mkdir(uploadDir, { recursive: true });
+    await fs.writeFile(path.join(uploadDir, uniqueName), fileBuffer);
+  } catch (err) {
+    console.error("Erro ao salvar arquivo em armazenamento local:", err);
+  }
+  return {
+    url: `/uploads/${uniqueName}`,
+    size,
+  };
 }
 
 export async function uploadToB2(
@@ -28,16 +50,8 @@ export async function uploadToB2(
   const size = fileBuffer.length;
   
   if (!isB2Configured || !b2Instance || !b2BucketId) {
-    console.log(`[B2 Mock Upload] Arquivo: ${fileName}, Tamanho: ${size} bytes. Credenciais nao configuradas. Salvando localmente.`);
-    
-    // Simulate upload delay and return a mock URL
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    const cleanName = fileName.replace(/\s+/g, "_");
-    const mockUrl = `/uploads/${Date.now()}_${cleanName}`;
-    return {
-      url: mockUrl,
-      size,
-    };
+    console.log(`[Upload Local] Arquivo: ${fileName}, Tamanho: ${size} bytes. Salvando em armazenamento local.`);
+    return saveLocally(fileBuffer, fileName, size);
   }
 
   try {
@@ -65,12 +79,7 @@ export async function uploadToB2(
       size,
     };
   } catch (error) {
-    console.error("Erro no upload do Backblaze B2:", error);
-    // Fallback to mock url in case of connection/auth issues
-    const cleanName = fileName.replace(/\s+/g, "_");
-    return {
-      url: `/uploads/${Date.now()}_${cleanName}`,
-      size,
-    };
+    console.error("Erro no upload remoto, alternando para armazenamento local:", error);
+    return saveLocally(fileBuffer, fileName, size);
   }
 }

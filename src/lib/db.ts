@@ -2171,3 +2171,145 @@ const mockBusinessUnits: MockBusinessUnit[] = [
     revenueData: [],
   },
 ];
+
+// ============================================
+// UNIFIED DATABASE EXPORT
+// ============================================
+// This is the single source of truth for database access.
+// It automatically uses Prisma when connected, falls back to mock in development.
+// In production without DATABASE_URL, it will throw an error.
+// ============================================
+
+export const db = {
+  // Users
+  getUsers: dbSim.getUsers,
+  getUserByEmail: dbSim.getUserByEmail,
+  getUserById: dbSim.getUserById,
+  updateUserHierarchy: dbSim.updateUserHierarchy,
+  updateUserStatus: dbSim.updateUserStatus,
+  updateUserRole: dbSim.updateUserRole,
+  createUser: dbSim.createUser,
+  deleteUser: dbSim.deleteUser,
+  updateUserProfile: dbSim.updateUserProfile,
+
+  // Roles
+  getRoles: dbSim.getRoles,
+  createRole: dbSim.createRole,
+  updateRole: dbSim.updateRole,
+  deleteRole: dbSim.deleteRole,
+
+  // Panels/Tools
+  getPanels: dbSim.getPanels,
+  getPanelByBusinessUnitToolId: dbSim.getPanelByBusinessUnitToolId,
+  createPanel: dbSim.createPanel,
+  updatePanel: dbSim.updatePanel,
+  deletePanel: dbSim.deletePanel,
+
+  // Documents
+  getDocuments: dbSim.getDocuments,
+  addDocument: dbSim.addDocument,
+  deleteDocument: dbSim.deleteDocument,
+  getDocumentTypes: dbSim.getDocumentTypes,
+  createDocumentType: dbSim.createDocumentType,
+  updateDocumentType: dbSim.updateDocumentType,
+  deleteDocumentType: dbSim.deleteDocumentType,
+
+  // Announcements
+  getAnnouncements: announcementsDb.getAnnouncements,
+  getAnnouncementReadsByUser: announcementsDb.getAnnouncementReadsByUser,
+  createAnnouncement: announcementsDb.addAnnouncement,
+  updateAnnouncement: announcementsDb.updateAnnouncement,
+  deleteAnnouncement: announcementsDb.deleteAnnouncement,
+  markAnnouncementAsRead: announcementsDb.markAnnouncementAsRead,
+
+  // Audit Logs
+  getAuditLogs: dbSim.getAuditLogs,
+  addLog: dbSim.addLog,
+
+  // Business Units
+  getBusinessUnitsForHome: dbSim.getBusinessUnitsForHome,
+  getBusinessUnits: dbSim.getBusinessUnits,
+  getBusinessUnitBySlug: dbSim.getBusinessUnitBySlug,
+  getBusinessUnitItemOwner: dbSim.getBusinessUnitItemOwner,
+  createBusinessUnit: dbSim.createBusinessUnit,
+  updateBusinessUnit: dbSim.updateBusinessUnit,
+  deleteBusinessUnit: dbSim.deleteBusinessUnit,
+
+  // Business Unit Tools
+  getBusinessUnitTools: dbSim.getBusinessUnitTools,
+  getBusinessUnitToolById: dbSim.getBusinessUnitToolById,
+  addBusinessUnitTool: dbSim.addBusinessUnitTool,
+  updateBusinessUnitTool: dbSim.updateBusinessUnitTool,
+  deleteBusinessUnitTool: dbSim.deleteBusinessUnitTool,
+
+  // Business Unit Social Links
+  getBusinessUnitSocialLinks: dbSim.getBusinessUnitSocialLinks,
+  addBusinessUnitSocialLink: dbSim.addBusinessUnitSocialLink,
+  updateBusinessUnitSocialLink: dbSim.updateBusinessUnitSocialLink,
+  deleteBusinessUnitSocialLink: dbSim.deleteBusinessUnitSocialLink,
+
+  // Business Unit Analytics
+  getBusinessUnitAnalytics: dbSim.getBusinessUnitAnalytics,
+  addBusinessUnitAnalytics: dbSim.addBusinessUnitAnalytics,
+  updateBusinessUnitAnalytics: dbSim.updateBusinessUnitAnalytics,
+  deleteBusinessUnitAnalytics: dbSim.deleteBusinessUnitAnalytics,
+
+  // Business Unit Meta Data
+  getBusinessUnitMetaData: dbSim.getBusinessUnitMetaData,
+  addBusinessUnitMetaData: dbSim.addBusinessUnitMetaData,
+  updateBusinessUnitMetaData: dbSim.updateBusinessUnitMetaData,
+  deleteBusinessUnitMetaData: dbSim.deleteBusinessUnitMetaData,
+
+  // Business Unit Revenue
+  getBusinessUnitRevenue: dbSim.getBusinessUnitRevenue,
+  addBusinessUnitRevenue: dbSim.addBusinessUnitRevenue,
+  updateBusinessUnitRevenue: dbSim.updateBusinessUnitRevenue,
+  deleteBusinessUnitRevenue: dbSim.deleteBusinessUnitRevenue,
+
+  // Company Config
+  getCompanies: dbSim.getCompanies,
+  createCompany: dbSim.createCompany,
+  updateCompany: dbSim.updateCompany,
+  deleteCompany: dbSim.deleteCompany,
+
+  // Sync
+  syncBusinessUnitData: dbSim.syncBusinessUnitData,
+  syncAllBusinessUnits: dbSim.syncAllBusinessUnits,
+
+  // Custom Levels
+  getLevels: dbSim.getLevels,
+  createLevel: dbSim.createLevel,
+  deleteLevel: dbSim.deleteLevel,
+  updateLevel: dbSim.updateLevel,
+
+  // Menu Permissions
+  getMenuPermissions: dbSim.getMenuPermissions,
+  updateMenuPermission: dbSim.updateMenuPermission,
+  createMenuPermission: dbSim.createMenuPermission,
+  deleteMenuPermission: dbSim.deleteMenuPermission,
+
+  // Role Permissions
+  getRolePermissions: dbSim.getRolePermissions,
+  createRolePermission: dbSim.createRolePermission,
+  deleteRolePermission: dbSim.deleteRolePermission,
+
+  // Account Lockout
+  checkAccountLockout: dbSim.checkAccountLockout,
+  recordFailedLoginAttempt: dbSim.recordFailedLoginAttempt,
+  resetFailedLoginAttempts: dbSim.resetFailedLoginAttempts,
+
+  // System Config
+  getSystemConfig: dbSim.getSystemConfig,
+  isMfaEnabled: dbSim.isMfaEnabled,
+
+  // User MFA
+  getUserMfa: dbSim.getUserMfa,
+  setUserMfa: dbSim.setUserMfa,
+
+  // Auth Defaults
+  getAuthDefaults: dbSim.getAuthDefaults,
+};
+
+// Type export for consumers
+export type Database = typeof db;
+
