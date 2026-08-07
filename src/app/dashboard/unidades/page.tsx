@@ -80,6 +80,8 @@ interface BusinessUnit {
   name: string;
   slug: string;
   company: string;
+  portalId?: string;
+  portalReport?: any;
   description: string;
   logo: string;
   coverImage: string;
@@ -184,6 +186,7 @@ export default function BusinessUnitsListPage() {
       name: formData.get("name"),
       slug: formData.get("slug"),
       company: formData.get("company"),
+      portalId: formData.get("portalId") || undefined,
       description: formData.get("description") || "",
       address: formData.get("address") || "",
       phone: formData.get("phone") || "",
@@ -218,7 +221,7 @@ export default function BusinessUnitsListPage() {
   };
 
   const companies = [
-    { value: "BORGO", label: "Borgo del Vin" },
+    { value: "BORGO", label: "Borgo del Vino" },
     { value: "MAPLE_BEAR", label: "Maple Bear" },
     { value: "AZUL", label: "Azul Incorporações" },
     { value: "CENTRAL", label: "Central / Geral" },
@@ -366,6 +369,23 @@ export default function BusinessUnitsListPage() {
                         {c.label}
                       </option>
                     ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-brand-terciar/70 font-mono uppercase">
+                    Vincular ao Portal (Tráfego Pago)
+                  </label>
+                  <select
+                    name="portalId"
+                    className="w-full px-3 py-2 bg-brand-principal/30 border border-brand-terciar/15 rounded-lg text-xs text-brand-terciar focus:outline-none focus:border-brand-secundar focus:bg-white transition-colors cursor-pointer"
+                  >
+                    <option value="">Nenhum (avulso)</option>
+                    <option value="o-borgo">O Borgo Del Vino (o-borgo)</option>
+                    <option value="vinicola">Vinícola Família Eloy (vinicola)</option>
+                    <option value="hotel">Hotel Borgo Del Vino (hotel)</option>
+                    <option value="azul">Azul Incorporações (azul)</option>
+                    <option value="don-eloy">Restaurante Don Eloy (don-eloy)</option>
                   </select>
                 </div>
 
@@ -520,7 +540,7 @@ export default function BusinessUnitsListPage() {
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <h3 className="text-sm font-bold text-brand-extra1 truncate">
                         {bu.name}
                       </h3>
@@ -529,6 +549,11 @@ export default function BusinessUnitsListPage() {
                       >
                         {companyLabels[bu.company] || bu.company}
                       </span>
+                      {(bu.portalId || bu.portalReport) && (
+                        <span className="px-2 py-0.5 text-[9px] font-bold rounded bg-brand-secundar/10 text-brand-secundar border border-brand-secundar/20">
+                          Portal CP Digital
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-brand-terciar/70 line-clamp-2 mb-2">
                       {bu.description || "Sem descrição"}

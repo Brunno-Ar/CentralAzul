@@ -29,6 +29,7 @@ import {
   X,
   Plus,
 } from "lucide-react";
+import PortalMetricsView from "@/components/portal-metrics-view";
 import { SessionUser } from "@/types/auth";
 
 interface BusinessUnit {
@@ -159,7 +160,7 @@ export default function BusinessUnitDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<
-    "overview" | "tools" | "social" | "analytics" | "revenue"
+    "overview" | "portal" | "tools" | "social" | "analytics" | "revenue"
   >("overview");
   const [message, setMessage] = useState<{
     type: "success" | "error";
@@ -533,9 +534,10 @@ export default function BusinessUnitDetailPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-white rounded-xl p-1 border border-brand-terciar/10">
+      <div className="flex gap-1 bg-white rounded-xl p-1 border border-brand-terciar/10 flex-wrap">
         {[
           { id: "overview", label: "Visão Geral", icon: Building2 },
+          { id: "portal", label: "Tráfego & Instagram", icon: TrendingUp },
           { id: "tools", label: "Ferramentas", icon: Settings },
           { id: "social", label: "Redes Sociais", icon: Users },
           { id: "analytics", label: "Analytics", icon: BarChart3 },
@@ -566,6 +568,28 @@ export default function BusinessUnitDetailPage() {
           transition={{ duration: 0.2 }}
           className="bg-white rounded-2xl border border-brand-terciar/10 overflow-hidden"
         >
+          {/* Portal Tab */}
+          {activeTab === "portal" && (
+            <div className="p-6">
+              <PortalMetricsView
+                initialContaId={
+                  (businessUnit as any)?.portalId ||
+                  (slug === "borgo-del-vino"
+                    ? "o-borgo"
+                    : slug === "vinicola-familia-eloy"
+                    ? "vinicola"
+                    : slug === "hotel-borgo-del-vino"
+                    ? "hotel"
+                    : slug === "azul-incorporacoes"
+                    ? "azul"
+                    : slug === "restaurante-don-eloy"
+                    ? "don-eloy"
+                    : undefined)
+                }
+              />
+            </div>
+          )}
+
           {/* Overview Tab */}
           {activeTab === "overview" && (
             <div className="p-6 space-y-6">
