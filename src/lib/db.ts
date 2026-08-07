@@ -1,5 +1,15 @@
-import { PrismaClient, Company } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { generateSecureId } from "./crypto-utils";
+import { usersDb } from "./db/users";
+import { rolesDb } from "./db/roles";
+import { permissionsDb } from "./db/permissions";
+import { panelsDb } from "./db/panels";
+import { businessUnitsDb } from "./db/business-units";
+import { documentsDb } from "./db/documents";
+import { analyticsDb } from "./db/analytics";
+import { announcementsDb } from "./db/announcements";
+import { getAuthDefaults } from "./db/auth";
 
 const parseDbUrl = (urlStr: string) => {
   try {
@@ -23,6 +33,27 @@ let isDbConnected = false;
 
 declare global {
   var prismaGlobal: PrismaClient | undefined;
+  var __mockRoles: MockRoleConfig[] | undefined;
+  var __mockUsers: MockUser[] | undefined;
+  var __mockPanels: MockSystemPanel[] | undefined;
+  var __mockDocuments: MockDocument[] | undefined;
+  var __mockLogs: MockAuditLog[] | undefined;
+  var __mockAnnouncements: MockAnnouncement[] | undefined;
+  var __mockAnnouncementReads: MockAnnouncementRead[] | undefined;
+  var __mockCompanies: MockCompany[] | undefined;
+  var __mockBusinessUnits: MockBusinessUnit[] | undefined;
+  var __mockLevels: MockLevelConfig[] | undefined;
+  var __mockMenuPermissions: MockMenuPermission[] | undefined;
+  var __mockMfaUsers: MockUserMfa[] | undefined;
+}
+
+export interface MockUserMfa {
+  id: string;
+  userId: string;
+  secret: string;
+  enabled: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 try {
@@ -69,17 +100,36 @@ try {
   );
 }
 
-export const prisma = prismaClient;
+export const prisma = prismaClient as PrismaClient;
+export const isDatabaseConnected = () => isDbConnected;
 
-// Mock database store for fallback
+// ============================================
+// DATABASE ABSTRACTION LAYER
+// ============================================
+// This is the single source of truth for all database operations.
+// It automatically uses Prisma when connected, mock only in dev without DB.
+
+// Check if we should use mock data
+const USE_MOCK_DB = process.env.USE_MOCK_DB === "true";
+
+if (USE_MOCK_DB) {
+  console.warn(
+    "⚠️  USANDO MOCK DATABASE (dbSim) - Apenas para desenvolvimento!",
+  );
+}
+
+// ============================================
+// TYPES (re-exported for convenience)
+// ============================================
 export interface MockUser {
   id: string;
   name: string;
   email: string;
   image: string;
+  password?: string;
   role: string;
   hierarchyLevel: number;
-  company: Company;
+  company: string;
   status: string;
   createdAt: Date;
 }
@@ -90,10 +140,12 @@ export interface MockSystemPanel {
   description: string;
   url: string;
   icon: string;
-  category: Company;
+  category: string;
   minRole: string;
   minHierarchy: number;
   isActive: boolean;
+  companySlug?: string | null;
+  businessUnitToolId?: string | null;
 }
 
 export interface MockDocument {
@@ -103,7 +155,7 @@ export interface MockDocument {
   fileUrl: string;
   fileSize: number;
   fileType: string;
-  category: Company;
+  category: string;
   minHierarchyLevel: number;
   uploadedById: string;
   uploadedByName: string;
@@ -135,7 +187,7 @@ export interface MockAnnouncement {
   title: string;
   content: string;
   priority: string;
-  targetCompanies: string;
+  targetCompanies: string | null;
   expiresAt: Date | null;
   isPinned: boolean;
   isActive: boolean;
@@ -155,7 +207,7 @@ export interface MockBusinessUnit {
   id: string;
   name: string;
   slug: string;
-  company: Company;
+  company: string;
   portalId?: string;
   description: string;
   logo: string;
@@ -166,6 +218,7 @@ export interface MockBusinessUnit {
   website: string;
   isActive: boolean;
   order: number;
+  showOnHome: boolean;
   createdAt: Date;
   updatedAt: Date;
   tools?: MockBusinessUnitTool[];
@@ -226,6 +279,8 @@ export interface MockBusinessUnitMetaData {
   engagementRate: number;
   reach: number;
   impressions: number;
+  watchTimeMinutes?: number;
+  avgViewDurationSeconds?: number;
   createdAt: Date;
 }
 
@@ -242,8 +297,37 @@ export interface MockBusinessUnitRevenue {
   updatedAt: Date;
 }
 
-// Initial mock data
-const mockRoles: MockRoleConfig[] = [
+export interface MockLevelConfig {
+  id: string;
+  level: number;
+  name: string;
+  createdAt: Date;
+}
+
+export interface MockMenuPermission {
+  href: string;
+  name: string;
+  minLevel: number;
+}
+
+export const mockLevels: MockLevelConfig[] = globalThis.__mockLevels ?? (globalThis.__mockLevels = [
+  { id: "lvl-1", level: 1, name: "Direcao Geral", createdAt: new Date() },
+  { id: "lvl-2", level: 2, name: "Gerencia / Coordenacao", createdAt: new Date() },
+  { id: "lvl-3", level: 3, name: "Operacional", createdAt: new Date() },
+]);
+
+export const mockMenuPermissions: MockMenuPermission[] = globalThis.__mockMenuPermissions ?? (globalThis.__mockMenuPermissions = [
+  { href: "/dashboard", name: "Painel Principal", minLevel: 3 },
+  { href: "/dashboard/ferramentas", name: "Ferramentas", minLevel: 3 },
+  { href: "/dashboard/comunicados", name: "Comunicados", minLevel: 3 },
+  { href: "/dashboard/unidades", name: "Unidades de Negocio", minLevel: 3 },
+  { href: "/dashboard/documentos", name: "Drive de Arquivos", minLevel: 3 },
+  { href: "/dashboard/seguranca", name: "Seguranca & Niveis", minLevel: 1 },
+  { href: "/dashboard/configuracoes", name: "Configuracoes", minLevel: 99 },
+]);
+
+// Initial mock data (persisted via globalThis to survive hot reloads)
+export const mockRoles: MockRoleConfig[] = globalThis.__mockRoles ?? (globalThis.__mockRoles = [
   {
     id: "role-admin",
     name: "ADMIN",
@@ -268,72 +352,58 @@ const mockRoles: MockRoleConfig[] = [
     createdAt: new Date(),
     updatedAt: new Date(),
   },
-];
+]);
 
-const mockUsers: MockUser[] = [
+if (globalThis.__mockUsers && !globalThis.__mockUsers.some(u => u.email === "gerente@grupoazul.com.br")) {
+  globalThis.__mockUsers = undefined;
+}
+
+export const mockUsers: MockUser[] = globalThis.__mockUsers ?? (globalThis.__mockUsers = [
   {
-    id: "user-director",
-    name: "Diretor Grupo Azul",
-    email: "diretor@grupoazul.com.br",
-    image:
-      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120",
-    role: "ADMIN",
-    hierarchyLevel: 1,
-    company: Company.CENTRAL,
-    status: "ACTIVE",
-    createdAt: new Date(),
-  },
-  {
-    id: "user-admin",
+    id: "user-central-admin",
     name: "Administrador Central",
     email: "admin@grupoazul.com.br",
     image:
-      "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120",
-    role: "ADMIN",
+  // DEVELOPMENT ONLY - bcrypt hashed passwords for demo users
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120",
+  // DEVELOPMENT ONLY - bcrypt hashed passwords for demo users
+      password: "$2b$10$JuveFUXufkiuaM6ZTuWPzui5gP1J3FAVrBwVKCPuNIBptVXaCk4Wm",
+  // DEVELOPMENT ONLY - bcrypt hashed passwords for demo users
+      role: "ADMIN",
     hierarchyLevel: 1,
-    company: Company.CENTRAL,
+    company: "CENTRAL",
     status: "ACTIVE",
     createdAt: new Date(),
   },
   {
-    id: "user-borgo",
-    name: "Gerente Borgo del Vin",
-    email: "gerente.borgo@borgodelvin.com.br",
+    id: "user-central-coordinator",
+    name: "Gerente Central",
+    email: "gerente@grupoazul.com.br",
     image:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=120",
+      "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120",
+    password: "$2b$10$qsnTgJibxH84iBTq31h65OP7WwVStvqVf162S9jSQS92Xk9RX5K6u",
     role: "COORDINATOR",
     hierarchyLevel: 2,
-    company: Company.BORGO,
+    company: "CENTRAL",
     status: "ACTIVE",
     createdAt: new Date(),
   },
   {
-    id: "user-maple",
-    name: "Coordenador Maple Bear",
-    email: "coordenador.maple@maplebear.com.br",
+    id: "user-central-viewer",
+    name: "Operador Central",
+    email: "operador@grupoazul.com.br",
     image:
-      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=120",
-    role: "COORDINATOR",
-    hierarchyLevel: 2,
-    company: Company.MAPLE_BEAR,
-    status: "ACTIVE",
-    createdAt: new Date(),
-  },
-  {
-    id: "user-viewer",
-    name: "Operador Azul",
-    email: "operador.azul@azulinc.com.br",
-    image:
-      "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=120",
+      "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=120",
+    password: "$2b$10$sWU1t4RK3PG3rUrdFbXTVOO62lVXihwFpSo8ldUhG6RbPkULZEaCu",
     role: "VIEWER",
     hierarchyLevel: 3,
-    company: Company.AZUL,
+    company: "CENTRAL",
     status: "ACTIVE",
     createdAt: new Date(),
   },
-];
+]);
 
-const mockPanels: MockSystemPanel[] = [
+export const mockPanels: MockSystemPanel[] = globalThis.__mockPanels ?? (globalThis.__mockPanels = [
   {
     id: "panel-1",
     name: "CRM - Grupo Azul",
@@ -341,7 +411,7 @@ const mockPanels: MockSystemPanel[] = [
       "Plataforma de CRM e gestao comercial do Grupo Azul Incorporacoes.",
     url: "https://azulcrm-dykanzmd.manus.space",
     icon: "Building2",
-    category: Company.AZUL,
+    category: "AZUL",
     minRole: "COORDINATOR",
     minHierarchy: 2,
     isActive: true,
@@ -352,7 +422,7 @@ const mockPanels: MockSystemPanel[] = [
     description: "Portal e area de parceiros do empreendimento Borgo del Vino.",
     url: "https://borgodelvino.com.br/parceiros",
     icon: "Wine",
-    category: Company.BORGO,
+    category: "BORGO",
     minRole: "VIEWER",
     minHierarchy: 3,
     isActive: true,
@@ -363,7 +433,7 @@ const mockPanels: MockSystemPanel[] = [
     description: "Painel administrativo para gestao interna do Borgo del Vino.",
     url: "https://borgodelvino.com.br/Adminborgo",
     icon: "Wine",
-    category: Company.BORGO,
+    category: "BORGO",
     minRole: "COORDINATOR",
     minHierarchy: 2,
     isActive: true,
@@ -375,21 +445,9 @@ const mockPanels: MockSystemPanel[] = [
       "Painel administrativo de formularias e cadastros da Maple Bear.",
     url: "https://formulario-maplebear.vercel.app/admin",
     icon: "Notebook",
-    category: Company.MAPLE_BEAR,
+    category: "MAPLE_BEAR",
     minRole: "COORDINATOR",
     minHierarchy: 2,
-    isActive: true,
-  },
-  {
-    id: "panel-5",
-    name: "Central Azul - Politicas & Logs",
-    description:
-      "Monitoramento de seguranca de acessos e edicao de politicas da Central.",
-    url: "/dashboard/seguranca",
-    icon: "ShieldAlert",
-    category: Company.CENTRAL,
-    minRole: "ADMIN",
-    minHierarchy: 1,
     isActive: true,
   },
   {
@@ -399,14 +457,14 @@ const mockPanels: MockSystemPanel[] = [
       "Painel administrativo de cadastros e parcerias da Azul Incorporacoes.",
     url: "https://formulario-azul.vercel.app/admin",
     icon: "Notebook",
-    category: Company.AZUL,
+    category: "AZUL",
     minRole: "COORDINATOR",
     minHierarchy: 2,
     isActive: true,
   },
-];
+]);
 
-const mockDocuments: MockDocument[] = [
+export const mockDocuments: MockDocument[] = globalThis.__mockDocuments ?? (globalThis.__mockDocuments = [
   {
     id: "doc-1",
     title: "Diretrizes de Seguranca da Informacao 2026",
@@ -415,7 +473,7 @@ const mockDocuments: MockDocument[] = [
     fileUrl: "#",
     fileSize: 2450000,
     fileType: "application/pdf",
-    category: Company.CENTRAL,
+    category: "CENTRAL",
     minHierarchyLevel: 3,
     uploadedById: "user-director",
     uploadedByName: "Diretor Grupo Azul",
@@ -429,7 +487,7 @@ const mockDocuments: MockDocument[] = [
     fileUrl: "#",
     fileSize: 4200000,
     fileType: "application/pdf",
-    category: Company.BORGO,
+    category: "BORGO",
     minHierarchyLevel: 2,
     uploadedById: "user-borgo",
     uploadedByName: "Gerente Borgo del Vin",
@@ -443,15 +501,15 @@ const mockDocuments: MockDocument[] = [
     fileUrl: "#",
     fileSize: 1800000,
     fileType: "application/pdf",
-    category: Company.MAPLE_BEAR,
+    category: "MAPLE_BEAR",
     minHierarchyLevel: 3,
     uploadedById: "user-maple",
     uploadedByName: "Coordenador Maple Bear",
     createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
   },
-];
+]);
 
-const mockLogs: MockAuditLog[] = [
+export const mockLogs: MockAuditLog[] = globalThis.__mockLogs ?? (globalThis.__mockLogs = [
   {
     id: "log-1",
     userId: "user-director",
@@ -484,10 +542,10 @@ const mockLogs: MockAuditLog[] = [
       "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15",
     createdAt: new Date(Date.now() - 20 * 60 * 1000),
   },
-];
+]);
 
 // Fase 1 - Mock Announcements
-const mockAnnouncements: MockAnnouncement[] = [
+const _mockAnnouncements: MockAnnouncement[] = globalThis.__mockAnnouncements ?? (globalThis.__mockAnnouncements = [
   {
     id: "ann-1",
     title: "Nova integração de Segurança",
@@ -530,770 +588,195 @@ const mockAnnouncements: MockAnnouncement[] = [
     createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
     updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
   },
-];
+]);
 
-const mockAnnouncementReads: MockAnnouncementRead[] = [];
+const _mockAnnouncementReads: MockAnnouncementRead[] = globalThis.__mockAnnouncementReads ?? (globalThis.__mockAnnouncementReads = []);
+
+export const mockMfaUsers: MockUserMfa[] = globalThis.__mockMfaUsers ?? (globalThis.__mockMfaUsers = []);
+
+export interface MockCompany {
+  id: string;
+  name: string;
+  slug: string;
+  color: string | null;
+  holding: string | null;
+  isActive: boolean;
+  showOnHome: boolean;
+  order: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export const mockCompanies: MockCompany[] = globalThis.__mockCompanies ?? (globalThis.__mockCompanies = [
+  {
+    id: "comp-1",
+    name: "Borgo del Vino",
+    slug: "BORGO",
+    color: "WINE",
+    holding: null,
+    isActive: true,
+    showOnHome: true,
+    order: 1,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: "comp-2",
+    name: "Maple Bear",
+    slug: "MAPLE_BEAR",
+    color: "RED",
+    holding: null,
+    isActive: true,
+    showOnHome: true,
+    order: 2,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: "comp-3",
+    name: "Grupo Azul",
+    slug: "AZUL",
+    color: "AZUL",
+    holding: null,
+    isActive: true,
+    showOnHome: true,
+    order: 3,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: "comp-4",
+    name: "Central",
+    slug: "CENTRAL",
+    color: "GOLD",
+    holding: null,
+    isActive: true,
+    showOnHome: true,
+    order: 4,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+]);
+
+// ============================================
+// ACCOUNT LOCKOUT STATE (In-Memory Map for dev mode)
+// ============================================
+// Stores failed login attempts and lockout timestamps per email
+export const lockoutState = new Map<string, { attempts: number; lockedUntil?: Date }>();
+
+export const LOCKOUT_THRESHOLD = 5;
+export const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+
+// ============================================
+// STANDALONE FUNCTIONS (shared by modules)
+// ============================================
+
+export const getSystemConfig = async (key: string): Promise<string | null> => {
+  if (prismaClient && isDbConnected) {
+    try {
+      const config = await prismaClient.systemConfig.findUnique({
+        where: { key },
+      });
+      return config?.value ?? null;
+    } catch (e) {
+      console.error("Prisma error fetching system config, falling back", e);
+    }
+  }
+  const mockConfigStore = globalThis.__mockSystemConfig ?? {};
+  return mockConfigStore[key] ?? null;
+};
 
 // Persistent state handlers in memory (simulating a database server)
 // We will expose database simulation functions so that even if MySQL is not connected,
 // roles, logs, and files are updated in real-time on the server.
 export const dbSim = {
-  getUsers: async () => {
-    if (prismaClient && isDbConnected) {
-      try {
-        return await prismaClient.user.findMany({
-          orderBy: { createdAt: "desc" },
-        });
-      } catch (e) {
-        console.error("Prisma error, falling back", e);
-      }
-    }
-    return mockUsers;
-  },
+  getUsers: usersDb.getUsers,
 
-  getUserByEmail: async (email: string) => {
-    if (prismaClient && isDbConnected) {
-      try {
-        return await prismaClient.user.findUnique({
-          where: { email },
-        });
-      } catch (e) {
-        console.error("Prisma error, falling back", e);
-      }
-    }
-    return (
-      mockUsers.find((u) => u.email.toLowerCase() === email.toLowerCase()) ||
-      null
-    );
-  },
+  getUserByEmail: usersDb.getUserByEmail,
 
-  getUserById: async (id: string) => {
-    if (prismaClient && isDbConnected) {
-      try {
-        return await prismaClient.user.findUnique({
-          where: { id },
-        });
-      } catch (e) {
-        console.error("Prisma error, falling back", e);
-      }
-    }
-    return mockUsers.find((u) => u.id === id) || null;
-  },
+  getUserById: usersDb.getUserById,
 
-  updateUserHierarchy: async (
-    id: string,
-    role: string,
-    level: number,
-    status?: string,
-  ) => {
-    if (prismaClient && isDbConnected) {
-      try {
-        return await prismaClient.user.update({
-          where: { id },
-          data: {
-            role,
-            hierarchyLevel: level,
-            ...(status ? { status } : {}),
-          },
-        });
-      } catch (e) {
-        console.error("Prisma error, falling back", e);
-      }
-    }
-    const user = mockUsers.find((u) => u.id === id);
-    if (user) {
-      user.role = role;
-      user.hierarchyLevel = level;
-      if (status) user.status = status;
-      return user;
-    }
-    return null;
-  },
+  updateUserHierarchy: usersDb.updateUserHierarchy,
 
-  addUser: async (user: {
-    name: string;
-    email: string;
-    role: string;
-    hierarchyLevel: number;
-    company: Company;
-  }) => {
-    const newUser: MockUser = {
-      ...user,
-      id: "user-" + Math.random().toString(36).substr(2, 9),
-      image:
-        "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120",
-      status: "ACTIVE",
-      createdAt: new Date(),
-    };
-    if (prismaClient && isDbConnected) {
-      try {
-        return await prismaClient.user.create({
-          data: {
-            id: newUser.id,
-            name: newUser.name,
-            email: newUser.email,
-            image: newUser.image,
-            role: newUser.role,
-            hierarchyLevel: newUser.hierarchyLevel,
-            company: newUser.company,
-            status: newUser.status,
-          },
-        });
-      } catch (e) {
-        console.error("Prisma error adding user, falling back", e);
-      }
-    }
-    mockUsers.push(newUser);
-    return newUser;
-  },
+  updateUserProfile: usersDb.updateUserProfile,
 
-  getPanels: async () => {
-    if (prismaClient && isDbConnected) {
-      try {
-        let dbPanels = await prismaClient.systemPanel.findMany();
+  addUser: usersDb.addUser,
 
-        // Find panels in mockPanels that are missing from the database by ID or URL
-        const missingPanels = mockPanels.filter(
-          (mockP) =>
-            !dbPanels.some(
-              (dbP) => dbP.id === mockP.id || dbP.url === mockP.url,
-            ),
-        );
+  getPanels: panelsDb.getPanels,
 
-        if (missingPanels.length > 0) {
-          for (const p of missingPanels) {
-            await prismaClient.systemPanel.create({
-              data: {
-                id: p.id,
-                name: p.name,
-                description: p.description,
-                url: p.url,
-                icon: p.icon,
-                category: p.category,
-                minRole: p.minRole,
-                minHierarchy: p.minHierarchy,
-                isActive: p.isActive,
-              },
-            });
-          }
-          dbPanels = await prismaClient.systemPanel.findMany();
-        }
+  getPanelByBusinessUnitToolId: panelsDb.getPanelByBusinessUnitToolId,
 
-        // Delete panels from the database that are no longer in mockPanels
-        const extraPanels = dbPanels.filter(
-          (dbP) =>
-            !mockPanels.some(
-              (mockP) => mockP.id === dbP.id || mockP.url === dbP.url,
-            ),
-        );
+  getDocuments: documentsDb.getDocuments,
 
-        if (extraPanels.length > 0) {
-          for (const p of extraPanels) {
-            await prismaClient.systemPanel.delete({
-              where: { id: p.id },
-            });
-          }
-          dbPanels = await prismaClient.systemPanel.findMany();
-        }
+  addDocument: documentsDb.addDocument,
 
-        return dbPanels;
-      } catch (e) {
-        console.error("Prisma error, falling back", e);
-      }
-    }
-    return mockPanels;
-  },
+  getDocumentTypes: documentsDb.getDocumentTypes,
 
-  getDocuments: async () => {
-    if (prismaClient && isDbConnected) {
-      try {
-        const dbDocs = await prismaClient.document.findMany({
-          include: { uploadedBy: true },
-          orderBy: { createdAt: "desc" },
-        });
-        return dbDocs.map((d) => ({
-          id: d.id,
-          title: d.title,
-          description: d.description || "",
-          fileUrl: d.fileUrl,
-          fileSize: d.fileSize || 0,
-          fileType: d.fileType || "",
-          category: d.category,
-          minHierarchyLevel: d.minHierarchyLevel,
-          uploadedById: d.uploadedById,
-          uploadedByName: d.uploadedBy.name || "Usuario",
-          createdAt: d.createdAt,
-        }));
-      } catch (e) {
-        console.error("Prisma error, falling back", e);
-      }
-    }
-    return mockDocuments;
-  },
+  createDocumentType: documentsDb.createDocumentType,
 
-  addDocument: async (
-    doc: Omit<MockDocument, "id" | "createdAt" | "uploadedByName">,
-  ) => {
-    const newDoc: MockDocument = {
-      ...doc,
-      id: "doc-" + Math.random().toString(36).substr(2, 9),
-      createdAt: new Date(),
-      uploadedByName:
-        mockUsers.find((u) => u.id === doc.uploadedById)?.name || "Usuario",
-    };
-    if (prismaClient && isDbConnected) {
-      try {
-        // Ensure user exists in db first
-        let dbUser = await prismaClient.user.findUnique({
-          where: { id: doc.uploadedById },
-        });
-        if (!dbUser) {
-          const user = mockUsers.find((u) => u.id === doc.uploadedById);
-          if (user) {
-            dbUser = await prismaClient.user.create({
-              data: {
-                id: user.id,
-                name: user.name,
-                email: user.email,
-                image: user.image,
-                role: user.role,
-                hierarchyLevel: user.hierarchyLevel,
-                company: user.company,
-              },
-            });
-          }
-        }
-        const created = await prismaClient.document.create({
-          data: {
-            title: doc.title,
-            description: doc.description,
-            fileUrl: doc.fileUrl,
-            fileSize: doc.fileSize,
-            fileType: doc.fileType,
-            category: doc.category,
-            minHierarchyLevel: doc.minHierarchyLevel,
-            uploadedById: doc.uploadedById,
-          },
-          include: { uploadedBy: true },
-        });
-        return {
-          id: created.id,
-          title: created.title,
-          description: created.description || "",
-          fileUrl: created.fileUrl,
-          fileSize: created.fileSize || 0,
-          fileType: created.fileType || "",
-          category: created.category,
-          minHierarchyLevel: created.minHierarchyLevel,
-          uploadedById: created.uploadedById,
-          uploadedByName: created.uploadedBy.name || "Usuario",
-          createdAt: created.createdAt,
-        };
-      } catch (e) {
-        console.error("Prisma error creating document, falling back", e);
-      }
-    }
-    mockDocuments.unshift(newDoc);
-    return newDoc;
-  },
+  updateDocumentType: documentsDb.updateDocumentType,
 
-  getLogs: async () => {
-    if (prismaClient && isDbConnected) {
-      try {
-        const dbLogs = await prismaClient.auditLog.findMany({
-          include: { user: true },
-          orderBy: { createdAt: "desc" },
-          take: 50,
-        });
-        return dbLogs.map((l) => ({
-          id: l.id,
-          userId: l.userId,
-          userName: l.user.name || "Usuario",
-          action: l.action,
-          details: l.details,
-          ipAddress: l.ipAddress || "",
-          userAgent: l.userAgent || "",
-          createdAt: l.createdAt,
-        }));
-      } catch (e) {
-        console.error("Prisma error, falling back", e);
-      }
-    }
-    return mockLogs;
-  },
+  deleteDocumentType: documentsDb.deleteDocumentType,
 
-  addLog: async (
-    userId: string,
-    action: string,
-    details: string,
-    ipAddress?: string,
-    userAgent?: string,
-  ) => {
-    const userObj = mockUsers.find((u) => u.id === userId);
-    const newLog: MockAuditLog = {
-      id: "log-" + Math.random().toString(36).substr(2, 9),
-      userId,
-      userName: userObj?.name || "Usuario",
-      action,
-      details,
-      ipAddress: ipAddress || "127.0.0.1",
-      userAgent: userAgent || "Browser",
-      createdAt: new Date(),
-    };
-    if (prismaClient && isDbConnected) {
-      try {
-        // Ensure user exists in db first
-        let dbUser = await prismaClient.user.findUnique({
-          where: { id: userId },
-        });
-        if (!dbUser) {
-          if (userObj) {
-            dbUser = await prismaClient.user.create({
-              data: {
-                id: userObj.id,
-                name: userObj.name,
-                email: userObj.email,
-                image: userObj.image,
-                role: userObj.role,
-                hierarchyLevel: userObj.hierarchyLevel,
-                company: userObj.company,
-              },
-            });
-          }
-        }
-        await prismaClient.auditLog.create({
-          data: {
-            userId,
-            action,
-            details,
-            ipAddress,
-            userAgent,
-          },
-        });
-      } catch (e) {
-        console.error("Prisma error adding log, falling back", e);
-      }
-    }
-    mockLogs.unshift(newLog);
-    return newLog;
-  },
+  getRolePermissions: permissionsDb.getRolePermissions,
+
+  createRolePermission: permissionsDb.createRolePermission,
+
+  deleteRolePermission: permissionsDb.deleteRolePermission,
+
+  getAuthDefaults: getAuthDefaults,
+
+  getLogs: analyticsDb.getLogs,
+
+  addLog: analyticsDb.addLog,
 
   // RoleConfig simulation and database methods
-  getRoles: async () => {
-    if (prismaClient && isDbConnected) {
-      try {
-        const dbRoles = await prismaClient.roleConfig.findMany({
-          orderBy: { hierarchyLevel: "asc" },
-        });
-        if (dbRoles.length > 0) {
-          return dbRoles.map((r) => ({
-            id: r.id,
-            name: r.name,
-            displayName: r.displayName,
-            hierarchyLevel: r.hierarchyLevel,
-            createdAt: r.createdAt,
-            updatedAt: r.updatedAt,
-          }));
-        }
+  getRoles: rolesDb.getRoles,
 
-        // Seed database if roleConfigs table is empty
-        for (const r of mockRoles) {
-          await prismaClient.roleConfig.create({
-            data: {
-              name: r.name,
-              displayName: r.displayName,
-              hierarchyLevel: r.hierarchyLevel,
-            },
-          });
-        }
-        const refetched = await prismaClient.roleConfig.findMany({
-          orderBy: { hierarchyLevel: "asc" },
-        });
-        return refetched.map((r) => ({
-          id: r.id,
-          name: r.name,
-          displayName: r.displayName,
-          hierarchyLevel: r.hierarchyLevel,
-          createdAt: r.createdAt,
-          updatedAt: r.updatedAt,
-        }));
-      } catch (e) {
-        console.error("Prisma error fetching roles, falling back", e);
-      }
-    }
-    return mockRoles;
-  },
+  addRole: rolesDb.addRole,
 
-  addRole: async (role: {
-    name: string;
-    displayName: string;
-    hierarchyLevel: number;
-  }) => {
-    const nameUpper = role.name.toUpperCase().replace(/\s+/g, "_");
-    const newRole: MockRoleConfig = {
-      id: "role-" + Math.random().toString(36).substr(2, 9),
-      name: nameUpper,
-      displayName: role.displayName,
-      hierarchyLevel: role.hierarchyLevel,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    if (prismaClient && isDbConnected) {
-      try {
-        const created = await prismaClient.roleConfig.create({
-          data: {
-            name: nameUpper,
-            displayName: role.displayName,
-            hierarchyLevel: role.hierarchyLevel,
-          },
-        });
-        return {
-          id: created.id,
-          name: created.name,
-          displayName: created.displayName,
-          hierarchyLevel: created.hierarchyLevel,
-          createdAt: created.createdAt,
-          updatedAt: created.updatedAt,
-        };
-      } catch (e) {
-        console.error("Prisma error creating role, falling back", e);
-      }
-    }
-    mockRoles.push(newRole);
-    return newRole;
-  },
+  updateRole: rolesDb.updateRole,
 
-  updateRole: async (
-    id: string,
-    updates: { name?: string; displayName?: string; hierarchyLevel?: number },
-  ) => {
-    const nameUpper = updates.name
-      ? updates.name.toUpperCase().replace(/\s+/g, "_")
-      : undefined;
-    if (prismaClient && isDbConnected) {
-      try {
-        const origRole = await prismaClient.roleConfig.findUnique({
-          where: { id },
-        });
-        const updated = await prismaClient.roleConfig.update({
-          where: { id },
-          data: {
-            ...(nameUpper ? { name: nameUpper } : {}),
-            ...(updates.displayName
-              ? { displayName: updates.displayName }
-              : {}),
-            ...(updates.hierarchyLevel !== undefined
-              ? { hierarchyLevel: updates.hierarchyLevel }
-              : {}),
-          },
-        });
+  deleteRole: rolesDb.deleteRole,
 
-        if (origRole && nameUpper && origRole.name !== nameUpper) {
-          // Update users
-          await prismaClient.user.updateMany({
-            where: { role: origRole.name },
-            data: { role: nameUpper },
-          });
-          // Update system panels
-          await prismaClient.systemPanel.updateMany({
-            where: { minRole: origRole.name },
-            data: { minRole: nameUpper },
-          });
-        }
-        return {
-          id: updated.id,
-          name: updated.name,
-          displayName: updated.displayName,
-          hierarchyLevel: updated.hierarchyLevel,
-          createdAt: updated.createdAt,
-          updatedAt: updated.updatedAt,
-        };
-      } catch (e) {
-        console.error("Prisma error updating role, falling back", e);
-      }
-    }
-    const role = mockRoles.find((r) => r.id === id);
-    if (role) {
-      const oldName = role.name;
-      if (nameUpper) role.name = nameUpper;
-      if (updates.displayName) role.displayName = updates.displayName;
-      if (updates.hierarchyLevel !== undefined)
-        role.hierarchyLevel = updates.hierarchyLevel;
-      role.updatedAt = new Date();
-
-      if (nameUpper && oldName !== nameUpper) {
-        // Update mock users role
-        for (const u of mockUsers) {
-          if (u.role === oldName) u.role = nameUpper;
-        }
-        // Update mock panels minRole
-        for (const p of mockPanels) {
-          if (p.minRole === oldName) p.minRole = nameUpper;
-        }
-      }
-      return role;
-    }
-    return null;
-  },
-
-  deleteRole: async (id: string) => {
-    if (prismaClient && isDbConnected) {
-      try {
-        const origRole = await prismaClient.roleConfig.findUnique({
-          where: { id },
-        });
-        if (origRole) {
-          // Reassign users of this role to VIEWER (or another base role) before deletion
-          await prismaClient.user.updateMany({
-            where: { role: origRole.name },
-            data: { role: "VIEWER" },
-          });
-          // Reassign system panels
-          await prismaClient.systemPanel.updateMany({
-            where: { minRole: origRole.name },
-            data: { minRole: "VIEWER" },
-          });
-
-          await prismaClient.roleConfig.delete({ where: { id } });
-          return true;
-        }
-      } catch (e) {
-        console.error("Prisma error deleting role, falling back", e);
-      }
-    }
-    const index = mockRoles.findIndex((r) => r.id === id);
-    if (index !== -1) {
-      const deletedName = mockRoles[index].name;
-      mockRoles.splice(index, 1);
-      // Reassign mock users
-      for (const u of mockUsers) {
-        if (u.role === deletedName) u.role = "VIEWER";
-      }
-      // Reassign mock panels
-      for (const p of mockPanels) {
-        if (p.minRole === deletedName) p.minRole = "VIEWER";
-      }
-      return true;
-    }
-    return false;
-  },
-
-  // Fase 1 - Announcements
-  getAnnouncements: async () => {
-    if (prismaClient && isDbConnected) {
-      try {
-        return await prismaClient.announcement.findMany({
-          orderBy: { createdAt: "desc" },
-        });
-      } catch (e) {
-        console.error("Prisma error fetching announcements, falling back", e);
-      }
-    }
-    return mockAnnouncements;
-  },
-
-  getAnnouncementReadsByUser: async (userId: string) => {
-    if (prismaClient && isDbConnected) {
-      try {
-        return await prismaClient.announcementRead.findMany({
-          where: { userId },
-        });
-      } catch (e) {
-        console.error(
-          "Prisma error fetching announcement reads, falling back",
-          e,
-        );
-      }
-    }
-    return mockAnnouncementReads.filter((r) => r.userId === userId);
-  },
-
-  addAnnouncement: async (
-    ann: Omit<MockAnnouncement, "id" | "createdAt" | "updatedAt">,
-  ) => {
-    const newAnn: MockAnnouncement = {
-      ...ann,
-      id: "ann-" + Math.random().toString(36).substr(2, 9),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    if (prismaClient && isDbConnected) {
-      try {
-        const created = await prismaClient.announcement.create({
-          data: {
-            id: newAnn.id,
-            title: newAnn.title,
-            content: newAnn.content,
-            priority: newAnn.priority,
-            targetCompanies: newAnn.targetCompanies,
-            expiresAt: newAnn.expiresAt,
-            isPinned: newAnn.isPinned,
-            isActive: newAnn.isActive,
-            createdById: newAnn.createdById,
-          },
-        });
-        return {
-          id: created.id,
-          title: created.title,
-          content: created.content,
-          priority: created.priority,
-          targetCompanies: created.targetCompanies,
-          expiresAt: created.expiresAt,
-          isPinned: created.isPinned,
-          isActive: created.isActive,
-          createdById: created.createdById,
-          createdAt: created.createdAt,
-          updatedAt: created.updatedAt,
-        };
-      } catch (e) {
-        console.error("Prisma error creating announcement, falling back", e);
-      }
-    }
-    mockAnnouncements.unshift(newAnn);
-    return newAnn;
-  },
-
-  updateAnnouncement: async (
-    id: string,
-    updates: Partial<MockAnnouncement>,
-  ) => {
-    if (prismaClient && isDbConnected) {
-      try {
-        const updated = await prismaClient.announcement.update({
-          where: { id },
-          data: {
-            ...(updates.title ? { title: updates.title } : {}),
-            ...(updates.content ? { content: updates.content } : {}),
-            ...(updates.priority ? { priority: updates.priority } : {}),
-            ...(updates.targetCompanies !== undefined
-              ? { targetCompanies: updates.targetCompanies }
-              : {}),
-            ...(updates.expiresAt !== undefined
-              ? { expiresAt: updates.expiresAt }
-              : {}),
-            ...(updates.isPinned !== undefined
-              ? { isPinned: updates.isPinned }
-              : {}),
-            ...(updates.isActive !== undefined
-              ? { isActive: updates.isActive }
-              : {}),
-          },
-        });
-        return updated;
-      } catch (e) {
-        console.error("Prisma error updating announcement, falling back", e);
-      }
-    }
-    const index = mockAnnouncements.findIndex((a) => a.id === id);
-    if (index !== -1) {
-      mockAnnouncements[index] = {
-        ...mockAnnouncements[index],
-        ...updates,
-        updatedAt: new Date(),
-      };
-      return mockAnnouncements[index];
-    }
-    return null;
-  },
-
-  deleteAnnouncement: async (id: string) => {
-    if (prismaClient && isDbConnected) {
-      try {
-        await prismaClient.announcement.delete({ where: { id } });
-        return true;
-      } catch (e) {
-        console.error("Prisma error deleting announcement, falling back", e);
-      }
-    }
-    const index = mockAnnouncements.findIndex((a) => a.id === id);
-    if (index !== -1) {
-      mockAnnouncements.splice(index, 1);
-      return true;
-    }
-    return false;
-  },
-
-  markAnnouncementRead: async (announcementId: string, userId: string) => {
-    const newRead: MockAnnouncementRead = {
-      id: "read-" + Math.random().toString(36).substr(2, 9),
-      announcementId,
-      userId,
-      readAt: new Date(),
-    };
-    if (prismaClient && isDbConnected) {
-      try {
-        await prismaClient.announcementRead.upsert({
-          where: {
-            announcementId_userId: { announcementId, userId },
-          },
-          create: {
-            announcementId,
-            userId,
-          },
-          update: {},
-        });
-      } catch (e) {
-        console.error(
-          "Prisma error marking announcement read, falling back",
-          e,
-        );
-      }
-    }
-    const existingIndex = mockAnnouncementReads.findIndex(
-      (r) => r.announcementId === announcementId && r.userId === userId,
-    );
-    if (existingIndex === -1) {
-      mockAnnouncementReads.push(newRead);
-    }
-    return newRead;
-  },
 
   // Business Units logic
-  getBusinessUnits: async () => {
+  getBusinessUnitsForHome: async () => {
     if (prismaClient && isDbConnected) {
       try {
-        const units = await prismaClient.businessUnit.findMany({
-          include: {
-            tools: true,
-            socialLinks: true,
-            analytics: { orderBy: { date: "desc" }, take: 30 },
-            metaData: { orderBy: { date: "desc" }, take: 30 },
-            revenueData: { orderBy: { period: "desc" }, take: 12 },
+        return await prismaClient.businessUnit.findMany({
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            company: true,
+            description: true,
+            order: true,
+            isActive: true,
+            showOnHome: true,
+          },
+          where: {
+            showOnHome: true,
+            isActive: true,
           },
           orderBy: { order: "asc" },
         });
+      } catch (e) {
+        console.error("Prisma error fetching business units for home, returning empty", e);
+        return [];
+      }
+    }
+    return [];
+  },
 
-        // Auto-popular a partir de SystemPanel correspondente se a BU não tiver ferramentas
-        for (const bu of units) {
-          if (bu.tools.length === 0) {
-            const panels = await prismaClient.systemPanel.findMany({
-              where: { category: bu.company, isActive: true }
-            });
-            if (panels.length > 0) {
-              for (const p of panels) {
-                await prismaClient.businessUnitTool.create({
-                  data: {
-                    businessUnitId: bu.id,
-                    name: p.name,
-                    url: p.url,
-                    description: p.description,
-                    category: p.name.includes("CRM") ? "CRM" : "ERP",
-                    isExternal: true,
-                    isActive: true,
-                    order: 0
-                  }
-                });
-              }
-            }
-          }
-        }
-
+  getBusinessUnits: async () => {
+    if (prismaClient && isDbConnected) {
+      try {
         return await prismaClient.businessUnit.findMany({
           include: {
             tools: true,
             socialLinks: true,
             analytics: { orderBy: { date: "desc" }, take: 30 },
-            metaData: { orderBy: { date: "desc" }, take: 30 },
             revenueData: { orderBy: { period: "desc" }, take: 12 },
           },
           orderBy: { order: "asc" },
@@ -1308,73 +791,21 @@ export const dbSim = {
   getBusinessUnitBySlug: async (slug: string) => {
     if (prismaClient && isDbConnected) {
       try {
-        const bu = await prismaClient.businessUnit.findUnique({
+        return await prismaClient.businessUnit.findUnique({
           where: { slug },
           include: {
             tools: { where: { isActive: true }, orderBy: { order: "asc" } },
             socialLinks: { where: { isActive: true } },
             analytics: { orderBy: { date: "desc" }, take: 30 },
-            metaData: { orderBy: { date: "desc" }, take: 30 },
             revenueData: { orderBy: { period: "desc" }, take: 12 },
           },
         });
-
-        if (bu && bu.tools.length === 0) {
-          const panels = await prismaClient.systemPanel.findMany({
-            where: { category: bu.company, isActive: true }
-          });
-          if (panels.length > 0) {
-            for (const p of panels) {
-              await prismaClient.businessUnitTool.create({
-                data: {
-                  businessUnitId: bu.id,
-                  name: p.name,
-                  url: p.url,
-                  description: p.description,
-                  category: p.name.includes("CRM") ? "CRM" : "ERP",
-                  isExternal: true,
-                  isActive: true,
-                  order: 0
-                }
-              });
-            }
-            return await prismaClient.businessUnit.findUnique({
-              where: { slug },
-              include: {
-                tools: { where: { isActive: true }, orderBy: { order: "asc" } },
-                socialLinks: { where: { isActive: true } },
-                analytics: { orderBy: { date: "desc" }, take: 30 },
-                metaData: { orderBy: { date: "desc" }, take: 30 },
-                revenueData: { orderBy: { period: "desc" }, take: 12 },
-              },
-            });
-          }
-        }
-        return bu;
       } catch (e) {
         console.error("Prisma error fetching business unit, falling back", e);
       }
     }
 
-    const bu = mockBusinessUnits.find((bu) => bu.slug === slug);
-    if (bu && (!bu.tools || bu.tools.length === 0)) {
-      const panels = mockPanels.filter(p => p.category === bu.company && p.isActive);
-      bu.tools = panels.map((p, i) => ({
-        id: `tool-auto-${p.id}`,
-        businessUnitId: bu.id,
-        name: p.name,
-        url: p.url,
-        icon: p.icon,
-        description: p.description,
-        category: p.name.includes("CRM") ? "CRM" : "ERP",
-        isExternal: true,
-        order: i,
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }));
-    }
-    return bu || null;
+    return mockBusinessUnits.find((bu) => bu.slug === slug) || null;
   },
 
   addBusinessUnit: async (
@@ -1382,12 +813,22 @@ export const dbSim = {
   ) => {
     const newBU: MockBusinessUnit = {
       ...bu,
-      id: "bu-" + Math.random().toString(36).substr(2, 9),
+      id: generateSecureId("bu-"),
       createdAt: new Date(),
       updatedAt: new Date(),
     };
     if (prismaClient && isDbConnected) {
       try {
+        // Garantir que a empresa correspondente exista (Unidade de Negocio = Empresa)
+        await prismaClient.company.upsert({
+          where: { slug: newBU.company },
+          update: { name: newBU.name },
+          create: {
+            slug: newBU.company,
+            name: newBU.name,
+          },
+        });
+
         const created = await prismaClient.businessUnit.create({
           data: {
             id: newBU.id,
@@ -1403,6 +844,7 @@ export const dbSim = {
             website: newBU.website,
             isActive: newBU.isActive,
             order: newBU.order,
+            showOnHome: newBU.showOnHome,
           },
         });
         return {
@@ -1419,6 +861,7 @@ export const dbSim = {
           website: created.website,
           isActive: created.isActive,
           order: created.order,
+          showOnHome: created.showOnHome,
           createdAt: created.createdAt,
           updatedAt: created.updatedAt,
         };
@@ -1461,6 +904,9 @@ export const dbSim = {
               ? { isActive: updates.isActive }
               : {}),
             ...(updates.order !== undefined ? { order: updates.order } : {}),
+            ...(updates.showOnHome !== undefined
+              ? { showOnHome: updates.showOnHome }
+              : {}),
           },
         });
         return updated;
@@ -1483,7 +929,28 @@ export const dbSim = {
   deleteBusinessUnit: async (id: string) => {
     if (prismaClient && isDbConnected) {
       try {
-        await prismaClient.businessUnit.delete({ where: { id } });
+        await prismaClient.$transaction(async (tx) => {
+          const bu = await tx.businessUnit.findUnique({
+            where: { id },
+            include: { tools: true },
+          });
+          
+          if (bu) {
+            const toolIds = bu.tools.map((t) => t.id);
+            
+            // Remove da tabela SystemPanel as ferramentas associadas a esta unidade
+            await tx.systemPanel.deleteMany({
+              where: {
+                OR: [
+                  { businessUnitToolId: { in: toolIds } },
+                  { companySlug: bu.slug },
+                ],
+              },
+            });
+          }
+          
+          await tx.businessUnit.delete({ where: { id } });
+        });
         return true;
       } catch (e) {
         console.error("Prisma error deleting business unit, falling back", e);
@@ -1502,7 +969,9 @@ export const dbSim = {
     let unitName = "";
     if (prismaClient && isDbConnected) {
       try {
-        const bu = await prismaClient.businessUnit.findUnique({ where: { slug } });
+        const bu = await prismaClient.businessUnit.findUnique({
+          where: { slug },
+        });
         if (bu) {
           unitId = bu.id;
           unitName = bu.name;
@@ -1511,7 +980,7 @@ export const dbSim = {
         console.error("Error finding business unit for sync", e);
       }
     } else {
-      const bu = mockBusinessUnits.find(u => u.slug === slug);
+      const bu = mockBusinessUnits.find((u) => u.slug === slug);
       if (bu) {
         unitId = bu.id;
         unitName = bu.name;
@@ -1520,24 +989,51 @@ export const dbSim = {
 
     if (!unitId) return null;
 
+    function mulberry32(seed: number): () => number {
+      return function () {
+        seed |= 0;
+        seed = (seed + 0x6d2b79f5) | 0;
+        let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+    function hashSeed(str: string): number {
+      let h = 1779033703 ^ str.length;
+      for (let i = 0; i < str.length; i++) {
+        h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+        h = (h << 13) | (h >>> 19);
+      }
+      return (h ^ (h >>> 16)) >>> 0;
+    }
+    function randInt(rng: () => number, min: number, max: number): number {
+      return Math.floor(rng() * (max - min + 1)) + min;
+    }
+    function randFloat(rng: () => number, min: number, max: number): number {
+      return rng() * (max - min) + min;
+    }
+
+    const seed = hashSeed(slug);
+    const baseRng = mulberry32(seed);
+
     const platforms = ["instagram", "youtube", "facebook", "linkedin"];
     const baseFollowers: Record<string, number> = {
-      instagram: 12500 + Math.floor(Math.random() * 5000),
-      youtube: 4300 + Math.floor(Math.random() * 1500),
-      facebook: 8200 + Math.floor(Math.random() * 2000),
-      linkedin: 3100 + Math.floor(Math.random() * 1000)
+      instagram: 12500 + randInt(baseRng, 0, 5000),
+      youtube: 4300 + randInt(baseRng, 0, 1500),
+      facebook: 8200 + randInt(baseRng, 0, 2000),
+      linkedin: 3100 + randInt(baseRng, 0, 1000),
     };
     const handles: Record<string, string> = {
       instagram: unitName.toLowerCase().replace(/\s+/g, ""),
       youtube: unitName.toLowerCase().replace(/\s+/g, ""),
       facebook: unitName.toLowerCase().replace(/\s+/g, ""),
-      linkedin: unitName.toLowerCase().replace(/\s+/g, "")
+      linkedin: unitName.toLowerCase().replace(/\s+/g, ""),
     };
     const urls: Record<string, string> = {
       instagram: `https://instagram.com/${handles.instagram}`,
       youtube: `https://youtube.com/@${handles.youtube}`,
       facebook: `https://facebook.com/${handles.facebook}`,
-      linkedin: `https://linkedin.com/company/${handles.linkedin}`
+      linkedin: `https://linkedin.com/company/${handles.linkedin}`,
     };
 
     const syncedSocials = [];
@@ -1549,12 +1045,17 @@ export const dbSim = {
       if (prismaClient && isDbConnected) {
         try {
           const existing = await prismaClient.businessUnitSocialLink.findFirst({
-            where: { businessUnitId: unitId, platform }
+            where: { businessUnitId: unitId, platform },
           });
           if (existing) {
             const updated = await prismaClient.businessUnitSocialLink.update({
               where: { id: existing.id },
-              data: { followersCount: followers, handle, url, updatedAt: new Date() }
+              data: {
+                followersCount: followers,
+                handle,
+                url,
+                updatedAt: new Date(),
+              },
             });
             syncedSocials.push(updated);
           } else {
@@ -1565,8 +1066,8 @@ export const dbSim = {
                 url,
                 handle,
                 followersCount: followers,
-                isActive: true
-              }
+                isActive: true,
+              },
             });
             syncedSocials.push(created);
           }
@@ -1574,12 +1075,14 @@ export const dbSim = {
           console.error("Prisma error syncing social link", e);
         }
       } else {
-        const bu = mockBusinessUnits.find(u => u.id === unitId);
+        const bu = mockBusinessUnits.find((u) => u.id === unitId);
         if (bu) {
           if (!bu.socialLinks) bu.socialLinks = [];
-          const existingIndex = bu.socialLinks.findIndex(l => l.platform === platform);
+          const existingIndex = bu.socialLinks.findIndex(
+            (l) => l.platform === platform,
+          );
           const newSocial = {
-            id: `social-${platform}-${Math.random().toString(36).substr(2, 5)}`,
+            id: `social-${platform}-${slug}-${seed.toString(36).slice(-5)}`,
             businessUnitId: unitId,
             platform,
             url,
@@ -1587,7 +1090,7 @@ export const dbSim = {
             followersCount: followers,
             isActive: true,
             createdAt: new Date(),
-            updatedAt: new Date()
+            updatedAt: new Date(),
           };
           if (existingIndex !== -1) {
             bu.socialLinks[existingIndex] = newSocial;
@@ -1606,22 +1109,29 @@ export const dbSim = {
       date.setDate(today.getDate() - i);
       date.setHours(0, 0, 0, 0);
 
-      const pageViews = 1500 + Math.floor(Math.random() * 2500);
-      const uniqueVisitors = 1100 + Math.floor(Math.random() * 1800);
-      const sessions = 1200 + Math.floor(Math.random() * 2000);
-      const bounceRate = 35 + Math.random() * 20;
-      const avgSessionDuration = 90 + Math.floor(Math.random() * 150);
-      const source = "google_analytics";
+      const dailyRng = mulberry32(seed + i * 1000);
+      const pageViews = 1500 + randInt(dailyRng, 0, 2500);
+      const uniqueVisitors = 1100 + randInt(dailyRng, 0, 1800);
+      const sessions = 1200 + randInt(dailyRng, 0, 2000);
+      const bounceRate = 35 + randFloat(dailyRng, 0, 20);
+      const avgSessionDuration = 90 + randInt(dailyRng, 0, 150);
+      const source = "mock";
 
       if (prismaClient && isDbConnected) {
         try {
           const existing = await prismaClient.businessUnitAnalytics.findFirst({
-            where: { businessUnitId: unitId, date, source }
+            where: { businessUnitId: unitId, date, source },
           });
           if (existing) {
             const updated = await prismaClient.businessUnitAnalytics.update({
               where: { id: existing.id },
-              data: { pageViews, uniqueVisitors, sessions, bounceRate, avgSessionDuration }
+              data: {
+                pageViews,
+                uniqueVisitors,
+                sessions,
+                bounceRate,
+                avgSessionDuration,
+              },
             });
             syncedAnalytics.push(updated);
           } else {
@@ -1634,8 +1144,8 @@ export const dbSim = {
                 sessions,
                 bounceRate,
                 avgSessionDuration,
-                source
-              }
+                source,
+              },
             });
             syncedAnalytics.push(created);
           }
@@ -1643,14 +1153,16 @@ export const dbSim = {
           console.error("Prisma error syncing analytics data", e);
         }
       } else {
-        const bu = mockBusinessUnits.find(u => u.id === unitId);
+        const bu = mockBusinessUnits.find((u) => u.id === unitId);
         if (bu) {
           if (!bu.analytics) bu.analytics = [];
           const existingIndex = bu.analytics.findIndex(
-            a => a.date.toDateString() === date.toDateString() && a.source === source
+            (a) =>
+              a.date.toDateString() === date.toDateString() &&
+              a.source === source,
           );
           const newAnalytic = {
-            id: `analytic-${i}-${Math.random().toString(36).substr(2, 5)}`,
+            id: `analytic-${i}-${slug}-${seed.toString(36).slice(-5)}`,
             businessUnitId: unitId,
             date,
             pageViews,
@@ -1659,7 +1171,7 @@ export const dbSim = {
             bounceRate,
             avgSessionDuration,
             source,
-            createdAt: new Date()
+            createdAt: new Date(),
           };
           if (existingIndex !== -1) {
             bu.analytics[existingIndex] = newAnalytic;
@@ -1676,23 +1188,31 @@ export const dbSim = {
     const platformsMeta = ["instagram", "facebook"];
     for (const platform of platformsMeta) {
       const followers = baseFollowers[platform];
-      const postsCount = 45 + Math.floor(Math.random() * 15);
-      const followingCount = 200 + Math.floor(Math.random() * 50);
-      const engagementRate = 1.8 + Math.random() * 4.5;
-      const reach = Math.floor(followers * (0.15 + Math.random() * 0.25));
-      const impressions = Math.floor(reach * (1.2 + Math.random() * 0.8));
+      const metaRng = mulberry32(hashSeed(slug + platform));
+      const postsCount = 45 + randInt(metaRng, 0, 15);
+      const followingCount = 200 + randInt(metaRng, 0, 50);
+      const engagementRate = 1.8 + randFloat(metaRng, 0, 4.5);
+      const reach = Math.floor(followers * (0.15 + randFloat(metaRng, 0, 0.25)));
+      const impressions = Math.floor(reach * (1.2 + randFloat(metaRng, 0, 0.8)));
       const date = new Date();
       date.setHours(0, 0, 0, 0);
 
       if (prismaClient && isDbConnected) {
         try {
           const existing = await prismaClient.businessUnitMetaData.findFirst({
-            where: { businessUnitId: unitId, date, platform }
+            where: { businessUnitId: unitId, date, platform },
           });
           if (existing) {
             const updated = await prismaClient.businessUnitMetaData.update({
               where: { id: existing.id },
-              data: { followersCount: followers, followingCount, postsCount, engagementRate, reach, impressions }
+              data: {
+                followersCount: followers,
+                followingCount,
+                postsCount,
+                engagementRate,
+                reach,
+                impressions,
+              },
             });
             syncedMetaData.push(updated);
           } else {
@@ -1706,8 +1226,8 @@ export const dbSim = {
                 postsCount,
                 engagementRate,
                 reach,
-                impressions
-              }
+                impressions,
+              },
             });
             syncedMetaData.push(created);
           }
@@ -1715,14 +1235,16 @@ export const dbSim = {
           console.error("Prisma error syncing metadata", e);
         }
       } else {
-        const bu = mockBusinessUnits.find(u => u.id === unitId);
+        const bu = mockBusinessUnits.find((u) => u.id === unitId);
         if (bu) {
           if (!bu.metaData) bu.metaData = [];
           const existingIndex = bu.metaData.findIndex(
-            m => m.date.toDateString() === date.toDateString() && m.platform === platform
+            (m) =>
+              m.date.toDateString() === date.toDateString() &&
+              m.platform === platform,
           );
           const newMeta = {
-            id: `meta-${platform}-${Math.random().toString(36).substr(2, 5)}`,
+            id: `meta-${platform}-${slug}-${hashSeed(slug + platform).toString(36).slice(-5)}`,
             businessUnitId: unitId,
             date,
             platform,
@@ -1732,7 +1254,7 @@ export const dbSim = {
             engagementRate,
             reach,
             impressions,
-            createdAt: new Date()
+            createdAt: new Date(),
           };
           if (existingIndex !== -1) {
             bu.metaData[existingIndex] = newMeta;
@@ -1747,29 +1269,29 @@ export const dbSim = {
     if (prismaClient && isDbConnected) {
       try {
         const existingRev = await prismaClient.businessUnitRevenue.findFirst({
-          where: { businessUnitId: unitId }
+          where: { businessUnitId: unitId },
         });
         if (!existingRev) {
           await prismaClient.businessUnitRevenue.create({
             data: {
               businessUnitId: unitId,
               period: "2026-06",
-              amount: 150000 + Math.random() * 100000,
+              amount: 150000 + randFloat(mulberry32(seed), 0, 100000),
               currency: "BRL",
               type: "gross",
               source: "manual",
-              notes: "Faturamento gerado via sincronização de teste"
-            }
+              notes: "Faturamento gerado via sincronização de teste",
+            },
           });
         }
       } catch (e) {
         console.error("Prisma error generating fallback revenue", e);
       }
     } else {
-      const bu = mockBusinessUnits.find(u => u.id === unitId);
+      const bu = mockBusinessUnits.find((u) => u.id === unitId);
       if (bu && bu.revenueData && bu.revenueData.length === 0) {
         bu.revenueData.push({
-          id: `rev-${Math.random().toString(36).substr(2, 5)}`,
+          id: `rev-${slug}-${seed.toString(36).slice(-5)}`,
           businessUnitId: unitId,
           period: "2026-06",
           amount: 185000,
@@ -1778,7 +1300,7 @@ export const dbSim = {
           source: "manual",
           notes: "Faturamento gerado via sincronização de teste",
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         });
       }
     }
@@ -1786,68 +1308,19 @@ export const dbSim = {
     return true;
   },
 
-  addBusinessUnitTool: async (unitId: string, tool: Omit<MockBusinessUnitTool, "id" | "createdAt" | "updatedAt">) => {
-    const newTool = {
-      ...tool,
-      id: "tool-" + Math.random().toString(36).substr(2, 9),
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    if (prismaClient && isDbConnected) {
-      try {
-        return await prismaClient.businessUnitTool.create({
-          data: {
-            businessUnitId: unitId,
-            name: tool.name,
-            url: tool.url,
-            icon: tool.icon || null,
-            description: tool.description || null,
-            category: tool.category,
-            isExternal: tool.isExternal,
-            order: tool.order || 0,
-            isActive: tool.isActive
-          }
-        });
-      } catch (e) {
-        console.error("Prisma error adding tool", e);
-      }
-    }
-    const bu = mockBusinessUnits.find(u => u.id === unitId);
-    if (bu) {
-      if (!bu.tools) bu.tools = [];
-      bu.tools.push(newTool);
-      return newTool;
-    }
-    return null;
-  },
+  addBusinessUnitTool: businessUnitsDb.addBusinessUnitTool,
 
-  deleteBusinessUnitTool: async (toolId: string) => {
-    if (prismaClient && isDbConnected) {
-      try {
-        await prismaClient.businessUnitTool.delete({ where: { id: toolId } });
-        return true;
-      } catch (e) {
-        console.error("Prisma error deleting tool", e);
-      }
-    }
-    for (const bu of mockBusinessUnits) {
-      if (bu.tools) {
-        const idx = bu.tools.findIndex(t => t.id === toolId);
-        if (idx !== -1) {
-          bu.tools.splice(idx, 1);
-          return true;
-        }
-      }
-    }
-    return false;
-  },
+  deleteBusinessUnitTool: businessUnitsDb.deleteBusinessUnitTool,
 
-  addBusinessUnitSocialLink: async (unitId: string, social: Omit<MockBusinessUnitSocialLink, "id" | "createdAt" | "updatedAt">) => {
+  addBusinessUnitSocialLink: async (
+    unitId: string,
+    social: Omit<MockBusinessUnitSocialLink, "id" | "createdAt" | "updatedAt">,
+  ) => {
     const newSocial = {
       ...social,
-      id: "social-" + Math.random().toString(36).substr(2, 9),
+      id: generateSecureId("social-"),
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
     if (prismaClient && isDbConnected) {
       try {
@@ -1858,14 +1331,14 @@ export const dbSim = {
             url: social.url,
             handle: social.handle || null,
             followersCount: social.followersCount || 0,
-            isActive: social.isActive
-          }
+            isActive: social.isActive,
+          },
         });
       } catch (e) {
         console.error("Prisma error adding social link", e);
       }
     }
-    const bu = mockBusinessUnits.find(u => u.id === unitId);
+    const bu = mockBusinessUnits.find((u) => u.id === unitId);
     if (bu) {
       if (!bu.socialLinks) bu.socialLinks = [];
       bu.socialLinks.push(newSocial);
@@ -1877,7 +1350,9 @@ export const dbSim = {
   deleteBusinessUnitSocialLink: async (socialId: string) => {
     if (prismaClient && isDbConnected) {
       try {
-        await prismaClient.businessUnitSocialLink.delete({ where: { id: socialId } });
+        await prismaClient.businessUnitSocialLink.delete({
+          where: { id: socialId },
+        });
         return true;
       } catch (e) {
         console.error("Prisma error deleting social link", e);
@@ -1885,7 +1360,7 @@ export const dbSim = {
     }
     for (const bu of mockBusinessUnits) {
       if (bu.socialLinks) {
-        const idx = bu.socialLinks.findIndex(s => s.id === socialId);
+        const idx = bu.socialLinks.findIndex((s) => s.id === socialId);
         if (idx !== -1) {
           bu.socialLinks.splice(idx, 1);
           return true;
@@ -1895,11 +1370,14 @@ export const dbSim = {
     return false;
   },
 
-  addBusinessUnitAnalytics: async (unitId: string, analytics: Omit<MockBusinessUnitAnalytics, "id" | "createdAt">) => {
+  addBusinessUnitAnalytics: async (
+    unitId: string,
+    analytics: Omit<MockBusinessUnitAnalytics, "id" | "createdAt">,
+  ) => {
     const newAnalytics = {
       ...analytics,
-      id: "analytic-" + Math.random().toString(36).substr(2, 9),
-      createdAt: new Date()
+      id: generateSecureId("analytic-"),
+      createdAt: new Date(),
     };
     if (prismaClient && isDbConnected) {
       try {
@@ -1912,19 +1390,19 @@ export const dbSim = {
             sessions: analytics.sessions || 0,
             bounceRate: analytics.bounceRate || 0,
             avgSessionDuration: analytics.avgSessionDuration || 0,
-            source: analytics.source || "google_analytics"
-          }
+            source: analytics.source || "google_analytics",
+          },
         });
       } catch (e) {
         console.error("Prisma error adding analytics", e);
       }
     }
-    const bu = mockBusinessUnits.find(u => u.id === unitId);
+    const bu = mockBusinessUnits.find((u) => u.id === unitId);
     if (bu) {
       if (!bu.analytics) bu.analytics = [];
       bu.analytics.push({
         ...newAnalytics,
-        date: new Date(analytics.date)
+        date: new Date(analytics.date),
       });
       bu.analytics.sort((a, b) => b.date.getTime() - a.date.getTime());
       return newAnalytics;
@@ -1935,7 +1413,9 @@ export const dbSim = {
   deleteBusinessUnitAnalytics: async (analyticsId: string) => {
     if (prismaClient && isDbConnected) {
       try {
-        await prismaClient.businessUnitAnalytics.delete({ where: { id: analyticsId } });
+        await prismaClient.businessUnitAnalytics.delete({
+          where: { id: analyticsId },
+        });
         return true;
       } catch (e) {
         console.error("Prisma error deleting analytics", e);
@@ -1943,7 +1423,7 @@ export const dbSim = {
     }
     for (const bu of mockBusinessUnits) {
       if (bu.analytics) {
-        const idx = bu.analytics.findIndex(a => a.id === analyticsId);
+        const idx = bu.analytics.findIndex((a) => a.id === analyticsId);
         if (idx !== -1) {
           bu.analytics.splice(idx, 1);
           return true;
@@ -1953,12 +1433,15 @@ export const dbSim = {
     return false;
   },
 
-  addBusinessUnitRevenue: async (unitId: string, revenue: Omit<MockBusinessUnitRevenue, "id" | "createdAt" | "updatedAt">) => {
+  addBusinessUnitRevenue: async (
+    unitId: string,
+    revenue: Omit<MockBusinessUnitRevenue, "id" | "createdAt" | "updatedAt">,
+  ) => {
     const newRevenue = {
       ...revenue,
-      id: "revenue-" + Math.random().toString(36).substr(2, 9),
+      id: generateSecureId("revenue-"),
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
     if (prismaClient && isDbConnected) {
       try {
@@ -1970,14 +1453,14 @@ export const dbSim = {
             currency: revenue.currency || "BRL",
             type: revenue.type,
             source: revenue.source,
-            notes: revenue.notes || null
-          }
+            notes: revenue.notes || null,
+          },
         });
       } catch (e) {
         console.error("Prisma error adding revenue", e);
       }
     }
-    const bu = mockBusinessUnits.find(u => u.id === unitId);
+    const bu = mockBusinessUnits.find((u) => u.id === unitId);
     if (bu) {
       if (!bu.revenueData) bu.revenueData = [];
       bu.revenueData.push(newRevenue);
@@ -1990,7 +1473,9 @@ export const dbSim = {
   deleteBusinessUnitRevenue: async (revenueId: string) => {
     if (prismaClient && isDbConnected) {
       try {
-        await prismaClient.businessUnitRevenue.delete({ where: { id: revenueId } });
+        await prismaClient.businessUnitRevenue.delete({
+          where: { id: revenueId },
+        });
         return true;
       } catch (e) {
         console.error("Prisma error deleting revenue", e);
@@ -1998,7 +1483,7 @@ export const dbSim = {
     }
     for (const bu of mockBusinessUnits) {
       if (bu.revenueData) {
-        const idx = bu.revenueData.findIndex(r => r.id === revenueId);
+        const idx = bu.revenueData.findIndex((r) => r.id === revenueId);
         if (idx !== -1) {
           bu.revenueData.splice(idx, 1);
           return true;
@@ -2007,15 +1492,519 @@ export const dbSim = {
     }
     return false;
   },
+
+  /**
+   * Fetches the businessUnitId of an item by its ID and type.
+   * Returns null when the item does not exist.
+   * Used to verify ownership before deletion (IDOR prevention).
+   */
+  getBusinessUnitItemOwner: async (
+    itemId: string,
+    type: "tool" | "social" | "analytics" | "revenue",
+  ): Promise<string | null> => {
+    if (prismaClient && isDbConnected) {
+      try {
+        let record: { businessUnitId: string } | null = null;
+        if (type === "tool") {
+          record = await prismaClient.businessUnitTool.findUnique({
+            where: { id: itemId },
+            select: { businessUnitId: true },
+          });
+        } else if (type === "social") {
+          record = await prismaClient.businessUnitSocialLink.findUnique({
+            where: { id: itemId },
+            select: { businessUnitId: true },
+          });
+        } else if (type === "analytics") {
+          record = await prismaClient.businessUnitAnalytics.findUnique({
+            where: { id: itemId },
+            select: { businessUnitId: true },
+          });
+        } else if (type === "revenue") {
+          record = await prismaClient.businessUnitRevenue.findUnique({
+            where: { id: itemId },
+            select: { businessUnitId: true },
+          });
+        }
+        return record?.businessUnitId ?? null;
+      } catch (e) {
+        console.error("Prisma error fetching item owner", e);
+      }
+    }
+    // Mock fallback: search all mock business units for the item
+    for (const bu of mockBusinessUnits) {
+      if (type === "tool" && bu.tools) {
+        const found = bu.tools.find((t) => t.id === itemId);
+        if (found) return bu.id;
+      } else if (type === "social" && bu.socialLinks) {
+        const found = bu.socialLinks.find((s) => s.id === itemId);
+        if (found) return bu.id;
+      } else if (type === "analytics" && bu.analytics) {
+        const found = bu.analytics.find((a) => a.id === itemId);
+        if (found) return bu.id;
+      } else if (type === "revenue" && bu.revenueData) {
+        const found = bu.revenueData.find((r) => r.id === itemId);
+        if (found) return bu.id;
+      }
+    }
+    return null;
+  },
+
+  getBusinessUnitTools: businessUnitsDb.getBusinessUnitTools,
+
+  getBusinessUnitToolById: businessUnitsDb.getBusinessUnitToolById,
+
+  updateBusinessUnitTool: businessUnitsDb.updateBusinessUnitTool,
+
+  getBusinessUnitSocialLinks: async (unitId: string) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.businessUnitSocialLink.findMany({
+          where: { businessUnitId: unitId },
+        });
+      } catch (e) {
+        console.error("Prisma error getting social links", e);
+      }
+    }
+    const bu = mockBusinessUnits.find((u) => u.id === unitId);
+    return bu?.socialLinks || [];
+  },
+
+  updateBusinessUnitSocialLink: async (
+    socialId: string,
+    updates: Partial<MockBusinessUnitSocialLink>,
+  ) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.businessUnitSocialLink.update({
+          where: { id: socialId },
+          data: {
+            ...(updates.platform ? { platform: updates.platform } : {}),
+            ...(updates.url ? { url: updates.url } : {}),
+            ...(updates.handle !== undefined ? { handle: updates.handle } : {}),
+            ...(updates.followersCount !== undefined
+              ? { followersCount: updates.followersCount }
+              : {}),
+            ...(updates.isActive !== undefined
+              ? { isActive: updates.isActive }
+              : {}),
+          },
+        });
+      } catch (e) {
+        console.error("Prisma error updating social link", e);
+      }
+    }
+    for (const bu of mockBusinessUnits) {
+      if (bu.socialLinks) {
+        const idx = bu.socialLinks.findIndex((s) => s.id === socialId);
+        if (idx !== -1) {
+          bu.socialLinks[idx] = {
+            ...bu.socialLinks[idx],
+            ...updates,
+            updatedAt: new Date(),
+          };
+          return bu.socialLinks[idx];
+        }
+      }
+    }
+    return null;
+  },
+
+  getBusinessUnitAnalytics: async (unitId: string) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.businessUnitAnalytics.findMany({
+          where: { businessUnitId: unitId },
+          orderBy: { date: "desc" },
+        });
+      } catch (e) {
+        console.error("Prisma error getting analytics", e);
+      }
+    }
+    const bu = mockBusinessUnits.find((u) => u.id === unitId);
+    return bu?.analytics || [];
+  },
+
+  updateBusinessUnitAnalytics: async (
+    analyticsId: string,
+    updates: Partial<MockBusinessUnitAnalytics>,
+  ) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.businessUnitAnalytics.update({
+          where: { id: analyticsId },
+          data: {
+            ...(updates.date ? { date: new Date(updates.date) } : {}),
+            ...(updates.pageViews !== undefined
+              ? { pageViews: updates.pageViews }
+              : {}),
+            ...(updates.uniqueVisitors !== undefined
+              ? { uniqueVisitors: updates.uniqueVisitors }
+              : {}),
+            ...(updates.sessions !== undefined
+              ? { sessions: updates.sessions }
+              : {}),
+            ...(updates.bounceRate !== undefined
+              ? { bounceRate: updates.bounceRate }
+              : {}),
+            ...(updates.avgSessionDuration !== undefined
+              ? { avgSessionDuration: updates.avgSessionDuration }
+              : {}),
+            ...(updates.source ? { source: updates.source } : {}),
+          },
+        });
+      } catch (e) {
+        console.error("Prisma error updating analytics", e);
+      }
+    }
+    for (const bu of mockBusinessUnits) {
+      if (bu.analytics) {
+        const idx = bu.analytics.findIndex((a) => a.id === analyticsId);
+        if (idx !== -1) {
+          bu.analytics[idx] = {
+            ...bu.analytics[idx],
+            ...updates,
+            ...(updates.date ? { date: new Date(updates.date) } : {}),
+          };
+          return bu.analytics[idx];
+        }
+      }
+    }
+    return null;
+  },
+
+  getBusinessUnitMetaData: async (unitId: string) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.businessUnitMetaData.findMany({
+          where: { businessUnitId: unitId },
+          orderBy: { date: "desc" },
+        });
+      } catch (e) {
+        console.error("Prisma error getting metadata", e);
+      }
+    }
+    const bu = mockBusinessUnits.find((u) => u.id === unitId);
+    return bu?.metaData || [];
+  },
+
+  addBusinessUnitMetaData: async (
+    unitId: string,
+    meta: Omit<MockBusinessUnitMetaData, "id" | "createdAt">,
+  ) => {
+    const newMeta = {
+      ...meta,
+      id: generateSecureId("meta-"),
+      createdAt: new Date(),
+    };
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.businessUnitMetaData.create({
+          data: {
+            businessUnitId: unitId,
+            date: new Date(meta.date),
+            platform: meta.platform,
+            followersCount: meta.followersCount || 0,
+            followingCount: meta.followingCount || 0,
+            postsCount: meta.postsCount || 0,
+            engagementRate: meta.engagementRate || 0,
+            reach: meta.reach || 0,
+            impressions: meta.impressions || 0,
+          },
+        });
+      } catch (e) {
+        console.error("Prisma error adding metadata", e);
+      }
+    }
+    const bu = mockBusinessUnits.find((u) => u.id === unitId);
+    if (bu) {
+      if (!bu.metaData) bu.metaData = [];
+      bu.metaData.push({
+        ...newMeta,
+        date: new Date(meta.date),
+      });
+      return newMeta;
+    }
+    return null;
+  },
+
+  updateBusinessUnitMetaData: async (
+    metaId: string,
+    updates: Partial<MockBusinessUnitMetaData>,
+  ) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.businessUnitMetaData.update({
+          where: { id: metaId },
+          data: {
+            ...(updates.date ? { date: new Date(updates.date) } : {}),
+            ...(updates.platform ? { platform: updates.platform } : {}),
+            ...(updates.followersCount !== undefined
+              ? { followersCount: updates.followersCount }
+              : {}),
+            ...(updates.followingCount !== undefined
+              ? { followingCount: updates.followingCount }
+              : {}),
+            ...(updates.postsCount !== undefined
+              ? { postsCount: updates.postsCount }
+              : {}),
+            ...(updates.engagementRate !== undefined
+              ? { engagementRate: updates.engagementRate }
+              : {}),
+            ...(updates.reach !== undefined ? { reach: updates.reach } : {}),
+            ...(updates.impressions !== undefined
+              ? { impressions: updates.impressions }
+              : {}),
+          },
+        });
+      } catch (e) {
+        console.error("Prisma error updating metadata", e);
+      }
+    }
+    for (const bu of mockBusinessUnits) {
+      if (bu.metaData) {
+        const idx = bu.metaData.findIndex((m) => m.id === metaId);
+        if (idx !== -1) {
+          bu.metaData[idx] = {
+            ...bu.metaData[idx],
+            ...updates,
+            ...(updates.date ? { date: new Date(updates.date) } : {}),
+          };
+          return bu.metaData[idx];
+        }
+      }
+    }
+    return null;
+  },
+
+  deleteBusinessUnitMetaData: async (metaId: string) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        await prismaClient.businessUnitMetaData.delete({
+          where: { id: metaId },
+        });
+        return true;
+      } catch (e) {
+        console.error("Prisma error deleting metadata", e);
+      }
+    }
+    for (const bu of mockBusinessUnits) {
+      if (bu.metaData) {
+        const idx = bu.metaData.findIndex((m) => m.id === metaId);
+        if (idx !== -1) {
+          bu.metaData.splice(idx, 1);
+          return true;
+        }
+      }
+    }
+    return false;
+  },
+
+  getBusinessUnitRevenue: async (unitId: string) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.businessUnitRevenue.findMany({
+          where: { businessUnitId: unitId },
+          orderBy: { period: "desc" },
+        });
+      } catch (e) {
+        console.error("Prisma error getting revenue", e);
+      }
+    }
+    const bu = mockBusinessUnits.find((u) => u.id === unitId);
+    return bu?.revenueData || [];
+  },
+
+  updateBusinessUnitRevenue: async (
+    revenueId: string,
+    updates: Partial<MockBusinessUnitRevenue>,
+  ) => {
+    if (prismaClient && isDbConnected) {
+      try {
+        return await prismaClient.businessUnitRevenue.update({
+          where: { id: revenueId },
+          data: {
+            ...(updates.period ? { period: updates.period } : {}),
+            ...(updates.amount !== undefined ? { amount: updates.amount } : {}),
+            ...(updates.currency ? { currency: updates.currency } : {}),
+            ...(updates.type ? { type: updates.type } : {}),
+            ...(updates.source ? { source: updates.source } : {}),
+            ...(updates.notes !== undefined ? { notes: updates.notes } : {}),
+          },
+        });
+      } catch (e) {
+        console.error("Prisma error updating revenue", e);
+      }
+    }
+    for (const bu of mockBusinessUnits) {
+      if (bu.revenueData) {
+        const idx = bu.revenueData.findIndex((r) => r.id === revenueId);
+        if (idx !== -1) {
+          bu.revenueData[idx] = {
+            ...bu.revenueData[idx],
+            ...updates,
+            updatedAt: new Date(),
+          };
+          return bu.revenueData[idx];
+        }
+      }
+    }
+    return null;
+  },
+
+  getCompanies: async () => {
+    const units = await dbSim.getBusinessUnits();
+    return units.map((u) => ({
+      id: u.id,
+      name: u.name,
+      slug: u.slug,
+      color: u.company === "BORGO" ? "WINE" : u.company === "MAPLE_BEAR" ? "RED" : u.company === "AZUL" ? "AZUL" : "GOLD",
+      isActive: u.isActive,
+      showOnHome: u.showOnHome,
+      order: u.order,
+      createdAt: u.createdAt,
+      updatedAt: u.updatedAt,
+    }));
+  },
+
+  addCompany: async (
+    company: Omit<MockCompany, "id" | "createdAt" | "updatedAt">,
+  ) => {
+    const newCompany: MockCompany = {
+      ...company,
+      id: generateSecureId("comp-"),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    mockCompanies.push(newCompany);
+    return newCompany;
+  },
+
+  createCompany: async (
+    company: Omit<MockCompany, "id" | "createdAt" | "updatedAt">,
+  ) => {
+    return dbSim.addCompany(company);
+  },
+
+  updateCompany: async (id: string, updates: Partial<MockCompany>) => {
+    const idx = mockCompanies.findIndex((c) => c.id === id);
+    if (idx !== -1) {
+      mockCompanies[idx] = {
+        ...mockCompanies[idx],
+        ...updates,
+        updatedAt: new Date(),
+      };
+      return mockCompanies[idx];
+    }
+    return null;
+  },
+
+  deleteCompany: async (id: string) => {
+    const idx = mockCompanies.findIndex((c) => c.id === id);
+    if (idx !== -1) {
+      mockCompanies.splice(idx, 1);
+      return true;
+    }
+    return false;
+  },
+
+  syncAllBusinessUnits: async () => {
+    let units;
+    if (prismaClient && isDbConnected) {
+      try {
+        units = await prismaClient.businessUnit.findMany();
+      } catch (e) {
+        console.error("Error fetching business units for sync all", e);
+      }
+    }
+    if (!units) {
+      units = mockBusinessUnits;
+    }
+    for (const bu of units) {
+      await dbSim.syncBusinessUnitData(bu.slug);
+    }
+    return true;
+  },
+
+  createUser: usersDb.createUser,
+
+  deleteUser: usersDb.deleteUser,
+
+  updateUserStatus: usersDb.updateUserStatus,
+
+  updateUserRole: usersDb.updateUserRole,
+
+  createRole: rolesDb.createRole,
+
+  createPanel: panelsDb.createPanel,
+
+  updatePanel: panelsDb.updatePanel,
+
+  deletePanel: panelsDb.deletePanel,
+
+  deleteDocument: documentsDb.deleteDocument,
+
+  createAnnouncement: async (
+    ann: Omit<MockAnnouncement, "id" | "createdAt" | "updatedAt">,
+  ) => {
+    return announcementsDb.addAnnouncement(ann);
+  },
+
+  markAnnouncementAsRead: async (announcementId: string, userId: string) => {
+    return announcementsDb.markAnnouncementAsRead(announcementId, userId);
+  },
+
+  getAuditLogs: analyticsDb.getAuditLogs,
+
+  createBusinessUnit: async (
+    bu: Omit<MockBusinessUnit, "id" | "createdAt" | "updatedAt">,
+  ) => {
+    return dbSim.addBusinessUnit(bu);
+  },
+
+  getLevels: permissionsDb.getLevels,
+
+  createLevel: permissionsDb.createLevel,
+
+  deleteLevel: permissionsDb.deleteLevel,
+
+  updateLevel: permissionsDb.updateLevel,
+
+  getMenuPermissions: permissionsDb.getMenuPermissions,
+
+  updateMenuPermission: permissionsDb.updateMenuPermission,
+
+  createMenuPermission: permissionsDb.createMenuPermission,
+
+  deleteMenuPermission: permissionsDb.deleteMenuPermission,
+
+  // Account Lockout
+  checkAccountLockout: permissionsDb.checkAccountLockout,
+
+  recordFailedLoginAttempt: permissionsDb.recordFailedLoginAttempt,
+
+  resetFailedLoginAttempts: permissionsDb.resetFailedLoginAttempts,
+
+  // System Config (key-value store)
+  getSystemConfig: async (key: string): Promise<string | null> => {
+    return getSystemConfig(key);
+  },
+
+  isMfaEnabled: usersDb.isMfaEnabled,
+
+  // User MFA
+  getUserMfa: usersDb.getUserMfa,
+
+  setUserMfa: usersDb.setUserMfa,
 };
 
 // Mock Business Units data
-const mockBusinessUnits: MockBusinessUnit[] = [
+export const mockBusinessUnits: MockBusinessUnit[] = globalThis.__mockBusinessUnits ?? (globalThis.__mockBusinessUnits = [
   {
     id: "bu-1",
     name: "O Borgo Del Vino",
     slug: "borgo-del-vino",
-    company: Company.BORGO,
+    company: "BORGO",
     portalId: "o-borgo",
     description: "Primeiro condomínio vinícola da Região Serrana e Sudeste. Inspirado nas vilas da Toscana, integrando vinhedos próprios, hotel boutique, spa, enoteca e restaurante em um cenário espetacular.",
     logo: "",
@@ -2026,6 +2015,7 @@ const mockBusinessUnits: MockBusinessUnit[] = [
     website: "https://borgodelvino.com.br",
     isActive: true,
     order: 1,
+    showOnHome: true,
     createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
     updatedAt: new Date(),
     tools: [
@@ -2067,7 +2057,7 @@ const mockBusinessUnits: MockBusinessUnit[] = [
     id: "bu-vinicola",
     name: "Vinícola Família Eloy",
     slug: "vinicola-familia-eloy",
-    company: Company.BORGO,
+    company: "BORGO",
     portalId: "vinicola",
     description: "Enoturismo, degustação de vinhos finos e experiências gastronômicas no complexo Borgo del Vino.",
     logo: "",
@@ -2078,6 +2068,7 @@ const mockBusinessUnits: MockBusinessUnit[] = [
     website: "https://borgodelvino.com.br",
     isActive: true,
     order: 2,
+    showOnHome: true,
     createdAt: new Date(Date.now() - 50 * 24 * 60 * 60 * 1000),
     updatedAt: new Date(),
     tools: [],
@@ -2090,7 +2081,7 @@ const mockBusinessUnits: MockBusinessUnit[] = [
     id: "bu-hotel",
     name: "Hotel Borgo Del Vino",
     slug: "hotel-borgo-del-vino",
-    company: Company.BORGO,
+    company: "BORGO",
     portalId: "hotel",
     description: "Hotelaria boutique de luxo, suítes exclusivas e branding de experiência toscana.",
     logo: "",
@@ -2101,6 +2092,7 @@ const mockBusinessUnits: MockBusinessUnit[] = [
     website: "https://borgodelvino.com.br",
     isActive: true,
     order: 3,
+    showOnHome: true,
     createdAt: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000),
     updatedAt: new Date(),
     tools: [],
@@ -2113,7 +2105,7 @@ const mockBusinessUnits: MockBusinessUnit[] = [
     id: "bu-azul",
     name: "Azul Incorporações",
     slug: "azul-incorporacoes",
-    company: Company.AZUL,
+    company: "AZUL",
     portalId: "azul",
     description: "Incorporação imobiliária, desenvolvimento urbano e loteamento de alto padrão na Região Serrana.",
     logo: "",
@@ -2124,6 +2116,7 @@ const mockBusinessUnits: MockBusinessUnit[] = [
     website: "https://azulincorporacoes.com.br",
     isActive: true,
     order: 4,
+    showOnHome: true,
     createdAt: new Date(Date.now() - 70 * 24 * 60 * 60 * 1000),
     updatedAt: new Date(),
     tools: [
@@ -2151,7 +2144,7 @@ const mockBusinessUnits: MockBusinessUnit[] = [
     id: "bu-don-eloy",
     name: "Restaurante Don Eloy",
     slug: "restaurante-don-eloy",
-    company: Company.BORGO,
+    company: "BORGO",
     portalId: "don-eloy",
     description: "Alta gastronomia mediterrânea e salão de festas no ecossistema Borgo del Vino.",
     logo: "",
@@ -2162,6 +2155,7 @@ const mockBusinessUnits: MockBusinessUnit[] = [
     website: "https://borgodelvino.com.br",
     isActive: true,
     order: 5,
+    showOnHome: true,
     createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
     updatedAt: new Date(),
     tools: [],
@@ -2170,7 +2164,7 @@ const mockBusinessUnits: MockBusinessUnit[] = [
     metaData: [],
     revenueData: [],
   },
-];
+]);
 
 // ============================================
 // UNIFIED DATABASE EXPORT
@@ -2312,4 +2306,3 @@ export const db = {
 
 // Type export for consumers
 export type Database = typeof db;
-
