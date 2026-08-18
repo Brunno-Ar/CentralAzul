@@ -70,6 +70,10 @@ export default async function SegurancaPage() {
   const userLevel = user?.hierarchyLevel || 3;
   const currentUserId = user?.id || "";
 
+  if (userLevel > 1) {
+    redirect("/dashboard");
+  }
+
   // Fetch all security data server-side in parallel
   const [usersData, logsData, rolesData, menuPermissionsData, levelsData] = await Promise.all([
     db.getUsers().catch(() => []),

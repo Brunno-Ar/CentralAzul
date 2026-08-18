@@ -110,7 +110,7 @@ export default function MetricasUnificadasPage() {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [railSearch, setRailSearch] = useState("");
-  const [pollInterval, setPollInterval] = useState<number>(20000);
+  const [pollInterval, setPollInterval] = useState<number>(60000);
 
   const fetchMetrics = useCallback(async (isInitial = false, isForce = false) => {
     if (isInitial) setLoading(true);
@@ -144,16 +144,18 @@ export default function MetricasUnificadasPage() {
   }, [selectedKey, viewMode]);
 
   useEffect(() => {
-    fetchMetrics(true);
-  }, [fetchMetrics]);
+    if (activeTab === "clickup" && !data) {
+      fetchMetrics(true);
+    }
+  }, [activeTab, data, fetchMetrics]);
 
   useEffect(() => {
-    if (pollInterval <= 0) return;
+    if (pollInterval <= 0 || activeTab !== "clickup") return;
     const timer = setInterval(() => {
       fetchMetrics(false);
     }, pollInterval);
     return () => clearInterval(timer);
-  }, [pollInterval, fetchMetrics]);
+  }, [pollInterval, activeTab, fetchMetrics]);
 
   const handleModeChange = (mode: "person" | "tag") => {
     setViewMode(mode);

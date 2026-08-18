@@ -52,28 +52,24 @@ export default function DashboardNav() {
       name: "Painel Principal",
       href: "/dashboard",
       icon: Grid,
-      allowedRoles: ["ADMIN", "COORDINATOR", "VIEWER"],
       minLevel: 3,
     },
     {
       name: "Métricas",
       href: "/dashboard/metricas",
       icon: BarChart3,
-      allowedRoles: ["ADMIN", "COORDINATOR", "VIEWER"],
       minLevel: 3,
     },
     {
       name: "Ferramentas",
       href: "/dashboard/ferramentas",
       icon: Sliders,
-      allowedRoles: ["ADMIN", "COORDINATOR", "VIEWER"],
       minLevel: 3,
     },
     {
       name: "Comunicados",
       href: "/dashboard/comunicados",
       icon: Bell,
-      allowedRoles: ["ADMIN", "COORDINATOR", "VIEWER"],
       minLevel: 3,
       badge: unreadCount > 0 ? unreadCount : undefined,
     },
@@ -81,21 +77,18 @@ export default function DashboardNav() {
       name: "Unidades de Negócio",
       href: "/dashboard/unidades",
       icon: Building2,
-      allowedRoles: ["ADMIN", "COORDINATOR", "VIEWER"],
       minLevel: 3,
     },
     {
       name: "Drive de Arquivos",
       href: "/dashboard/documentos",
       icon: FileText,
-      allowedRoles: ["ADMIN", "COORDINATOR", "VIEWER"],
       minLevel: 3,
     },
     {
       name: "Seguranca & Niveis",
       href: "/dashboard/seguranca",
       icon: ShieldAlert,
-      allowedRoles: ["ADMIN"],
       minLevel: 1,
     },
   ];
@@ -110,11 +103,7 @@ export default function DashboardNav() {
           {/* Navigation Links */}
           <div className="mt-8 flex flex-col gap-1.5">
             {navItems
-              .filter(
-                (item) =>
-                  item.allowedRoles.includes(userRole) &&
-                  userLevel <= item.minLevel,
-              )
+              .filter((item) => userLevel <= item.minLevel)
               .map((item, idx) => {
                 const isActive =
                   pathname === item.href ||

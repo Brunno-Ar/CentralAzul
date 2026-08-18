@@ -126,10 +126,20 @@ export default function FerramentasClient({
     const matchesSearch =
       panel.name.toLowerCase().includes(search.toLowerCase()) ||
       (panel.description || "").toLowerCase().includes(search.toLowerCase());
+
+    const panelCat = panel.category?.toUpperCase();
+    const panelSlug = panel.companySlug?.toUpperCase();
+    const filter = activeFilter.toUpperCase();
+
     const matchesFilter =
-      activeFilter === "ALL" ||
-      panel.category?.toUpperCase() === activeFilter ||
-      panel.companySlug?.toUpperCase() === activeFilter;
+      filter === "ALL" ||
+      panelCat === filter ||
+      panelSlug === filter ||
+      ((filter === "GRAN-RESERVA" || filter === "COMP-GRAN-RESERVA") &&
+        (panelCat === "GRAN-RESERVA" ||
+         panelCat === "COMP-GRAN-RESERVA" ||
+         panelSlug === "GRAN-RESERVA" ||
+         panelSlug === "COMP-GRAN-RESERVA"));
     return matchesSearch && matchesFilter;
   });
 

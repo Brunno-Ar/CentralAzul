@@ -169,9 +169,7 @@ export function buildDashboardCompany(
     iconName: icon === Wine ? "Wine" : icon === GraduationCap ? "GraduationCap" : "Building2",
     colorClass,
     accentClass,
-    url: isGranReserva
-      ? "/dashboard/ferramentas?company=BORGO"
-      : `/dashboard/ferramentas?company=${bu.company}`,
+    url: `/dashboard/ferramentas?company=${bu.slug || bu.company}`,
     isActive: bu.isActive,
     showOnHome: bu.showOnHome,
     order: bu.order,

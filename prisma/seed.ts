@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { prisma } from "../src/lib/db";
 
 type AggregatingUnit = {
@@ -129,25 +130,34 @@ async function main() {
 
   for (const unit of aggregatingUnits) {
     try {
-      await prisma.businessUnit.upsert({
-        where: { slug: unit.slug },
-        update: {
-          name: unit.name,
-          company: unit.company,
-          description: unit.description,
-          showOnHome: unit.showOnHome,
-          order: unit.order,
-        },
-        create: {
-          slug: unit.slug,
-          name: unit.name,
-          company: unit.company,
-          description: unit.description,
-          showOnHome: unit.showOnHome,
-          isActive: true,
-          order: unit.order,
-        },
+      const existing = await prisma.businessUnit.findFirst({
+        where: { OR: [{ slug: unit.slug }, { name: unit.name }] },
       });
+      if (existing) {
+        await prisma.businessUnit.update({
+          where: { id: existing.id },
+          data: {
+            slug: unit.slug,
+            name: unit.name,
+            company: unit.company,
+            description: unit.description,
+            showOnHome: unit.showOnHome,
+            order: unit.order,
+          },
+        });
+      } else {
+        await prisma.businessUnit.create({
+          data: {
+            slug: unit.slug,
+            name: unit.name,
+            company: unit.company,
+            description: unit.description,
+            showOnHome: unit.showOnHome,
+            isActive: true,
+            order: unit.order,
+          },
+        });
+      }
       console.log(`Seed: upsert OK for ${unit.name} (${unit.slug})`);
     } catch (e) {
       console.error(`Seed: failed for ${unit.name} (${unit.slug})`, e);

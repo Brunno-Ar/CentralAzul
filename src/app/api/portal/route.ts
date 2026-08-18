@@ -9,6 +9,9 @@ import {
   PortalConta,
 } from "@/lib/portal-api";
 
+const PORTAL_CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutos
+const portalMemoryCache = new Map<string, { data: any; timestamp: number }>();
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -23,37 +26,40 @@ export async function GET(request: NextRequest) {
     const from = searchParams.get("from") || undefined;
     const to = searchParams.get("to") || undefined;
     const adId = searchParams.get("ad_id") || undefined;
+    const force = searchParams.get("force") === "true";
+
+    const cacheKey = `${action}:${conta || ""}:${period}:${from || ""}:${to || ""}:${adId || ""}`;
+
+    if (!force && portalMemoryCache.has(cacheKey)) {
+      const cached = portalMemoryCache.get(cacheKey)!;
+      if (Date.now() - cached.timestamp < PORTAL_CACHE_TTL_MS) {
+        return NextResponse.json(cached.data, {
+          headers: { "X-Cache": "HIT" },
+        });
+      }
+    }
+
+    let responseData: any;
 
     if (action === "contas") {
       const contas = await fetchPortalContas();
-      return NextResponse.json({ contas });
-    }
-
-    if (action === "report") {
+      responseData = { contas };
+    } else if (action === "report") {
       if (!conta) {
         return NextResponse.json({ error: "Parametro 'conta' eh obrigatorio" }, { status: 400 });
       }
-      const report = await fetchPortalReport(conta, period, from, to);
-      return NextResponse.json(report);
-    }
-
-    if (action === "organico") {
+      responseData = await fetchPortalReport(conta, period, from, to);
+    } else if (action === "organico") {
       if (!conta) {
         return NextResponse.json({ error: "Parametro 'conta' eh obrigatorio" }, { status: 400 });
       }
-      const organico = await fetchPortalOrganico(conta, period, from, to);
-      return NextResponse.json(organico);
-    }
-
-    if (action === "preview") {
+      responseData = await fetchPortalOrganico(conta, period, from, to);
+    } else if (action === "preview") {
       if (!conta || !adId) {
         return NextResponse.json({ error: "Parametros 'conta' e 'ad_id' sao obrigatorios" }, { status: 400 });
       }
-      const preview = await fetchPortalAdPreview(conta, adId);
-      return NextResponse.json(preview);
-    }
-
-    if (action === "all") {
+      responseData = await fetchPortalAdPreview(conta, adId);
+    } else if (action === "all") {
       const contas = await fetchPortalContas();
       const reports: Record<string, PortalReportData> = {};
 
@@ -68,10 +74,15 @@ export async function GET(request: NextRequest) {
         })
       );
 
-      return NextResponse.json({ contas, reports });
+      responseData = { contas, reports };
+    } else {
+      return NextResponse.json({ error: "Acao invalida" }, { status: 400 });
     }
 
-    return NextResponse.json({ error: "Acao invalida" }, { status: 400 });
+    portalMemoryCache.set(cacheKey, { data: responseData, timestamp: Date.now() });
+    return NextResponse.json(responseData, {
+      headers: { "X-Cache": "MISS" },
+    });
   } catch (error: any) {
     console.error("Erro na API do portal de traqueamento:", error);
     return NextResponse.json(

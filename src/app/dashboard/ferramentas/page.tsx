@@ -137,10 +137,7 @@ export default async function FerramentasPage({ searchParams }: PageProps) {
     const params = await searchParams;
     const companyParam = params.company;
     if (typeof companyParam === "string") {
-      const normalizedCompany = companyParam.toUpperCase();
-      initialCompanyFilter = normalizedCompany === "COMP-GRAN-RESERVA"
-        ? "BORGO"
-        : normalizedCompany;
+      initialCompanyFilter = companyParam.toUpperCase();
     }
   } catch (e) { console.error(e);
     // ignore

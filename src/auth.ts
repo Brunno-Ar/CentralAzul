@@ -48,6 +48,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const emailStr = (credentials.email as string).toLowerCase();
         const passwordStr = credentials.password as string;
 
+        // Check system domain restriction
+        const restrictDomain = await db.getSystemConfig("restrictDomain");
+        if (restrictDomain && restrictDomain.trim() !== "") {
+          const allowedDomain = restrictDomain.trim().toLowerCase().replace(/^@/, "");
+          const userDomain = emailStr.split("@")[1] || "";
+          if (userDomain !== allowedDomain) {
+            throw new Error(`Acesso permitido apenas para e-mails do dominio @${allowedDomain}`);
+          }
+        }
+
         // Check if account is locked
         const lockout = await db.checkAccountLockout(emailStr);
         if (lockout.locked) {
