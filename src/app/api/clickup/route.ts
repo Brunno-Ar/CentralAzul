@@ -100,7 +100,11 @@ export async function GET(req: NextRequest) {
     const token = process.env.CLICKUP_API_TOKEN || DEFAULT_TOKEN;
     const headers = { Authorization: token };
 
-    // Fetch team info
+    const userRes = await fetch(`${CLICKUP_API}/user`, { headers, next: { revalidate: 300 } });
+    if (!userRes.ok) {
+      throw new Error("Token inválido ou expirado no ClickUp");
+    }
+
     const teamRes = await fetch(`${CLICKUP_API}/team`, { headers, next: { revalidate: 300 } });
     if (!teamRes.ok) {
       const errBody = await teamRes.json().catch(() => ({}));
@@ -127,7 +131,8 @@ export async function GET(req: NextRequest) {
       let startPage = 1;
       let shouldContinue = true;
 
-      while (shouldContinue && startPage <= 15) {
+      // Aumentado o limite de páginas de 15 para 100 (até 10.000 tarefas) para garantir que todos os dados sejam capturados
+      while (shouldContinue && startPage <= 100) {
         const pagesToFetch = Array.from({ length: BATCH_SIZE }, (_, i) => startPage + i);
         const batchResults = await Promise.all(
           pagesToFetch.map((p) => fetchTaskPage(teamId, p, headers))
