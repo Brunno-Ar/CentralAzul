@@ -51,6 +51,56 @@ const formatPercent = (val: number): string => {
   return formatNumber(val, 2) + "%";
 };
 
+const isMetaCdnUrl = (src: string): boolean => {
+  try {
+    const hostname = new URL(src, "https://centralazul.invalid").hostname.toLowerCase();
+    return ["cdninstagram.com", "fbcdn.net", "fbsbx.com"].some(
+      (domain) => hostname === domain || hostname.endsWith(`.${domain}`),
+    );
+  } catch {
+    return false;
+  }
+};
+
+function PortalMediaImage({
+  src,
+  alt,
+  className = "",
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    const message = isMetaCdnUrl(src)
+      ? "Imagem hospedada no CDN da Meta indisponível"
+      : "Imagem indisponível";
+
+    return (
+      <div
+        role="img"
+        aria-label={`${alt}. ${message}`}
+        className="flex h-full w-full items-center justify-center p-3 text-center text-[10px] font-medium text-brand-terciar/70"
+      >
+        {message}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={`h-full w-full object-cover ${className}`}
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 export default function PortalMetricsView({ initialContaId }: PortalMetricsViewProps) {
   const [contas, setContas] = useState<PortalConta[]>([]);
   const [selectedConta, setSelectedConta] = useState<string>(initialContaId || "");
@@ -646,12 +696,11 @@ export default function PortalMetricsView({ initialContaId }: PortalMetricsViewP
                         className="group relative rounded-xl overflow-hidden border border-brand-terciar/10 bg-brand-principal/40 aspect-square block hover:border-brand-secundar transition-all"
                       >
                         {p.img ? (
-                          <img
+                          <PortalMediaImage
+                            key={`${p.id}-${p.img}`}
                             src={p.img}
                             alt="Post Instagram"
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                            loading="lazy"
-                            referrerPolicy="no-referrer"
+                            className="group-hover:scale-105 transition-transform duration-200"
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-[10px] text-brand-terciar/50">
@@ -676,12 +725,10 @@ export default function PortalMetricsView({ initialContaId }: PortalMetricsViewP
                         className="relative rounded-xl overflow-hidden border border-brand-terciar/10 bg-brand-principal/40 aspect-square"
                       >
                         {s.img ? (
-                          <img
+                          <PortalMediaImage
+                            key={`${s.id}-${s.img}`}
                             src={s.img}
                             alt="Story Instagram"
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                            referrerPolicy="no-referrer"
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-[10px] text-brand-terciar/50">
