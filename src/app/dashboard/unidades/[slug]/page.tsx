@@ -584,6 +584,10 @@ export default function BusinessUnitDetailPage() {
                     ? "azul"
                     : slug === "restaurante-don-eloy"
                     ? "don-eloy"
+                    : slug === "glamping-cabanas-do-vale"
+                    ? "glamping"
+                    : slug === "vinho-faz"
+                    ? "vinho-faz"
                     : undefined)
                 }
               />

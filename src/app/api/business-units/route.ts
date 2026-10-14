@@ -63,7 +63,9 @@ async function handleGet(request: NextRequest) {
          bu.slug === "vinicola-familia-eloy" ? "vinicola" :
          bu.slug === "hotel-borgo-del-vino" ? "hotel" :
          bu.slug === "azul-incorporacoes" ? "azul" :
-         bu.slug === "restaurante-don-eloy" ? "don-eloy" : null);
+         bu.slug === "restaurante-don-eloy" ? "don-eloy" :
+         bu.slug === "glamping-cabanas-do-vale" ? "glamping" :
+         bu.slug === "vinho-faz" ? "vinho-faz" : null);
 
       const portalReport = pId ? portalMap[pId] : null;
       if (!portalReport) return bu;

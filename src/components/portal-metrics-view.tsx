@@ -164,7 +164,8 @@ export default function PortalMetricsView({ initialContaId }: PortalMetricsViewP
 
       const data: PortalReportData = await res.json();
       setReport(data);
-      setLastSyncedAt(new Date());
+      const sourceSyncTime = data.synced_at ? new Date(data.synced_at) : new Date();
+      setLastSyncedAt(Number.isNaN(sourceSyncTime.getTime()) ? new Date() : sourceSyncTime);
 
       // Carrega organico em seguida
       loadOrganicoData(selectedConta, period, fromDate, toDate);
@@ -307,7 +308,7 @@ export default function PortalMetricsView({ initialContaId }: PortalMetricsViewP
 
           {lastSyncedAt && (
             <span className="text-[10px] font-mono text-brand-terciar/60 hidden lg:inline-block">
-              Atualizado: {lastSyncedAt.toLocaleTimeString("pt-BR")}
+              Dados do portal: {lastSyncedAt.toLocaleTimeString("pt-BR")}
             </span>
           )}
 
@@ -484,6 +485,41 @@ export default function PortalMetricsView({ initialContaId }: PortalMetricsViewP
               <p className="text-[11px] text-brand-terciar/60 mt-2">Custo por mil exibições</p>
             </motion.div>
           </div>
+
+          {report.verba && (
+            <section
+              aria-labelledby="portal-budget-heading"
+              className="p-5 rounded-2xl border border-brand-terciar/10 bg-white shadow-sm space-y-4"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-brand-terciar/10">
+                <h2 id="portal-budget-heading" className="text-sm font-bold text-brand-extra1 flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-brand-secundar" />
+                  Verba de mídia
+                </h2>
+                <span className="text-[10px] font-mono text-brand-terciar/50">
+                  Informações sincronizadas pelo CP Portal
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
+                {[
+                  { label: "Verba bruta", value: formatCurrency(report.verba.bruto) },
+                  { label: "Verba líquida", value: formatCurrency(report.verba.liquido) },
+                  { label: "Investido", value: formatCurrency(report.verba.gasto) },
+                  { label: "Saldo restante", value: formatCurrency(report.verba.restante) },
+                  { label: "Utilização", value: formatPercent(report.verba.pct) },
+                  ...(report.verba.imposto != null
+                    ? [{ label: "Imposto", value: formatCurrency(report.verba.imposto) }]
+                    : []),
+                ].map((item) => (
+                  <div key={item.label} className="rounded-xl bg-brand-principal/30 p-3">
+                    <p className="text-[10px] uppercase tracking-wider text-brand-terciar/60">{item.label}</p>
+                    <p className="mt-1 text-sm font-bold font-mono text-brand-extra1">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Section: Alcance & Entrega */}
           <div className="p-5 rounded-2xl border border-brand-terciar/10 bg-white shadow-sm space-y-4">

@@ -386,6 +386,8 @@ export default function BusinessUnitsListPage() {
                     <option value="hotel">Hotel Borgo Del Vino (hotel)</option>
                     <option value="azul">Azul Incorporações (azul)</option>
                     <option value="don-eloy">Restaurante Don Eloy (don-eloy)</option>
+                    <option value="glamping">Glamping Cabanas do Vale (glamping)</option>
+                    <option value="vinho-faz">Vinho Faz (vinho-faz)</option>
                   </select>
                 </div>
 

@@ -89,6 +89,7 @@ export interface PortalInstagram {
 }
 
 export interface PortalReportData {
+  synced_at?: string;
   conta: {
     id: string;
     nome: string;
@@ -111,6 +112,7 @@ export interface PortalReportData {
   leitura_custom?: string | null;
   verba?: {
     bruto: number;
+    imposto?: number;
     pct: number;
     liquido: number;
     gasto: number;
