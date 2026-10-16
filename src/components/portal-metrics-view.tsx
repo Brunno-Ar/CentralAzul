@@ -25,12 +25,15 @@ import {
   Smartphone,
   Tag,
   ArrowUpRight,
+  FileDown,
 } from "lucide-react";
 import {
   PortalConta,
   PortalReportData,
   PortalOrganicoData,
 } from "@/lib/portal-api";
+import { getCurrentInstagramReportMonth, type InstagramReportData } from "@/lib/instagram-report";
+import { renderInstagramReportHtml } from "@/lib/instagram-report-print";
 
 interface PortalMetricsViewProps {
   initialContaId?: string;
@@ -50,6 +53,15 @@ const formatCurrency = (val: number, decimals: number = 0): string => {
 const formatPercent = (val: number): string => {
   return formatNumber(val, 2) + "%";
 };
+
+function getDefaultInstagramReportMonths(): { from: string; to: string } {
+  const now = new Date();
+  const to = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  now.setDate(1);
+  now.setMonth(now.getMonth() - 3);
+  const from = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  return { from, to };
+}
 
 const isMetaCdnUrl = (src: string): boolean => {
   try {
@@ -119,6 +131,47 @@ export default function PortalMetricsView({ initialContaId }: PortalMetricsViewP
   const [previewAdId, setPreviewAdId] = useState<string | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [loadingPreview, setLoadingPreview] = useState<boolean>(false);
+  const [reportMonths, setReportMonths] = useState(getDefaultInstagramReportMonths);
+  const [generatingReport, setGeneratingReport] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+
+  const generateInstagramReport = async () => {
+    setReportError(null);
+    if (!reportMonths.from || !reportMonths.to || reportMonths.from > reportMonths.to) {
+      setReportError("Selecione um intervalo de meses válido.");
+      return;
+    }
+
+    const printWindow = window.open("about:blank", "_blank");
+    if (!printWindow) {
+      setReportError("O navegador bloqueou a nova janela. Permita pop-ups para gerar o relatório.");
+      return;
+    }
+
+    setGeneratingReport(true);
+    try {
+      const params = new URLSearchParams({ from: reportMonths.from, to: reportMonths.to });
+      const response = await fetch(`/api/portal/instagram-report?${params.toString()}`, { cache: "no-store" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Não foi possível gerar o relatório.");
+
+      const report = result as InstagramReportData;
+      printWindow.document.open();
+      printWindow.document.write(renderInstagramReportHtml(report));
+      printWindow.document.close();
+      printWindow.document.querySelectorAll<HTMLButtonElement>("[data-print]").forEach((button) => {
+        button.addEventListener("click", () => printWindow.print());
+      });
+      window.setTimeout(() => {
+        if (!printWindow.closed) printWindow.print();
+      }, 500);
+    } catch (error) {
+      printWindow.close();
+      setReportError(error instanceof Error ? error.message : "Não foi possível gerar o relatório.");
+    } finally {
+      setGeneratingReport(false);
+    }
+  };
 
   // Carrega lista de contas ao montar
   useEffect(() => {
@@ -334,6 +387,55 @@ export default function PortalMetricsView({ initialContaId }: PortalMetricsViewP
           </button>
         </div>
       </div>
+
+      <section className="rounded-2xl border border-brand-terciar/10 bg-white p-4 shadow-sm dark:border-white/15 dark:bg-brand-terciar" aria-labelledby="instagram-report-title">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 id="instagram-report-title" className="flex items-center gap-2 text-sm font-bold text-brand-extra1 dark:text-brand-principal">
+              <FileDown className="h-4 w-4 text-brand-secundar" aria-hidden="true" />
+              Relatório de publicações do Instagram
+            </h2>
+            <p className="mt-1 max-w-2xl text-xs leading-relaxed text-brand-terciar/70 dark:text-brand-principal/70">
+              Gera contagens mensais por perfil e os três posts com mais curtidas. As visualizações individuais não são fornecidas pelo portal.
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <label className="text-[10px] font-mono uppercase text-brand-terciar/60">
+              De
+              <input
+                type="month"
+                value={reportMonths.from}
+                max={reportMonths.to}
+                onChange={(event) => setReportMonths((current) => ({ ...current, from: event.target.value }))}
+                className="mt-1 block w-full rounded-lg border border-brand-terciar/15 bg-brand-principal/30 px-2.5 py-2 text-xs font-semibold text-brand-terciar outline-none focus:border-brand-secundar dark:border-white/15 dark:bg-white/5 dark:text-brand-principal"
+                aria-label="Mês inicial do relatório"
+              />
+            </label>
+            <label className="text-[10px] font-mono uppercase text-brand-terciar/60">
+              Até
+              <input
+                type="month"
+                value={reportMonths.to}
+                min={reportMonths.from}
+                max={getCurrentInstagramReportMonth()}
+                onChange={(event) => setReportMonths((current) => ({ ...current, to: event.target.value }))}
+                className="mt-1 block w-full rounded-lg border border-brand-terciar/15 bg-brand-principal/30 px-2.5 py-2 text-xs font-semibold text-brand-terciar outline-none focus:border-brand-secundar dark:border-white/15 dark:bg-white/5 dark:text-brand-principal"
+                aria-label="Mês final do relatório"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={generateInstagramReport}
+              disabled={generatingReport}
+              className="flex items-center justify-center gap-2 rounded-lg bg-brand-secundar px-4 py-2.5 text-xs font-bold text-white transition-colors duration-200 hover:bg-brand-secundar/90 disabled:cursor-wait disabled:opacity-60"
+            >
+              <FileDown className="h-4 w-4" aria-hidden="true" />
+              {generatingReport ? "Buscando publicações..." : "Gerar PDF"}
+            </button>
+          </div>
+        </div>
+        {reportError && <p role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-800">{reportError}</p>}
+      </section>
 
       {error && (
         <div className="p-4 rounded-xl border border-red-200 bg-red-50 text-red-800 text-xs font-semibold">

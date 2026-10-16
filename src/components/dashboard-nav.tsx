@@ -16,7 +16,9 @@ import {
   Sliders,
   Bell,
   Building2,
-  BarChart3,
+  TrendingUp,
+  ListTodo,
+  MessageSquare,
 } from "lucide-react";
 import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
 
@@ -55,9 +57,21 @@ export default function DashboardNav() {
       minLevel: 3,
     },
     {
-      name: "Métricas",
-      href: "/dashboard/metricas",
-      icon: BarChart3,
+      name: "Métricas Instagram e Tráfego",
+      href: "/dashboard/metricas/trafego",
+      icon: TrendingUp,
+      minLevel: 3,
+    },
+    {
+      name: "Métricas ClickUp",
+      href: "/dashboard/metricas/clickup",
+      icon: ListTodo,
+      minLevel: 3,
+    },
+    {
+      name: "Métricas Connecta",
+      href: "/dashboard/metricas/connecta",
+      icon: MessageSquare,
       minLevel: 3,
     },
     {
@@ -105,9 +119,8 @@ export default function DashboardNav() {
             {navItems
               .filter((item) => userLevel <= item.minLevel)
               .map((item, idx) => {
-                const isActive =
-                  pathname === item.href ||
-                  (item.href !== "/dashboard" && Boolean(pathname?.startsWith(item.href)));
+                const isActive = pathname === item.href ||
+                  (item.href !== "/dashboard" && Boolean(pathname?.startsWith(`${item.href}/`)));
 
                 const link = {
                   label: item.name,
