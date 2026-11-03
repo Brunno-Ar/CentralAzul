@@ -66,6 +66,10 @@ export interface PortalCriativoCard {
   sub: string;
   thumb: string;
   valor: number;
+  visualizacoes?: number;
+  alcance?: number;
+  curtidas?: number;
+  interacoes?: number;
 }
 
 export interface PortalCriativoGrupo {
@@ -135,6 +139,46 @@ export interface PortalOrganicoStory {
   data: string;
   tipo: string;
   img?: string;
+}
+
+export interface PortalOrganicoTopPost {
+  id: string;
+  data: string | number;
+  tipo: string;
+  produto?: string;
+  img?: string;
+  link?: string;
+  alcance: number;
+  visualizacoes: number;
+  curtidas: number;
+  comentarios: number;
+  salvos: number;
+  compartilhamentos: number;
+  interacoes: number;
+}
+
+export interface PortalOrganicoTopStory {
+  id?: string;
+  data: string | number;
+  img?: string;
+  alcance: number;
+  visualizacoes: number;
+  respostas: number;
+  compartilhamentos: number;
+  interacoes: number;
+}
+
+export interface PortalOrganicoTopData {
+  top?: {
+    erro?: string;
+    posts?: PortalOrganicoTopPost[];
+    stories?: PortalOrganicoTopStory[];
+    stories_desde?: string;
+  };
+  periodo?: {
+    fromUnix: number;
+    toUnix: number;
+  };
 }
 
 export interface PortalOrganicoData {
@@ -253,6 +297,20 @@ export async function fetchPortalOrganico(
     query += `&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
   }
   return fetchPortalApi<PortalOrganicoData>(query);
+}
+
+/** Obtem os destaques orgânicos por alcance, incluindo posts e Stories. */
+export async function fetchPortalOrganicoTop(
+  contaId: string,
+  period: string = "mes",
+  from?: string,
+  to?: string
+): Promise<PortalOrganicoTopData> {
+  let query = `/portal/organico-top?conta=${encodeURIComponent(contaId)}&period=${encodeURIComponent(period)}`;
+  if (period === "custom" && from && to) {
+    query += `&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+  }
+  return fetchPortalApi<PortalOrganicoTopData>(query);
 }
 
 /**
