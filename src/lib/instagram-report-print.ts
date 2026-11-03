@@ -92,6 +92,7 @@ function highlightCard(item: InstagramReportHighlight, rank: number): string {
   const metrics = [
     stat("visualizações", item.views),
     stat("pessoas alcançadas", item.reach),
+    stat("novos seguidores", item.followers ?? null),
     stat("curtidas", item.likes),
     stat("interações", item.interactions),
   ].filter(Boolean).join("");
