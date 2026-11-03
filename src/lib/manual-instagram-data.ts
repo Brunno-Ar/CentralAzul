@@ -53,6 +53,17 @@ export const mapleBearManualMonths: ManualInstagramMonth[] = [
       { title: "Por trás de uma nova língua, existe um...", date: "21/09, 10h03", kind: "Publicação", views: 531, reach: 263 },
     ],
   },
+  {
+    month: "2026-10",
+    counts: { photos: 7, carousels: 2, reels: 2, stories: 31 },
+    highlights: [
+      { title: "Transformar a aprendizagem numa jornada...", date: "14/10", kind: "Publicação", views: 3268, reach: 1639, followers: 11 },
+      { title: "Na Maple Bear, o idioma vai muito além...", date: "29/10", kind: "Publicação", views: 648, reach: 349, followers: 0 },
+      { title: "A infância é a janela mais rica e propícia...", date: "08/10", kind: "Publicação", views: 637, reach: 273, followers: 0 },
+      { title: "E se cada passo do seu filho fosse um...", date: "23/10", kind: "Publicação", views: 603, reach: 287, followers: 0 },
+      { title: "É nas pequenas coisas que surgem as...", date: "31/10", kind: "Publicação", views: 572, reach: 285, followers: 0 },
+    ],
+  },
 ];
 
 export function getMapleBearTopHighlights(monthKeys?: string[]): RankedMapleBearHighlight[] {
@@ -81,9 +92,9 @@ export function createMapleBearManualProfile(monthKeys: string[]): InstagramRepo
     .reduce((sum, month) => addInstagramCounts(sum, month), { photos: 0, carousels: 0, reels: 0, stories: 0 });
   const topHighlights = getMapleBearTopHighlights(monthKeys)
     .map((highlight) => {
-      const [day, monthDay] = highlight.date.split("/");
-      const time = monthDay.split(", ")[1];
-      const [hour, minute] = time.replace("h", ":").split(":");
+      const [datePart, time] = highlight.date.split(", ");
+      const [day] = datePart.split("/");
+      const [hour, minute] = time?.replace("h", ":").split(":") ?? ["12", "00"];
       const date = `${highlight.month}-${day}T${hour}:${minute}:00-03:00`;
       return {
         id: `maple-bear:${highlight.month}:${day}`,
@@ -95,6 +106,7 @@ export function createMapleBearManualProfile(monthKeys: string[]): InstagramRepo
         thumbnailUrl: null,
         views: highlight.views,
         reach: highlight.reach,
+        followers: highlight.followers ?? null,
         likes: null,
         interactions: null,
         relativeScore: highlight.views,
@@ -112,7 +124,7 @@ export function createMapleBearManualProfile(monthKeys: string[]): InstagramRepo
     topHighlights,
     highlightWarnings: [],
     sourceNote: hasManualData
-      ? "Dados manuais do relatório de publicações recebido em 29/10/2026. O documento informa visualizações e alcance dos destaques."
-      : "O levantamento manual disponível cobre julho a setembro de 2026. Não há dados manuais para o período selecionado.",
+      ? "Dados manuais enviados para Maple Bear. Os destaques incluem visualizações, alcance e novos seguidores quando informados."
+      : "O levantamento manual disponível cobre julho a outubro de 2026. Não há dados manuais para o período selecionado.",
   };
 }

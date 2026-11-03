@@ -26,6 +26,7 @@ export interface InstagramReportHighlight {
   thumbnailUrl: string | null;
   views: number | null;
   reach: number | null;
+  followers?: number | null;
   likes: number | null;
   interactions: number | null;
   relativeScore: number;
@@ -39,6 +40,7 @@ export interface InstagramManualHighlight {
   kind: string;
   views: number;
   reach: number;
+  followers?: number | null;
 }
 
 export interface InstagramReportProfile {
