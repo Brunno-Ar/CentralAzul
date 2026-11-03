@@ -60,6 +60,7 @@ function profileTable(profile: InstagramReportProfile, months: string[]): string
 
 function safeThumbnailUrl(value: string | null): string | null {
   if (!value) return null;
+  if (/^\/instagram-manual\/maple-bear\/[A-Za-z0-9._-]+\.jpg$/.test(value)) return value;
   try {
     const url = new URL(value);
     const host = url.hostname.toLowerCase();
@@ -84,7 +85,10 @@ function highlightCard(item: InstagramReportHighlight, rank: number): string {
   const thumbnail = imageUrl
     ? `<img src="${escapeHtml(imageUrl)}" alt="Miniatura da publicação" loading="eager">`
     : `<span>Sem imagem</span>`;
-  const thumbnailColumn = item.source === "Manual" ? "" : `<div class="highlight-thumbnail">${thumbnail}</div>`;
+  const hasThumbnail = Boolean(imageUrl);
+  const thumbnailColumn = hasThumbnail || item.source !== "Manual"
+    ? `<div class="highlight-thumbnail">${thumbnail}</div>`
+    : "";
   const description = item.source === "Manual" && item.description
     ? `<p class="highlight-description">${escapeHtml(item.description)}</p>`
     : "";
@@ -106,7 +110,8 @@ function highlightCard(item: InstagramReportHighlight, rank: number): string {
     ? `<a class="open-publication" href="${escapeHtml(item.link)}" target="_blank" rel="noreferrer">Abrir publicação</a>`
     : "";
 
-  return `<li class="highlight-card${item.source === "Manual" ? " highlight-card-no-thumbnail" : ""}">${thumbnailColumn}<div class="highlight-content"><div class="highlight-heading"><strong>${rank}. ${escapeHtml(item.kind)}${date}</strong><em class="source-badge source-${sourceClass}">${escapeHtml(item.source)}</em></div>${description}${metrics ? `<div class="highlight-metrics">${metrics}</div>` : ""}${unavailableMetrics}${paidResult}${link}</div></li>`;
+  const noThumbnailClass = item.source === "Manual" && !hasThumbnail ? " highlight-card-no-thumbnail" : "";
+  return `<li class="highlight-card${noThumbnailClass}">${thumbnailColumn}<div class="highlight-content"><div class="highlight-heading"><strong>${rank}. ${escapeHtml(item.kind)}${date}</strong><em class="source-badge source-${sourceClass}">${escapeHtml(item.source)}</em></div>${description}${metrics ? `<div class="highlight-metrics">${metrics}</div>` : ""}${unavailableMetrics}${paidResult}${link}</div></li>`;
 }
 
 function profilePage(profile: InstagramReportProfile, months: string[], pageNumber: number): string {

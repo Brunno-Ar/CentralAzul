@@ -41,6 +41,7 @@ export interface InstagramManualHighlight {
   views: number;
   reach: number;
   followers?: number | null;
+  thumbnailUrl?: string | null;
 }
 
 export interface InstagramReportProfile {
