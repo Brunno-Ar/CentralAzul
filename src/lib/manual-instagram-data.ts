@@ -55,8 +55,10 @@ export const mapleBearManualMonths: ManualInstagramMonth[] = [
   },
 ];
 
-export function getMapleBearTopHighlights(): RankedMapleBearHighlight[] {
+export function getMapleBearTopHighlights(monthKeys?: string[]): RankedMapleBearHighlight[] {
+  const includedMonths = monthKeys ? new Set(monthKeys) : null;
   return mapleBearManualMonths
+    .filter(({ month }) => !includedMonths || includedMonths.has(month))
     .flatMap(({ month, highlights }) => highlights.map((highlight) => ({ ...highlight, month })))
     .sort((left, right) => right.views - left.views)
     .slice(0, 5);
@@ -77,8 +79,7 @@ export function createMapleBearManualProfile(monthKeys: string[]): InstagramRepo
   const totals = Object.values(months)
     .filter((month) => month.available)
     .reduce((sum, month) => addInstagramCounts(sum, month), { photos: 0, carousels: 0, reels: 0, stories: 0 });
-  const topHighlights = getMapleBearTopHighlights()
-    .filter((highlight) => monthKeys.includes(highlight.month))
+  const topHighlights = getMapleBearTopHighlights(monthKeys)
     .map((highlight) => {
       const [day, monthDay] = highlight.date.split("/");
       const time = monthDay.split(", ")[1];

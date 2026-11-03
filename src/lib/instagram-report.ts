@@ -146,8 +146,9 @@ export function createInstagramReportProfile(
   const candidates: (InstagramReportHighlight & { metricGroup: string })[] = [];
   const organic = organicTop instanceof Error ? undefined : organicTop?.top;
   const normalizedPaidGroups = paidGroups instanceof Error ? [] : paidGroups;
+  const organicTopUnavailable = organicTop instanceof Error || !organicTop || Boolean(organic?.erro);
   const highlightWarnings = [
-    ...(organicTop instanceof Error ? ["Destaques orgânicos indisponíveis neste período."] : []),
+    ...(organicTopUnavailable ? ["Destaques orgânicos indisponíveis neste período."] : []),
     ...(paidGroups instanceof Error ? ["Destaques pagos indisponíveis neste período."] : []),
   ];
   if (organic && !organic.erro) {
@@ -246,7 +247,10 @@ export function createInstagramReportProfile(
   const topHighlights = candidates
     .sort((a, b) => b.relativeScore - a.relativeScore || a.id.localeCompare(b.id))
     .slice(0, 5)
-    .map(({ metricGroup: _metricGroup, ...highlight }) => highlight);
+    .map(({ metricGroup: _metricGroup, ...highlight }) => {
+      void _metricGroup;
+      return highlight;
+    });
 
   return { id: account.id, name: account.nome, username, months, totals, topHighlights, highlightWarnings };
 }

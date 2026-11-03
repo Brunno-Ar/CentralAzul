@@ -102,18 +102,19 @@ export async function GET(request: NextRequest) {
 
     const isMapleBearAccount = (account: (typeof accounts)[number]) =>
       /maple\s*bear/i.test(account.nome) || /maple[-_]?bear/i.test(account.id);
-    const profiles = accounts.filter((account) => !isMapleBearAccount(account)).map((account) => createInstagramReportProfile(
+    const portalProfiles = accounts.filter((account) => !isMapleBearAccount(account)).map((account) => createInstagramReportProfile(
       account,
       monthKeys,
       responses,
       organicTopResponses.get(account.id),
       paidAdResponses.get(account.id) ?? new Error("Falha ao carregar destaques pagos."),
     ));
-    const mapleBearProfile = createMapleBearManualProfile(monthKeys);
-    profiles.push(mapleBearProfile);
-    if (accounts.length > 0 && profiles.every((profile) => !Object.values(profile.months).some((month) => month.available))) {
+    if (accounts.length > 0 && portalProfiles.every((profile) => !Object.values(profile.months).some((month) => month.available))) {
       return NextResponse.json({ error: "O Portal CP não retornou dados orgânicos para este período. Tente novamente mais tarde." }, { status: 502 });
     }
+
+    const mapleBearProfile = createMapleBearManualProfile(monthKeys);
+    const profiles = [...portalProfiles, mapleBearProfile];
     const report = createInstagramReportData(fromMonth, toMonth, profiles, monthKeys);
     reportCache.set(cacheKey, { data: report, timestamp: Date.now() });
     if (reportCache.size > 20) reportCache.delete(reportCache.keys().next().value!);
