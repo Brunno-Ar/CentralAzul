@@ -34,7 +34,6 @@ import {
 } from "@/lib/portal-api";
 import { getCurrentInstagramReportMonth, type InstagramReportData } from "@/lib/instagram-report";
 import { renderInstagramReportHtml } from "@/lib/instagram-report-print";
-import { getMapleBearTopHighlights, mapleBearManualMonths } from "@/lib/manual-instagram-data";
 
 interface PortalMetricsViewProps {
   initialContaId?: string;
@@ -54,21 +53,6 @@ const formatCurrency = (val: number, decimals: number = 0): string => {
 const formatPercent = (val: number): string => {
   return formatNumber(val, 2) + "%";
 };
-
-function formatManualMonth(month: string): string {
-  const label = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "America/Sao_Paulo" })
-    .format(new Date(`${month}-01T12:00:00-03:00`));
-  return `${label.charAt(0).toUpperCase()}${label.slice(1)}`;
-}
-
-const mapleBearManualTotals = mapleBearManualMonths.reduce((totals, month) => ({
-  photos: totals.photos + month.counts.photos,
-  carousels: totals.carousels + month.counts.carousels,
-  reels: totals.reels + month.counts.reels,
-  stories: totals.stories + month.counts.stories,
-}), { photos: 0, carousels: 0, reels: 0, stories: 0 });
-const mapleBearManualFeed = mapleBearManualTotals.photos + mapleBearManualTotals.carousels + mapleBearManualTotals.reels;
-const mapleBearTopHighlights = getMapleBearTopHighlights();
 
 function getDefaultInstagramReportMonths(): { from: string; to: string } {
   const now = new Date();
@@ -404,14 +388,14 @@ export default function PortalMetricsView({ initialContaId }: PortalMetricsViewP
         </div>
       </div>
 
-      <section className="rounded-2xl border border-brand-terciar/10 bg-white p-4 shadow-sm dark:border-white/15 dark:bg-brand-terciar" aria-labelledby="instagram-report-title">
+      <section className="rounded-2xl border border-brand-terciar/10 bg-white p-4 shadow-sm" aria-labelledby="instagram-report-title">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 id="instagram-report-title" className="flex items-center gap-2 text-sm font-bold text-brand-extra1 dark:text-brand-principal">
+            <h2 id="instagram-report-title" className="flex items-center gap-2 text-sm font-bold text-brand-extra1">
               <FileDown className="h-4 w-4 text-brand-secundar" aria-hidden="true" />
               Relatório de publicações do Instagram
             </h2>
-            <p className="mt-1 max-w-2xl text-xs leading-relaxed text-brand-terciar/70 dark:text-brand-principal/70">
+            <p className="mt-1 max-w-2xl text-xs leading-relaxed text-brand-terciar/70">
               Gera um PDF com contagens mensais por perfil e um Top 5 unificado de destaques orgânicos e anúncios pagos, comparados à média da mesma métrica.
             </p>
           </div>
@@ -423,7 +407,7 @@ export default function PortalMetricsView({ initialContaId }: PortalMetricsViewP
                 value={reportMonths.from}
                 max={reportMonths.to}
                 onChange={(event) => setReportMonths((current) => ({ ...current, from: event.target.value }))}
-                className="mt-1 block w-full rounded-lg border border-brand-terciar/15 bg-brand-principal/30 px-2.5 py-2 text-xs font-semibold text-brand-terciar outline-none focus:border-brand-secundar dark:border-white/15 dark:bg-white/5 dark:text-brand-principal"
+                className="mt-1 block w-full rounded-lg border border-brand-terciar/15 bg-brand-principal/30 px-2.5 py-2 text-xs font-semibold text-brand-terciar outline-none focus:border-brand-secundar"
                 aria-label="Mês inicial do relatório"
               />
             </label>
@@ -435,7 +419,7 @@ export default function PortalMetricsView({ initialContaId }: PortalMetricsViewP
                 min={reportMonths.from}
                 max={getCurrentInstagramReportMonth()}
                 onChange={(event) => setReportMonths((current) => ({ ...current, to: event.target.value }))}
-                className="mt-1 block w-full rounded-lg border border-brand-terciar/15 bg-brand-principal/30 px-2.5 py-2 text-xs font-semibold text-brand-terciar outline-none focus:border-brand-secundar dark:border-white/15 dark:bg-white/5 dark:text-brand-principal"
+                className="mt-1 block w-full rounded-lg border border-brand-terciar/15 bg-brand-principal/30 px-2.5 py-2 text-xs font-semibold text-brand-terciar outline-none focus:border-brand-secundar"
                 aria-label="Mês final do relatório"
               />
             </label>
@@ -451,57 +435,6 @@ export default function PortalMetricsView({ initialContaId }: PortalMetricsViewP
           </div>
         </div>
         {reportError && <p role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-800">{reportError}</p>}
-      </section>
-
-      <section className="rounded-2xl border border-brand-terciar/10 bg-white p-4 shadow-sm dark:border-white/15 dark:bg-brand-terciar" aria-labelledby="maple-bear-manual-title">
-        <div className="flex flex-col gap-2 border-b border-brand-terciar/10 pb-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h2 id="maple-bear-manual-title" className="text-sm font-bold text-brand-extra1 dark:text-brand-principal">Instagram · Maple Bear</h2>
-            <p className="mt-1 text-xs text-brand-terciar/70 dark:text-brand-principal/70">Dados manuais do relatório recebido em 29/10/2026. O portal não sincroniza este perfil.</p>
-          </div>
-          <span className="w-fit rounded-full bg-brand-principal/60 px-2.5 py-1 text-[10px] font-semibold text-brand-extra1 dark:bg-white/10 dark:text-brand-principal">Fonte manual</span>
-        </div>
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[640px] text-left text-xs">
-            <thead className="text-[10px] uppercase text-brand-terciar/60 dark:text-brand-principal/60">
-              <tr><th className="px-2 py-2">Mês</th><th className="px-2 py-2">Fotos</th><th className="px-2 py-2">Carrosséis</th><th className="px-2 py-2">Reels</th><th className="px-2 py-2">Feed</th><th className="px-2 py-2">Stories</th><th className="px-2 py-2">Total</th></tr>
-            </thead>
-            <tbody>
-              {mapleBearManualMonths.map(({ month, counts }) => {
-                const feed = counts.photos + counts.carousels + counts.reels;
-                return <tr key={month} className="border-t border-brand-terciar/10 dark:border-white/10">
-                  <th className="whitespace-nowrap px-2 py-2 font-semibold">{formatManualMonth(month)}</th>
-                  <td className="px-2 py-2">{counts.photos}</td><td className="px-2 py-2">{counts.carousels}</td><td className="px-2 py-2">{counts.reels}</td><td className="px-2 py-2">{feed}</td><td className="px-2 py-2">{counts.stories}</td><td className="px-2 py-2 font-bold">{feed + counts.stories}</td>
-                </tr>;
-              })}
-              <tr className="border-t-2 border-brand-terciar/15 font-bold dark:border-white/15">
-                <th className="px-2 py-2">Total</th><td className="px-2 py-2">{mapleBearManualTotals.photos}</td><td className="px-2 py-2">{mapleBearManualTotals.carousels}</td><td className="px-2 py-2">{mapleBearManualTotals.reels}</td><td className="px-2 py-2">{mapleBearManualFeed}</td><td className="px-2 py-2">{mapleBearManualTotals.stories}</td><td className="px-2 py-2">{mapleBearManualFeed + mapleBearManualTotals.stories}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div className="mt-5">
-          <h3 className="text-xs font-bold text-brand-extra1 dark:text-brand-principal">Top 5 geral</h3>
-          <ol className="mt-2 space-y-2">
-            {mapleBearTopHighlights.map((item, index) => (
-              <li key={`${item.month}-${item.date}`} className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 rounded-xl bg-brand-principal/30 p-3 dark:bg-white/5">
-                <span className="pt-0.5 text-lg font-bold text-brand-secundar">{String(index + 1).padStart(2, "0")}</span>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <strong className="truncate text-xs text-brand-terciar dark:text-brand-principal" title={item.title}>{item.title}</strong>
-                    <span className="rounded-full bg-white/70 px-2 py-0.5 text-[9px] font-medium uppercase text-brand-terciar/70 dark:bg-white/10 dark:text-brand-principal/70">Dados manuais</span>
-                  </div>
-                  <p className="mt-1 text-[10px] text-brand-terciar/60 dark:text-brand-principal/60">{item.kind} · {item.date} · {formatManualMonth(item.month)}</p>
-                  <div className="mt-2 grid grid-cols-2 gap-2 sm:max-w-sm">
-                    <div><strong className="block text-sm text-brand-secundar">{formatNumber(item.views)}</strong><span className="text-[9px] text-brand-terciar/60 dark:text-brand-principal/60">visualizações</span></div>
-                    <div><strong className="block text-sm text-brand-secundar">{formatNumber(item.reach)}</strong><span className="text-[9px] text-brand-terciar/60 dark:text-brand-principal/60">alcance</span></div>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </div>
-        <p className="mt-3 text-[10px] text-brand-terciar/60 dark:text-brand-principal/60">O documento informa visualizações e alcance dos destaques; curtidas e interações individuais não foram fornecidas.</p>
       </section>
 
       {error && (
