@@ -1,7 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { createMapleBearManualProfile } from "@/lib/manual-instagram-data";
 import { rateLimit } from "@/lib/rate-limit";
-import { fetchPortalContas, fetchPortalOrganico, getPortalToken, type PortalOrganicoData } from "@/lib/portal-api";
+import {
+  fetchPortalContas,
+  fetchPortalOrganico,
+  fetchPortalOrganicoTop,
+  fetchPortalReport,
+  getPortalToken,
+  type PortalCriativoGrupo,
+  type PortalOrganicoData,
+  type PortalOrganicoTopData,
+} from "@/lib/portal-api";
 import {
   createInstagramReportData,
   createInstagramReportProfile,
@@ -49,6 +59,8 @@ export async function GET(request: NextRequest) {
     const accounts = await fetchPortalContas();
     await getPortalToken();
     const responses = new Map<string, PortalOrganicoData | Error>();
+    const organicTopResponses = new Map<string, PortalOrganicoTopData | Error>();
+    const paidAdResponses = new Map<string, PortalCriativoGrupo[] | Error>();
     const jobs = accounts.flatMap((account) => {
       const firstAvailableMonth = getFirstAvailableMonth(account.primeiro_mes);
       return monthKeys
@@ -69,10 +81,40 @@ export async function GET(request: NextRequest) {
       }));
     }
 
-    const profiles = accounts.map((account) => createInstagramReportProfile(account, monthKeys, responses));
-    if (accounts.length > 0 && profiles.every((profile) => !Object.values(profile.months).some((month) => month.available))) {
+    const reportBounds = { from: `${fromMonth}-01`, to: getMonthBounds(toMonth).to };
+    for (let index = 0; index < accounts.length; index += 4) {
+      const batch = accounts.slice(index, index + 4);
+      await Promise.all(batch.map(async (account) => {
+        const [topResult, paidResult] = await Promise.allSettled([
+          fetchPortalOrganicoTop(account.id, "custom", reportBounds.from, reportBounds.to),
+          fetchPortalReport(account.id, "custom", reportBounds.from, reportBounds.to),
+        ]);
+        organicTopResponses.set(
+          account.id,
+          topResult.status === "fulfilled" ? topResult.value : topResult.reason instanceof Error ? topResult.reason : new Error("Falha ao carregar destaques orgânicos."),
+        );
+        paidAdResponses.set(
+          account.id,
+          paidResult.status === "fulfilled" ? paidResult.value.criativos ?? [] : paidResult.reason instanceof Error ? paidResult.reason : new Error("Falha ao carregar destaques pagos."),
+        );
+      }));
+    }
+
+    const isMapleBearAccount = (account: (typeof accounts)[number]) =>
+      /maple\s*bear/i.test(account.nome) || /maple[-_]?bear/i.test(account.id);
+    const portalProfiles = accounts.filter((account) => !isMapleBearAccount(account)).map((account) => createInstagramReportProfile(
+      account,
+      monthKeys,
+      responses,
+      organicTopResponses.get(account.id),
+      paidAdResponses.get(account.id) ?? new Error("Falha ao carregar destaques pagos."),
+    ));
+    if (accounts.length > 0 && portalProfiles.every((profile) => !Object.values(profile.months).some((month) => month.available))) {
       return NextResponse.json({ error: "O Portal CP não retornou dados orgânicos para este período. Tente novamente mais tarde." }, { status: 502 });
     }
+
+    const mapleBearProfile = createMapleBearManualProfile(monthKeys);
+    const profiles = [...portalProfiles, mapleBearProfile];
     const report = createInstagramReportData(fromMonth, toMonth, profiles, monthKeys);
     reportCache.set(cacheKey, { data: report, timestamp: Date.now() });
     if (reportCache.size > 20) reportCache.delete(reportCache.keys().next().value!);
