@@ -59,15 +59,6 @@ const formatPercent = (val: number): string => {
   return formatNumber(val, 2) + "%";
 };
 
-function getDefaultInstagramReportMonths(): { from: string; to: string } {
-  const now = new Date();
-  const to = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  now.setDate(1);
-  now.setMonth(now.getMonth() - 3);
-  const from = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  return { from, to };
-}
-
 function getLatestDaysOfMonth(month: string): { from: string; to: string } {
   const end = getMonthBounds(month).to;
   const endDay = Number(end.slice(8, 10));
@@ -146,9 +137,7 @@ export default function PortalMetricsView({ initialContaId }: PortalMetricsViewP
   const [previewAdId, setPreviewAdId] = useState<string | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [loadingPreview, setLoadingPreview] = useState<boolean>(false);
-  const [reportMonths, setReportMonths] = useState(getDefaultInstagramReportMonths);
   const [reportScope, setReportScope] = useState("all");
-  const [reportPeriodMode, setReportPeriodMode] = useState<"months" | "days">("months");
   const [reportReferenceMonth, setReportReferenceMonth] = useState(getCurrentInstagramReportMonth);
   const [reportDates, setReportDates] = useState(() => getLatestDaysOfMonth(getCurrentInstagramReportMonth()));
   const [generatingReport, setGeneratingReport] = useState(false);
@@ -156,30 +145,23 @@ export default function PortalMetricsView({ initialContaId }: PortalMetricsViewP
 
   const generateInstagramReport = async () => {
     setReportError(null);
-    if (reportPeriodMode === "months") {
-      if (!reportMonths.from || !reportMonths.to || reportMonths.from > reportMonths.to) {
-        setReportError("Selecione um intervalo de meses válido.");
-        return;
-      }
-    } else {
-      const currentDate = getCurrentInstagramReportDate();
-      if (!reportReferenceMonth) {
-        setReportError("Selecione um mês de referência.");
-        return;
-      }
-      const referenceBounds = getMonthBounds(reportReferenceMonth);
-      if (
-        !reportDates.from
-        || !reportDates.to
-        || reportDates.from > reportDates.to
-        || reportDates.from.slice(0, 7) !== reportReferenceMonth
-        || reportDates.to.slice(0, 7) !== reportReferenceMonth
-        || reportDates.to > currentDate
-        || reportDates.from < referenceBounds.from
-      ) {
-        setReportError("Selecione dias válidos dentro do mês de referência, sem incluir datas futuras.");
-        return;
-      }
+    const currentDate = getCurrentInstagramReportDate();
+    if (!reportReferenceMonth) {
+      setReportError("Selecione um mês de referência.");
+      return;
+    }
+    const referenceBounds = getMonthBounds(reportReferenceMonth);
+    if (
+      !reportDates.from
+      || !reportDates.to
+      || reportDates.from > reportDates.to
+      || reportDates.from.slice(0, 7) !== reportReferenceMonth
+      || reportDates.to.slice(0, 7) !== reportReferenceMonth
+      || reportDates.to > currentDate
+      || reportDates.from < referenceBounds.from
+    ) {
+      setReportError("Selecione dias válidos dentro do mês de referência, sem incluir datas futuras.");
+      return;
     }
 
     const printWindow = window.open("about:blank", "_blank");
@@ -190,15 +172,13 @@ export default function PortalMetricsView({ initialContaId }: PortalMetricsViewP
 
     setGeneratingReport(true);
     try {
-      const params = new URLSearchParams({ mode: reportPeriodMode, account: reportScope });
-      if (reportPeriodMode === "months") {
-        params.set("from", reportMonths.from);
-        params.set("to", reportMonths.to);
-      } else {
-        params.set("reference", reportReferenceMonth);
-        params.set("from", reportDates.from);
-        params.set("to", reportDates.to);
-      }
+      const params = new URLSearchParams({
+        mode: "days",
+        account: reportScope,
+        reference: reportReferenceMonth,
+        from: reportDates.from,
+        to: reportDates.to,
+      });
       const response = await fetch(`/api/portal/instagram-report?${params.toString()}`, { cache: "no-store" });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Não foi possível gerar o relatório.");
@@ -443,10 +423,10 @@ export default function PortalMetricsView({ initialContaId }: PortalMetricsViewP
             Relatório de publicações do Instagram
           </h2>
           <p className="mt-1 max-w-3xl text-xs leading-relaxed text-brand-terciar/70">
-            O PDF segue a seleção feita aqui, independentemente da unidade escolhida no painel. No recorte por dias, o mês completo continua como referência.
+            Escolha as datas exatas do relatório. Anúncios e destaques consideram apenas esse intervalo; o mês completo fica como referência. Para cobrir o mês inteiro, selecione do dia 1 ao último dia.
           </p>
         </div>
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5 xl:items-end">
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 xl:items-end">
           <label className="text-[10px] font-mono uppercase text-brand-terciar/60">
             Unidades incluídas no PDF
             <select
@@ -463,88 +443,46 @@ export default function PortalMetricsView({ initialContaId }: PortalMetricsViewP
             </select>
           </label>
           <label className="text-[10px] font-mono uppercase text-brand-terciar/60">
-            Formato do período
-            <select
-              value={reportPeriodMode}
-              onChange={(event) => setReportPeriodMode(event.target.value as "months" | "days")}
+            Mês de referência
+            <input
+              type="month"
+              value={reportReferenceMonth}
+              max={getCurrentInstagramReportMonth()}
+              onChange={(event) => {
+                const month = event.target.value;
+                setReportReferenceMonth(month);
+                if (month) setReportDates(getLatestDaysOfMonth(month));
+              }}
               className="mt-1 block w-full rounded-lg border border-brand-terciar/15 bg-brand-principal/30 px-2.5 py-2.5 text-xs font-semibold text-brand-terciar outline-none focus:border-brand-secundar"
-              aria-label="Formato do período do relatório"
-            >
-              <option value="months">Meses completos</option>
-              <option value="days">Dias específicos</option>
-            </select>
+              aria-label="Mês usado como referência do relatório"
+            />
           </label>
-          {reportPeriodMode === "months" ? (
-            <>
-              <label className="text-[10px] font-mono uppercase text-brand-terciar/60">
-                De
-                <input
-                  type="month"
-                  value={reportMonths.from}
-                  max={reportMonths.to}
-                  onChange={(event) => setReportMonths((current) => ({ ...current, from: event.target.value }))}
-                  className="mt-1 block w-full rounded-lg border border-brand-terciar/15 bg-brand-principal/30 px-2.5 py-2.5 text-xs font-semibold text-brand-terciar outline-none focus:border-brand-secundar"
-                  aria-label="Mês inicial do relatório"
-                />
-              </label>
-              <label className="text-[10px] font-mono uppercase text-brand-terciar/60">
-                Até
-                <input
-                  type="month"
-                  value={reportMonths.to}
-                  min={reportMonths.from}
-                  max={getCurrentInstagramReportMonth()}
-                  onChange={(event) => setReportMonths((current) => ({ ...current, to: event.target.value }))}
-                  className="mt-1 block w-full rounded-lg border border-brand-terciar/15 bg-brand-principal/30 px-2.5 py-2.5 text-xs font-semibold text-brand-terciar outline-none focus:border-brand-secundar"
-                  aria-label="Mês final do relatório"
-                />
-              </label>
-            </>
-          ) : (
-            <>
-              <label className="text-[10px] font-mono uppercase text-brand-terciar/60">
-                Mês de referência
-                <input
-                  type="month"
-                  value={reportReferenceMonth}
-                  max={getCurrentInstagramReportMonth()}
-                  onChange={(event) => {
-                    const month = event.target.value;
-                    setReportReferenceMonth(month);
-                    if (month) setReportDates(getLatestDaysOfMonth(month));
-                  }}
-                  className="mt-1 block w-full rounded-lg border border-brand-terciar/15 bg-brand-principal/30 px-2.5 py-2.5 text-xs font-semibold text-brand-terciar outline-none focus:border-brand-secundar"
-                  aria-label="Mês usado como referência do relatório"
-                />
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <label className="text-[10px] font-mono uppercase text-brand-terciar/60">
-                  De
-                  <input
-                    type="date"
-                    value={reportDates.from}
-                    min={`${reportReferenceMonth}-01`}
-                    max={reportDates.to || getMonthBounds(reportReferenceMonth).to}
-                    onChange={(event) => setReportDates((current) => ({ ...current, from: event.target.value }))}
-                    className="mt-1 block w-full rounded-lg border border-brand-terciar/15 bg-brand-principal/30 px-2 py-2.5 text-xs font-semibold text-brand-terciar outline-none focus:border-brand-secundar"
-                    aria-label="Primeiro dia do relatório"
-                  />
-                </label>
-                <label className="text-[10px] font-mono uppercase text-brand-terciar/60">
-                  Até
-                  <input
-                    type="date"
-                    value={reportDates.to}
-                    min={reportDates.from || `${reportReferenceMonth}-01`}
-                    max={getMonthBounds(reportReferenceMonth).to}
-                    onChange={(event) => setReportDates((current) => ({ ...current, to: event.target.value }))}
-                    className="mt-1 block w-full rounded-lg border border-brand-terciar/15 bg-brand-principal/30 px-2 py-2.5 text-xs font-semibold text-brand-terciar outline-none focus:border-brand-secundar"
-                    aria-label="Último dia do relatório"
-                  />
-                </label>
-              </div>
-            </>
-          )}
+          <div className="grid grid-cols-2 gap-2">
+            <label className="text-[10px] font-mono uppercase text-brand-terciar/60">
+              De
+              <input
+                type="date"
+                value={reportDates.from}
+                min={`${reportReferenceMonth}-01`}
+                max={reportDates.to || getMonthBounds(reportReferenceMonth).to}
+                onChange={(event) => setReportDates((current) => ({ ...current, from: event.target.value }))}
+                className="mt-1 block w-full rounded-lg border border-brand-terciar/15 bg-brand-principal/30 px-2 py-2.5 text-xs font-semibold text-brand-terciar outline-none focus:border-brand-secundar"
+                aria-label="Primeiro dia do relatório"
+              />
+            </label>
+            <label className="text-[10px] font-mono uppercase text-brand-terciar/60">
+              Até
+              <input
+                type="date"
+                value={reportDates.to}
+                min={reportDates.from || `${reportReferenceMonth}-01`}
+                max={getMonthBounds(reportReferenceMonth).to}
+                onChange={(event) => setReportDates((current) => ({ ...current, to: event.target.value }))}
+                className="mt-1 block w-full rounded-lg border border-brand-terciar/15 bg-brand-principal/30 px-2 py-2.5 text-xs font-semibold text-brand-terciar outline-none focus:border-brand-secundar"
+                aria-label="Último dia do relatório"
+              />
+            </label>
+          </div>
           <button
             type="button"
             onClick={generateInstagramReport}
