@@ -50,14 +50,18 @@ export interface InstagramReportProfile {
   username: string | null;
   months: Record<string, InstagramMonthlyCounts>;
   totals: Omit<InstagramMonthlyCounts, "available">;
+  periodAvailable?: boolean;
   topHighlights: InstagramReportHighlight[];
   highlightWarnings: string[];
   sourceNote?: string;
 }
 
 export interface InstagramReportData {
+  mode: "months" | "days";
   fromMonth: string;
   toMonth: string;
+  referenceMonth?: string;
+  scopeLabel: string;
   startDate: string;
   endDate: string;
   generatedAt: string;
@@ -80,6 +84,40 @@ function normalizeHighlightDate(value: string | number | null | undefined): stri
     ? new Date(value)
     : new Date(numericValue < 1_000_000_000_000 ? numericValue * 1000 : numericValue);
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
+function normalizeCalendarDate(value: string | number | null | undefined): string | null {
+  if (value == null || value === "") return null;
+  if (typeof value === "string") {
+    const datePrefix = value.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (datePrefix) return datePrefix[1];
+  }
+
+  const numericValue = typeof value === "number" ? value : /^\d+$/.test(value) ? Number(value) : null;
+  const parsed = numericValue == null
+    ? new Date(value)
+    : new Date(numericValue < 1_000_000_000_000 ? numericValue * 1000 : numericValue);
+  if (Number.isNaN(parsed.getTime())) return null;
+
+  const parts = new Intl.DateTimeFormat("en", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(parsed);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+  return `${year}-${month}-${day}`;
+}
+
+function isWithinDateRange(
+  value: string | number | null | undefined,
+  dateRange?: { from: string; to: string },
+): boolean {
+  if (!dateRange) return true;
+  const date = normalizeCalendarDate(value);
+  return Boolean(date && date >= dateRange.from && date <= dateRange.to);
 }
 
 function optionalMetric(value: number | null | undefined): number | null {
@@ -119,8 +157,10 @@ export function createInstagramReportProfile(
   responses: Map<string, PortalOrganicoData | Error>,
   organicTop?: PortalOrganicoTopData | Error,
   paidGroups: PortalCriativoGrupo[] | Error = [],
+  dateRange?: { from: string; to: string },
 ): InstagramReportProfile {
   const months: InstagramReportProfile["months"] = {};
+  const periodCounts = { photos: 0, carousels: 0, reels: 0, stories: 0 };
   let username: string | null = null;
   const firstAvailableMonth = getFirstAvailableMonth(account.primeiro_mes);
 
@@ -139,12 +179,23 @@ export function createInstagramReportProfile(
       stories: stories.length,
       available,
     };
+
+    if (dateRange && available && key === dateRange.from.slice(0, 7)) {
+      const periodPosts = posts.filter((post) => isWithinDateRange(post.data, dateRange));
+      const periodStories = stories.filter((story) => isWithinDateRange(story.data, dateRange));
+      periodCounts.photos = periodPosts.filter((post) => getInstagramPostKind(post) === "Foto").length;
+      periodCounts.carousels = periodPosts.filter((post) => getInstagramPostKind(post) === "Carrossel").length;
+      periodCounts.reels = periodPosts.filter((post) => getInstagramPostKind(post) === "Reel").length;
+      periodCounts.stories = periodStories.length;
+    }
   }
 
-  const totals = Object.values(months).reduce(
-    (sum, month) => addInstagramCounts(sum, month),
-    { photos: 0, carousels: 0, reels: 0, stories: 0 },
-  );
+  const totals = dateRange
+    ? periodCounts
+    : Object.values(months).reduce(
+        (sum, month) => addInstagramCounts(sum, month),
+        { photos: 0, carousels: 0, reels: 0, stories: 0 },
+      );
 
   const candidates: (InstagramReportHighlight & { metricGroup: string })[] = [];
   const organic = organicTop instanceof Error ? undefined : organicTop?.top;
@@ -156,6 +207,7 @@ export function createInstagramReportProfile(
   ];
   if (organic && !organic.erro) {
     for (const post of organic.posts ?? []) {
+      if (!isWithinDateRange(post.data, dateRange)) continue;
       const views = Number(post.visualizacoes) || 0;
       const value = views;
       if (value <= 0) continue;
@@ -185,6 +237,7 @@ export function createInstagramReportProfile(
       });
     }
     for (const story of organic.stories ?? []) {
+      if (!isWithinDateRange(story.data, dateRange)) continue;
       const views = Number(story.visualizacoes) || 0;
       const value = views;
       if (value <= 0) continue;
@@ -255,7 +308,16 @@ export function createInstagramReportProfile(
       return highlight;
     });
 
-  return { id: account.id, name: account.nome, username, months, totals, topHighlights, highlightWarnings };
+  return {
+    id: account.id,
+    name: account.nome,
+    username,
+    months,
+    totals,
+    periodAvailable: dateRange ? Boolean(months[dateRange.from.slice(0, 7)]?.available) : Object.values(months).some((month) => month.available),
+    topHighlights,
+    highlightWarnings,
+  };
 }
 
 export function isInstagramPostUrl(value: string): boolean {
@@ -272,6 +334,13 @@ export function createInstagramReportData(
   toMonth: string,
   profiles: InstagramReportProfile[],
   monthKeys: string[],
+  options: {
+    mode?: "months" | "days";
+    referenceMonth?: string;
+    startDate?: string;
+    endDate?: string;
+    scopeLabel?: string;
+  } = {},
 ): InstagramReportData {
   const empty = () => ({ photos: 0, carousels: 0, reels: 0, stories: 0 });
   const totals = profiles.reduce((sum, profile) => addInstagramCounts(sum, profile.totals), empty());
@@ -289,10 +358,13 @@ export function createInstagramReportData(
   );
 
   return {
+    mode: options.mode ?? "months",
     fromMonth,
     toMonth,
-    startDate: `${fromMonth}-01`,
-    endDate: getMonthBounds(toMonth).to,
+    referenceMonth: options.referenceMonth,
+    scopeLabel: options.scopeLabel ?? "Todas as unidades",
+    startDate: options.startDate ?? `${fromMonth}-01`,
+    endDate: options.endDate ?? getMonthBounds(toMonth).to,
     generatedAt: new Date().toISOString(),
     profiles,
     totals,

@@ -75,7 +75,10 @@ export function getMapleBearTopHighlights(monthKeys?: string[]): RankedMapleBear
     .slice(0, 5);
 }
 
-export function createMapleBearManualProfile(monthKeys: string[]): InstagramReportProfile {
+export function createMapleBearManualProfile(
+  monthKeys: string[],
+  dateRange?: { from: string; to: string },
+): InstagramReportProfile {
   const monthMap = new Map(mapleBearManualMonths.map((entry) => [entry.month, entry]));
   const hasManualData = monthKeys.some((month) => monthMap.has(month));
 
@@ -87,7 +90,7 @@ export function createMapleBearManualProfile(monthKeys: string[]): InstagramRepo
         : { photos: 0, carousels: 0, reels: 0, stories: 0, available: false }];
     }),
   );
-  const totals = Object.values(months)
+  const monthlyTotals = Object.values(months)
     .filter((month) => month.available)
     .reduce((sum, month) => addInstagramCounts(sum, month), { photos: 0, carousels: 0, reels: 0, stories: 0 });
   const topHighlights = getMapleBearTopHighlights(monthKeys)
@@ -113,18 +116,22 @@ export function createMapleBearManualProfile(monthKeys: string[]): InstagramRepo
         description: highlight.title,
         link: null,
       };
-    });
+    })
+    .filter((highlight) => !dateRange || highlight.date.slice(0, 10) >= dateRange.from && highlight.date.slice(0, 10) <= dateRange.to);
 
   return {
     id: "maple-bear-manual",
     name: "Maple Bear",
     username: null,
     months,
-    totals,
+    totals: dateRange ? { photos: 0, carousels: 0, reels: 0, stories: 0 } : monthlyTotals,
+    periodAvailable: !dateRange && hasManualData,
     topHighlights,
     highlightWarnings: [],
     sourceNote: hasManualData
-      ? "Dados manuais enviados para Maple Bear. Os destaques incluem visualizações, alcance e novos seguidores quando informados."
+      ? dateRange
+        ? "Dados mensais enviados manualmente. O levantamento não informa a quantidade de peças por dia; as contagens semanais da Maple Bear não estão disponíveis."
+        : "Dados manuais enviados para Maple Bear. Os destaques incluem visualizações, alcance e novos seguidores quando informados."
       : "O levantamento manual disponível cobre julho a outubro de 2026. Não há dados manuais para o período selecionado.",
   };
 }
