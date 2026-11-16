@@ -38,6 +38,7 @@ import {
   getMonthBounds,
   type InstagramReportData,
 } from "@/lib/instagram-report";
+import { applyMapleBearManualPeriodCounts, parseOptionalManualCount } from "@/lib/manual-instagram-data";
 import { renderInstagramReportHtml } from "@/lib/instagram-report-print";
 
 interface PortalMetricsViewProps {
@@ -142,6 +143,8 @@ export default function PortalMetricsView({ initialContaId }: PortalMetricsViewP
   const [reportDates, setReportDates] = useState(() => getLatestDaysOfMonth(getCurrentInstagramReportMonth()));
   const [generatingReport, setGeneratingReport] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
+  const [mapleBearFeedCount, setMapleBearFeedCount] = useState("");
+  const [mapleBearStoriesCount, setMapleBearStoriesCount] = useState("");
 
   const generateInstagramReport = async () => {
     setReportError(null);
@@ -164,6 +167,14 @@ export default function PortalMetricsView({ initialContaId }: PortalMetricsViewP
       return;
     }
 
+    const includeManualMapleBear = reportScope === "all" || reportScope === "maple-bear-manual";
+    const manualFeedCount = includeManualMapleBear ? parseOptionalManualCount(mapleBearFeedCount) : null;
+    const manualStoriesCount = includeManualMapleBear ? parseOptionalManualCount(mapleBearStoriesCount) : null;
+    if (manualFeedCount === undefined || manualStoriesCount === undefined) {
+      setReportError("Informe quantidades inteiras iguais ou maiores que zero, ou deixe o campo em branco.");
+      return;
+    }
+
     const printWindow = window.open("about:blank", "_blank");
     if (!printWindow) {
       setReportError("O navegador bloqueou a nova janela. Permita pop-ups para gerar o relatório.");
@@ -183,7 +194,10 @@ export default function PortalMetricsView({ initialContaId }: PortalMetricsViewP
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Não foi possível gerar o relatório.");
 
-      const report = result as InstagramReportData;
+      const fetchedReport = result as InstagramReportData;
+      const report = includeManualMapleBear
+        ? applyMapleBearManualPeriodCounts(fetchedReport, { feed: manualFeedCount, stories: manualStoriesCount })
+        : fetchedReport;
       printWindow.document.open();
       printWindow.document.write(renderInstagramReportHtml(report));
       printWindow.document.close();
@@ -431,7 +445,15 @@ export default function PortalMetricsView({ initialContaId }: PortalMetricsViewP
             Unidades incluídas no PDF
             <select
               value={reportScope}
-              onChange={(event) => setReportScope(event.target.value)}
+              onChange={(event) => {
+                const scope = event.target.value;
+                setReportScope(scope);
+                if (scope !== "all" && scope !== "maple-bear-manual") {
+                  setMapleBearFeedCount("");
+                  setMapleBearStoriesCount("");
+                }
+                setReportError(null);
+              }}
               className="mt-1 block w-full rounded-lg border border-brand-terciar/15 bg-brand-principal/30 px-2.5 py-2.5 text-xs font-semibold text-brand-terciar outline-none focus:border-brand-secundar"
               aria-label="Unidades incluídas no relatório"
             >
@@ -452,6 +474,9 @@ export default function PortalMetricsView({ initialContaId }: PortalMetricsViewP
                 const month = event.target.value;
                 setReportReferenceMonth(month);
                 if (month) setReportDates(getLatestDaysOfMonth(month));
+                setMapleBearFeedCount("");
+                setMapleBearStoriesCount("");
+                setReportError(null);
               }}
               className="mt-1 block w-full rounded-lg border border-brand-terciar/15 bg-brand-principal/30 px-2.5 py-2.5 text-xs font-semibold text-brand-terciar outline-none focus:border-brand-secundar"
               aria-label="Mês usado como referência do relatório"
@@ -465,7 +490,12 @@ export default function PortalMetricsView({ initialContaId }: PortalMetricsViewP
                 value={reportDates.from}
                 min={`${reportReferenceMonth}-01`}
                 max={reportDates.to || getMonthBounds(reportReferenceMonth).to}
-                onChange={(event) => setReportDates((current) => ({ ...current, from: event.target.value }))}
+                onChange={(event) => {
+                  setReportDates((current) => ({ ...current, from: event.target.value }));
+                  setMapleBearFeedCount("");
+                  setMapleBearStoriesCount("");
+                  setReportError(null);
+                }}
                 className="mt-1 block w-full rounded-lg border border-brand-terciar/15 bg-brand-principal/30 px-2 py-2.5 text-xs font-semibold text-brand-terciar outline-none focus:border-brand-secundar"
                 aria-label="Primeiro dia do relatório"
               />
@@ -477,7 +507,12 @@ export default function PortalMetricsView({ initialContaId }: PortalMetricsViewP
                 value={reportDates.to}
                 min={reportDates.from || `${reportReferenceMonth}-01`}
                 max={getMonthBounds(reportReferenceMonth).to}
-                onChange={(event) => setReportDates((current) => ({ ...current, to: event.target.value }))}
+                onChange={(event) => {
+                  setReportDates((current) => ({ ...current, to: event.target.value }));
+                  setMapleBearFeedCount("");
+                  setMapleBearStoriesCount("");
+                  setReportError(null);
+                }}
                 className="mt-1 block w-full rounded-lg border border-brand-terciar/15 bg-brand-principal/30 px-2 py-2.5 text-xs font-semibold text-brand-terciar outline-none focus:border-brand-secundar"
                 aria-label="Último dia do relatório"
               />
@@ -493,6 +528,50 @@ export default function PortalMetricsView({ initialContaId }: PortalMetricsViewP
             {generatingReport ? "Buscando destaques..." : "Gerar PDF"}
           </button>
         </div>
+        {(reportScope === "all" || reportScope === "maple-bear-manual") && (
+          <fieldset className="mt-4 rounded-xl border border-brand-terciar/10 bg-brand-principal/20 p-3">
+            <legend className="px-1 text-[10px] font-mono uppercase text-brand-terciar/70">
+              Maple Bear - contagens manuais temporárias
+            </legend>
+            <p className="text-xs leading-relaxed text-brand-terciar/70">
+              Preencha os números referentes às datas selecionadas. Os campos são opcionais e valem apenas para este PDF; em branco, o valor aparece como não disponível.
+            </p>
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="text-[10px] font-mono uppercase text-brand-terciar/60">
+                Publicações no feed (opcional)
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  inputMode="numeric"
+                  value={mapleBearFeedCount}
+                  onChange={(event) => {
+                    setMapleBearFeedCount(event.target.value);
+                    setReportError(null);
+                  }}
+                  className="mt-1 block w-full rounded-lg border border-brand-terciar/15 bg-white px-2.5 py-2.5 text-xs font-semibold text-brand-terciar outline-none focus:border-brand-secundar"
+                  aria-label="Quantidade manual de publicações no feed da Maple Bear"
+                />
+              </label>
+              <label className="text-[10px] font-mono uppercase text-brand-terciar/60">
+                Stories (opcional)
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  inputMode="numeric"
+                  value={mapleBearStoriesCount}
+                  onChange={(event) => {
+                    setMapleBearStoriesCount(event.target.value);
+                    setReportError(null);
+                  }}
+                  className="mt-1 block w-full rounded-lg border border-brand-terciar/15 bg-white px-2.5 py-2.5 text-xs font-semibold text-brand-terciar outline-none focus:border-brand-secundar"
+                  aria-label="Quantidade manual de stories da Maple Bear"
+                />
+              </label>
+            </div>
+          </fieldset>
+        )}
         {reportError && <p role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-800">{reportError}</p>}
       </section>
 

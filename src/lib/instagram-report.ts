@@ -44,6 +44,11 @@ export interface InstagramManualHighlight {
   thumbnailUrl?: string | null;
 }
 
+export interface InstagramManualPeriodCounts {
+  feed: number | null;
+  stories: number | null;
+}
+
 export interface InstagramReportProfile {
   id: string;
   name: string;
@@ -51,6 +56,7 @@ export interface InstagramReportProfile {
   months: Record<string, InstagramMonthlyCounts>;
   totals: Omit<InstagramMonthlyCounts, "available">;
   periodAvailable?: boolean;
+  manualPeriodCounts?: InstagramManualPeriodCounts;
   topHighlights: InstagramReportHighlight[];
   highlightWarnings: string[];
   sourceNote?: string;

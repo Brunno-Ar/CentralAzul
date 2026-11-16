@@ -47,6 +47,15 @@ function countsRow(label: string, counts: InstagramReportProfile["totals"]): str
   return `<tr><th>${label}</th><td>${number(counts.photos)}</td><td>${number(counts.carousels)}</td><td>${number(counts.reels)}</td><td>${number(feedTotal(counts))}</td><td>${number(counts.stories)}</td><td>${number(pieceTotal(counts))}</td></tr>`;
 }
 
+function manualCountsRow(label: string, counts: NonNullable<InstagramReportProfile["manualPeriodCounts"]>): string {
+  const feed = counts.feed == null ? "N/D" : number(counts.feed);
+  const stories = counts.stories == null ? "N/D" : number(counts.stories);
+  const total = counts.feed == null || counts.stories == null
+    ? "N/D"
+    : number(counts.feed + counts.stories);
+  return `<tr><th>${label}</th><td class="muted">N/D</td><td class="muted">N/D</td><td class="muted">N/D</td><td>${feed}</td><td>${stories}</td><td>${total}</td></tr>`;
+}
+
 function profileTable(profile: InstagramReportProfile, months: string[], report: InstagramReportData): string {
   const rows = months.map((month) => {
     const counts = profile.months[month];
@@ -61,9 +70,12 @@ function profileTable(profile: InstagramReportProfile, months: string[], report:
     : Array(6).fill("N/D");
 
   if (report.mode === "days") {
-    const selectedPeriod = profile.periodAvailable
-      ? countsRow(`Período (${dateLabel(report.startDate)} a ${dateLabel(report.endDate)})`, profile.totals)
-      : `<tr><th>Período selecionado</th><td colspan="6" class="muted">Contagens diárias não disponíveis neste levantamento</td></tr>`;
+    const periodLabel = `Período (${dateLabel(report.startDate)} a ${dateLabel(report.endDate)})`;
+    const selectedPeriod = profile.manualPeriodCounts
+      ? manualCountsRow(periodLabel, profile.manualPeriodCounts)
+      : profile.periodAvailable
+        ? countsRow(periodLabel, profile.totals)
+        : `<tr><th>Período selecionado</th><td colspan="6" class="muted">Contagens diárias não disponíveis neste levantamento</td></tr>`;
     const referenceCounts = Object.values(profile.months)
       .filter((month) => month.available)
       .reduce((sum, month) => ({
@@ -148,9 +160,17 @@ function profilePage(profile: InstagramReportProfile, months: string[], pageNumb
     : "";
   const isManual = Boolean(profile.sourceNote);
   const sourceNote = profile.sourceNote ? `<p class="note">${escapeHtml(profile.sourceNote)}</p>` : "";
-  const kpis = hasAvailableData(profile, report.mode)
-    ? [pieceTotal(profile.totals), feedTotal(profile.totals), profile.totals.stories].map(number)
-    : ["N/D", "N/D", "N/D"];
+  const kpis = report.mode === "days" && profile.manualPeriodCounts
+    ? [
+      profile.manualPeriodCounts.feed == null || profile.manualPeriodCounts.stories == null
+        ? "N/D"
+        : number(profile.manualPeriodCounts.feed + profile.manualPeriodCounts.stories),
+      profile.manualPeriodCounts.feed == null ? "N/D" : number(profile.manualPeriodCounts.feed),
+      profile.manualPeriodCounts.stories == null ? "N/D" : number(profile.manualPeriodCounts.stories),
+    ]
+    : hasAvailableData(profile, report.mode)
+      ? [pieceTotal(profile.totals), feedTotal(profile.totals), profile.totals.stories].map(number)
+      : ["N/D", "N/D", "N/D"];
 
   const periodDescription = report.mode === "days"
     ? `Período ${dateLabel(report.startDate)} a ${dateLabel(report.endDate)} · Referência: ${monthLabel(report.referenceMonth || report.fromMonth)}`
@@ -162,10 +182,38 @@ export function renderInstagramReportHtml(report: InstagramReportData): string {
   const months = Object.keys(report.monthlyTotals);
   const totals = report.totals;
   const profilesWithPeriodData = report.profiles.filter((profile) => hasAvailableData(profile, report.mode)).length;
+  const hasAvailablePeriodData = profilesWithPeriodData > 0;
+  const manualPeriodCounts = report.mode === "days"
+    ? report.profiles.flatMap((profile) => profile.manualPeriodCounts ? [profile.manualPeriodCounts] : [])
+    : [];
+  const manualFeedMissing = manualPeriodCounts.some((counts) => counts.feed == null);
+  const manualStoriesMissing = manualPeriodCounts.some((counts) => counts.stories == null);
+  const manualFeedTotal = manualPeriodCounts.reduce((sum, counts) => sum + (counts.feed ?? 0), 0);
+  const manualStoriesTotal = manualPeriodCounts.reduce((sum, counts) => sum + (counts.stories ?? 0), 0);
+  const reportedFeedTotal = manualFeedMissing || !hasAvailablePeriodData ? "N/D" : number(feedTotal(totals) + manualFeedTotal);
+  const reportedStoriesTotal = manualStoriesMissing || !hasAvailablePeriodData ? "N/D" : number(totals.stories + manualStoriesTotal);
+  const reportedPieceTotal = manualFeedMissing || manualStoriesMissing || !hasAvailablePeriodData
+    ? "N/D"
+    : number(feedTotal(totals) + manualFeedTotal + totals.stories + manualStoriesTotal);
+  const unavailableSubtypeTotals = !hasAvailablePeriodData || manualPeriodCounts.length > 0;
+  const reportedPhotoTotal = unavailableSubtypeTotals ? "N/D" : number(totals.photos);
+  const reportedCarouselTotal = unavailableSubtypeTotals ? "N/D" : number(totals.carousels);
+  const reportedReelTotal = unavailableSubtypeTotals ? "N/D" : number(totals.reels);
   const overallRows = report.profiles.map((profile) => {
-    const values = hasAvailableData(profile, report.mode)
-      ? [profile.totals.photos, profile.totals.carousels, profile.totals.reels, feedTotal(profile.totals), profile.totals.stories, pieceTotal(profile.totals)].map(number)
-      : Array(6).fill("N/D");
+    const values = report.mode === "days" && profile.manualPeriodCounts
+      ? [
+        "N/D",
+        "N/D",
+        "N/D",
+        profile.manualPeriodCounts.feed == null ? "N/D" : number(profile.manualPeriodCounts.feed),
+        profile.manualPeriodCounts.stories == null ? "N/D" : number(profile.manualPeriodCounts.stories),
+        profile.manualPeriodCounts.feed == null || profile.manualPeriodCounts.stories == null
+          ? "N/D"
+          : number(profile.manualPeriodCounts.feed + profile.manualPeriodCounts.stories),
+      ]
+      : hasAvailableData(profile, report.mode)
+        ? [profile.totals.photos, profile.totals.carousels, profile.totals.reels, feedTotal(profile.totals), profile.totals.stories, pieceTotal(profile.totals)].map(number)
+        : Array(6).fill("N/D");
     return `<tr><th>${escapeHtml(profile.name)}${profile.sourceNote ? ` <span class="muted">(dados manuais)</span>` : ""}</th>${values.map((value) => `<td>${value}</td>`).join("")}</tr>`;
   }).join("");
   const monthRows = months.map((month) => {
@@ -198,5 +246,5 @@ export function renderInstagramReportHtml(report: InstagramReportData): string {
     .print-button{display:block;margin:12px auto 0;border:1px solid var(--blue);background:#fff;color:var(--blue);padding:9px 14px;border-radius:8px}@page{size:A4;margin:0}
     @media print{body{background:#fff}.toolbar,.print-button{display:none!important}.page{width:210mm;height:auto;min-height:297mm;margin:0;padding:19mm 16mm;box-shadow:none;overflow:visible;break-after:page;page-break-after:always;-webkit-box-decoration-break:clone;box-decoration-break:clone}.page:last-of-type{break-after:auto;page-break-after:auto}.page h2{break-after:avoid;page-break-after:avoid}.kpis,.highlight-card,.note,tr{break-inside:avoid;page-break-inside:avoid}thead{display:table-header-group}}
     @media(max-width:760px){body{font-size:12px}.page{width:100%;min-height:0;padding:28px 20px;margin-bottom:10px;overflow:auto}.toolbar{padding:0 12px}h1{font-size:23px}table{font-size:9px}th,td{padding:7px 3px}.highlight-card{grid-template-columns:56px 1fr;gap:8px;padding:8px}.highlight-thumbnail{width:56px;height:56px}.highlight-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
-  </style></head><body><div class="toolbar"><button data-print>Imprimir ou salvar como PDF</button></div><section class="page"><header><p class="eyebrow">CENTRAL AZUL / INSTAGRAM</p><p class="page-number">01</p></header><h1>Produção e destaques</h1><p class="subtitle">${escapeHtml(reportPeriodLabel)} · ${escapeHtml(report.scopeLabel)} · ${report.profiles.length} perfis</p><div class="kpis"><div><strong>${number(feedTotal(totals) + totals.stories)}</strong><span>Peças registradas</span></div><div><strong>${number(feedTotal(totals))}</strong><span>Publicações no feed</span></div><div><strong>${number(totals.stories)}</strong><span>Stories</span></div></div><h2>Quantidade por perfil</h2><table><thead><tr><th>Perfil</th><th>Fotos</th><th>Carrosséis</th><th>Reels</th><th>Feed</th><th>Stories</th><th>Total</th></tr></thead><tbody>${overallRows}<tr class="total"><th>Total disponível (${profilesWithPeriodData}/${report.profiles.length} perfis)</th><td>${number(totals.photos)}</td><td>${number(totals.carousels)}</td><td>${number(totals.reels)}</td><td>${number(feedTotal(totals))}</td><td>${number(totals.stories)}</td><td>${number(feedTotal(totals) + totals.stories)}</td></tr></tbody></table><h2>${report.mode === "days" ? "Referência mensal" : "Consolidado mensal"}</h2><table><thead><tr><th>Mês</th><th>Fotos</th><th>Carrosséis</th><th>Reels</th><th>Feed</th><th>Stories</th><th>Total</th></tr></thead><tbody>${monthRows}</tbody></table><p class="method">Consulta em ${generated}.</p></section>${pages}<button class="print-button" data-print>Imprimir ou salvar como PDF</button></body></html>`;
+  </style></head><body><div class="toolbar"><button data-print>Imprimir ou salvar como PDF</button></div><section class="page"><header><p class="eyebrow">CENTRAL AZUL / INSTAGRAM</p><p class="page-number">01</p></header><h1>Produção e destaques</h1><p class="subtitle">${escapeHtml(reportPeriodLabel)} · ${escapeHtml(report.scopeLabel)} · ${report.profiles.length} perfis</p><div class="kpis"><div><strong>${reportedPieceTotal}</strong><span>Peças registradas</span></div><div><strong>${reportedFeedTotal}</strong><span>Publicações no feed</span></div><div><strong>${reportedStoriesTotal}</strong><span>Stories</span></div></div><h2>Quantidade por perfil</h2><table><thead><tr><th>Perfil</th><th>Fotos</th><th>Carrosséis</th><th>Reels</th><th>Feed</th><th>Stories</th><th>Total</th></tr></thead><tbody>${overallRows}<tr class="total"><th>Total disponível (${profilesWithPeriodData}/${report.profiles.length} perfis)</th><td>${reportedPhotoTotal}</td><td>${reportedCarouselTotal}</td><td>${reportedReelTotal}</td><td>${reportedFeedTotal}</td><td>${reportedStoriesTotal}</td><td>${reportedPieceTotal}</td></tr></tbody></table><h2>${report.mode === "days" ? "Referência mensal" : "Consolidado mensal"}</h2><table><thead><tr><th>Mês</th><th>Fotos</th><th>Carrosséis</th><th>Reels</th><th>Feed</th><th>Stories</th><th>Total</th></tr></thead><tbody>${monthRows}</tbody></table><p class="method">Consulta em ${generated}.</p></section>${pages}<button class="print-button" data-print>Imprimir ou salvar como PDF</button></body></html>`;
 }

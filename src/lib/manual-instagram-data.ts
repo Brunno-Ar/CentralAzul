@@ -1,6 +1,8 @@
 import {
   addInstagramCounts,
   type InstagramManualHighlight,
+  type InstagramManualPeriodCounts,
+  type InstagramReportData,
   type InstagramReportProfile,
 } from "@/lib/instagram-report";
 
@@ -133,5 +135,31 @@ export function createMapleBearManualProfile(
         ? "Dados mensais enviados manualmente. O levantamento não informa a quantidade de peças por dia; as contagens semanais da Maple Bear não estão disponíveis."
         : "Dados manuais enviados para Maple Bear. Os destaques incluem visualizações, alcance e novos seguidores quando informados."
       : "O levantamento manual disponível cobre julho a outubro de 2026. Não há dados manuais para o período selecionado.",
+  };
+}
+
+export function parseOptionalManualCount(value: string): number | null | undefined {
+  if (!value.trim()) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : undefined;
+}
+
+export function applyMapleBearManualPeriodCounts(
+  report: InstagramReportData,
+  counts: InstagramManualPeriodCounts,
+): InstagramReportData {
+  if (report.mode !== "days" || (counts.feed === null && counts.stories === null)) return report;
+  if (!report.profiles.some((profile) => profile.id === "maple-bear-manual")) return report;
+
+  return {
+    ...report,
+    profiles: report.profiles.map((profile) => profile.id === "maple-bear-manual"
+      ? {
+        ...profile,
+        periodAvailable: true,
+        manualPeriodCounts: counts,
+        sourceNote: "Os números informados para feed e stories são manuais. O tipo de publicação (foto, carrossel ou reel) não foi detalhado.",
+      }
+      : profile),
   };
 }
